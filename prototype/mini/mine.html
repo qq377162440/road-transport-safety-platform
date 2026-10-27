@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head><meta charset="UTF-8"><title>小程序·我的</title>
+<link rel="stylesheet" href="../assets/mini.css"></head>
+<body>
+<div class="mini-shell">
+<div class="phone">
+  <div class="status-bar"><span>9:41</span><span>电量 100%</span></div>
+  <div class="nav-title">我的</div>
+  <div class="content">
+    <!-- 用户信息 -->
+    <div class="mini-card" style="background:linear-gradient(120deg,#1a5cb0,#3a7bc8);color:#fff;display:flex;align-items:center;gap:14px">
+      <div style="width:58px;height:58px;border-radius:50%;background:rgba(255,255,255,.2);display:flex;align-items:center;justify-content:center;font-size:26px;font-weight:700">张</div>
+      <div style="flex:1"><div style="font-size:21px;font-weight:800">张师傅</div><div style="font-size:14px;opacity:.85">驾驶员 · 粤E·12345</div></div>
+      <button class="mini-btn" style="width:auto;min-height:40px;padding:0 14px;font-size:15px;background:rgba(255,255,255,.2);color:#fff">编辑</button>
+    </div>
+
+    <!-- 证件信息（醒目提醒）-->
+    <div class="mini-card">
+      <div class="mini-card-title"><span class="ico" data-icon="fileText"></span> 我的证件</div>
+      <div class="task-item" style="border:1px solid #fef3e2;background:#fffaf3">
+        <div class="t-ico" style="color:#e88600"><span class="ico" data-icon="clock"></span></div>
+        <div class="t-info"><div class="t-title">从业资格证</div><div class="t-desc" style="color:#6b7a8d">2026-11-30 到期 · 还有 34 天</div></div>
+        <span class="tag tag-yellow">快到期</span>
+      </div>
+      <div class="task-item" style="border:1px solid var(--mini-border)">
+        <div class="t-ico" style="color:#1a9e50"><span class="ico" data-icon="checkCircle"></span></div>
+        <div class="t-info"><div class="t-title">驾驶证</div><div class="t-desc" style="color:#6b7a8d">2028-05-20 到期</div></div>
+        <span class="tag tag-green">正常</span>
+      </div>
+    </div>
+
+    <!-- 功能列表 -->
+    <div class="mini-card" style="padding:0;overflow:hidden">
+      <div class="menu-item" style="display:flex;align-items:center;gap:14px;padding:16px 18px;border-bottom:1px solid var(--mini-border)"><span style="color:#1a5cb0;font-size:22px"><span class="ico" data-icon="clipboard"></span></span><span class="mini-text" style="flex:1;font-weight:600">我的三检记录</span><span style="color:#c9d2dd;font-size:20px">›</span></div>
+      <div class="menu-item" style="display:flex;align-items:center;gap:14px;padding:16px 18px;border-bottom:1px solid var(--mini-border)"><span style="color:#1a5cb0;font-size:22px"><span class="ico" data-icon="award"></span></span><span class="mini-text" style="flex:1;font-weight:600">我的考核</span><span style="color:#c9d2dd;font-size:20px">›</span></div>
+      <div class="menu-item" style="display:flex;align-items:center;gap:14px;padding:16px 18px;border-bottom:1px solid var(--mini-border)"><span style="color:#1a5cb0;font-size:22px"><span class="ico" data-icon="bell"></span></span><span class="mini-text" style="flex:1;font-weight:600">消息通知</span><span class="tag tag-red">2</span></div>
+      <div class="menu-item" style="display:flex;align-items:center;gap:14px;padding:16px 18px"><span style="color:#1a5cb0;font-size:22px"><span class="ico" data-icon="setting"></span></span><span class="mini-text" style="flex:1;font-weight:600">设置</span><span style="color:#c9d2dd;font-size:20px">›</span></div>
+    </div>
+
+    <!-- 退出 -->
+    <button class="mini-btn mini-btn-gray" style="color:#d92b2b;margin-top:8px">退出登录</button>
+    <div class="mini-text-xs" style="text-align:center;margin-top:12px">运管管 · 道路运输安全助手 v1.0</div>
+  </div>
+  <div class="tabbar">
+    <div class="tab"><span class="ico" data-icon="home"></span>首页</div>
+    <div class="tab"><span class="ico" data-icon="clipboard"></span>三检</div>
+    <div class="tab"><span class="ico" data-icon="bookOpen"></span>学习</div>
+    <div class="tab active"><span class="ico" data-icon="user"></span>我的</div>
+  </div>
+</div>
+</div>
+<script src="../assets/icons.js"></script>
+</body>
+</html>

@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>道路运输安全生产平台 · 交互原型 Demo</title>
+<link rel="stylesheet" href="assets/common.css">
+<style>
+:root { --primary:#1a5cb0; --primary-dark:#123055; }
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: var(--font); background:#eef1f5; color:var(--text); height:100vh; overflow:hidden; }
+.topbar {
+  height:56px; background:var(--primary-dark); display:flex; align-items:center;
+  padding:0 20px; color:#fff; box-shadow:0 2px 8px rgba(0,0,0,.15); position:relative; z-index:10;
+}
+.topbar .logo { font-size:17px; font-weight:700; letter-spacing:.5px; display:flex; align-items:center; gap:10px; }
+.topbar .logo .mark { width:30px; height:30px; border-radius:8px; background:var(--primary); display:flex; align-items:center; justify-content:center; }
+.topbar .logo .mark .ico { font-size:17px; color:#fff; }
+.topbar .sub { font-size:12.5px; opacity:.75; margin-left:14px; }
+.topbar .tag-demo { margin-left:auto; background:rgba(255,255,255,.14); padding:5px 14px; border-radius:20px; font-size:12.5px; }
+
+.tabs { height:46px; background:#fff; border-bottom:1px solid var(--border); display:flex; align-items:center; padding:0 16px; gap:6px; }
+.tabs .tab {
+  padding:8px 16px; border-radius:8px; cursor:pointer; font-size:14.5px; color:var(--text);
+  transition:.15s; white-space:nowrap; font-weight:500; display:flex; align-items:center; gap:7px;
+}
+.tabs .tab .ico { font-size:16px; }
+.tabs .tab:hover { background:#f3f4f6; }
+.tabs .tab.active { background:var(--primary); color:#fff; }
+
+.layout { display:flex; height:calc(100vh - 102px); }
+.sidebar { width:244px; background:#fff; border-right:1px solid var(--border); overflow-y:auto; padding:10px 0; flex-shrink:0; }
+.sidebar .group { font-size:12px; color:var(--text-3); padding:12px 20px 6px; font-weight:600; letter-spacing:.5px; }
+.sidebar .item {
+  display:block; padding:10px 20px; font-size:14px; color:var(--text-2);
+  cursor:pointer; transition:.12s; border-left:3px solid transparent;
+}
+.sidebar .item:hover { background:#f3f4f6; color:var(--primary); }
+.sidebar .item.active { background:#e8f1fc; color:var(--primary); border-left-color:var(--primary); font-weight:600; }
+
+.content { flex:1; padding:14px; overflow:hidden; display:flex; flex-direction:column; }
+.content iframe { flex:1; width:100%; border:none; background:#fff; border-radius:12px; box-shadow:0 2px 12px rgba(0,0,0,.08); }
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="logo"><span class="mark"><span class="ico" data-icon="truck"></span></span>道路运输安全生产管理平台</div>
+  <div class="sub">逆向重构 · 高保真交互原型</div>
+  <div class="tag-demo">Demo v1.0</div>
+</div>
+
+<div class="tabs" id="tabs">
+  <div class="tab active" data-mode="pc" onclick="switchMode('pc')"><span class="ico" data-icon="monitor"></span>网页端（PC）</div>
+  <div class="tab" data-mode="mini" onclick="switchMode('mini')"><span class="ico" data-icon="phone"></span>小程序端</div>
+</div>
+
+<div class="layout">
+  <div class="sidebar" id="sidebar"></div>
+  <div class="content">
+    <iframe id="frame" src=""></iframe>
+  </div>
+</div>
+
+<script>
+const pcMenu = [
+  { group: '首页', items: [
+    { name: '企业安全管理驾驶舱', url: 'pc/dashboard.html' },
+  ]},
+  { group: '基础档案管理', items: [
+    { name: '企业信息管理', url: 'pc/company.html' },
+    { name: '安全管理架构', url: 'pc/org.html' },
+    { name: '人员基础信息', url: 'pc/person.html' },
+    { name: '车辆基础信息', url: 'pc/vehicle.html' },
+    { name: '企业分组', url: 'pc/tags.html' },
+    { name: '企业用户管理', url: 'pc/users.html' },
+    { name: '法律法规清单', url: 'pc/law.html' },
+  ]},
+  { group: '制度档案管理', items: [
+    { name: '制度范本管理', url: 'pc/doc_sample.html' },
+    { name: '制度发布管理', url: 'pc/doc_publish.html' },
+    { name: '制度评审修订申请', url: 'pc/doc_review.html' },
+  ]},
+  { group: '安全管理工具', items: [
+    { name: '一日三检', url: 'pc/check.html' },
+    { name: '隐患排查治理', url: 'pc/danger.html' },
+    { name: '安全会议管理', url: 'pc/meeting.html' },
+    { name: '安全投入管理', url: 'pc/budget.html' },
+    { name: '风险辨识管控', url: 'pc/risk.html' },
+    { name: '车辆维修保养', url: 'pc/repair.html' },
+    { name: '考核奖惩规则', url: 'pc/reward_rule.html' },
+    { name: '诚信考核', url: 'pc/credit.html' },
+  ]},
+  { group: '培训教育管理', items: [
+    { name: '岗中安全教育', url: 'pc/training.html' },
+    { name: '学习情况统计', url: 'pc/train_stat.html' },
+  ]},
+  { group: '应急管理', items: [
+    { name: '应急预案管理', url: 'pc/emergency.html' },
+    { name: '应急物资管理', url: 'pc/emergency_mat.html' },
+  ]},
+  { group: '事故管理', items: [
+    { name: '事故上报', url: 'pc/accident.html' },
+    { name: '交通违法', url: 'pc/illegal.html' },
+  ]},
+  { group: '其它', items: [
+    { name: '通知公告', url: 'pc/notice.html' },
+    { name: '企业档案柜', url: 'pc/archive.html' },
+    { name: '动态监控（模拟）', url: 'pc/monitor.html' },
+  ]},
+];
+
+const miniMenu = [
+  { group: '小程序端（适老化重设计）', items: [
+    { name: '首页 · 今日任务', url: 'mini/home.html' },
+    { name: '一日三检', url: 'mini/check.html' },
+    { name: '学习中心', url: 'mini/study.html' },
+    { name: '我的', url: 'mini/mine.html' },
+    { name: '登录页', url: 'mini/login.html' },
+  ]},
+];
+
+let currentMode = 'pc';
+
+function renderSidebar() {
+  const menu = currentMode === 'pc' ? pcMenu : miniMenu;
+  const sb = document.getElementById('sidebar');
+  sb.innerHTML = '';
+  menu.forEach(g => {
+    const gh = document.createElement('div');
+    gh.className = 'group'; gh.textContent = g.group;
+    sb.appendChild(gh);
+    g.items.forEach(it => {
+      const a = document.createElement('a');
+      a.className = 'item'; a.textContent = it.name;
+      a.dataset.url = it.url;
+      a.onclick = () => { setActive(a, it.url); };
+      sb.appendChild(a);
+    });
+  });
+  const first = sb.querySelector('.item');
+  if (first) { setActive(first, first.dataset.url); }
+}
+
+function setActive(el, url) {
+  document.querySelectorAll('#sidebar .item').forEach(i => i.classList.remove('active'));
+  el.classList.add('active');
+  document.getElementById('frame').src = url;
+}
+
+function switchMode(mode) {
+  currentMode = mode;
+  document.querySelectorAll('#tabs .tab').forEach(t => t.classList.remove('active'));
+  document.querySelector(`#tabs .tab[data-mode="${mode}"]`).classList.add('active');
+  renderSidebar();
+}
+
+renderSidebar();
+</script>
+<script src="assets/icons.js"></script>
+</body>
+</html>

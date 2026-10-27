@@ -1,0 +1,127 @@
+/* ===== 道路运输安全生产平台 · 设计系统 v4 =====
+   核心原则：一眼看懂、一用就会、功能直给、清晰易读
+   面向：文化水平不高、对电脑/手机不熟的运输从业人员
+   设计风格（ui-ux-pro-max）：PC=Data-Dense Dashboard，小程序=Accessible & Ethical
+   硬性规则：SVG 图标（非 emoji）、对比度≥4.5:1、44px 触控、焦点可见、reduced-motion */
+
+:root {
+  /* 品牌色 —— 稳重可信的深蓝 */
+  --brand-700: #0f3b74;
+  --brand-600: #14498f;
+  --brand-500: #1a5cb0;  /* 主色 */
+  --brand-400: #3a7bc8;
+  --brand-100: #e2edfb;
+  --brand-50:  #f1f7fe;
+
+  /* 语义色 —— 用颜色直接表达状态（绿=好，橙=注意，红=紧急）*/
+  --ok:       #1a9e50;
+  --ok-bg:    #e7f6ee;
+  --warn:     #e88600;
+  --warn-bg:  #fef3e2;
+  --danger:   #d92b2b;
+  --danger-bg:#fdecec;
+  --info:     #0b86a8;
+  --info-bg:  #e4f5fa;
+
+  /* 中性色 */
+  --bg:       #f2f4f7;
+  --surface:  #ffffff;
+  --border:   #e4e8ee;
+  --border-strong: #c9d2dd;
+  --text:      #141c2b;   /* 正文深色，高对比（≥4.5:1）*/
+  --text-2:    #4a5a6e;
+  --text-3:    #6b7a8d;
+
+  /* 圆角 & 阴影（轻阴影，不做花哨）*/
+  --r-sm: 8px; --r-md: 12px; --r-lg: 16px;
+  --shadow-sm: 0 1px 3px rgba(20,40,70,.07);
+  --shadow-md: 0 3px 10px rgba(20,40,70,.09);
+
+  /* 字体（中文黑体，大字号优先）*/
+  --font: "Source Han Sans SC","PingFang SC","HarmonyOS Sans SC","Microsoft YaHei",-apple-system,sans-serif;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  font-family: var(--font); background: var(--bg); color: var(--text);
+  font-size: 15px; line-height: 1.6; -webkit-font-smoothing: antialiased;
+}
+a { text-decoration: none; color: inherit; }
+ul { list-style: none; }
+
+/* ===== 可访问性基础（ui-ux-pro-max 规则）===== */
+button, [role="button"], .btn, a, .m-item, .mini-grid-item, .task-item, .tab {
+  cursor: pointer;
+}
+:focus-visible {
+  outline: 3px solid var(--brand-400);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { transition: none !important; animation: none !important; }
+}
+
+/* ===== SVG 图标（替代 emoji，线框风 = Lucide 风格）===== */
+.ico { width:1em; height:1em; display:inline-block; flex-shrink:0; vertical-align:-0.125em; }
+.ico svg { width:100%; height:100%; display:block; }
+
+/* ===== 按钮：大、清晰、有状态 ===== */
+.btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 7px;
+  padding: 10px 20px; border-radius: var(--r-sm); border: 1px solid transparent;
+  font-size: 15px; font-weight: 600; cursor: pointer; transition: all .15s ease;
+  white-space: nowrap; font-family: var(--font);
+}
+.btn-primary { background: var(--brand-500); color:#fff; }
+.btn-primary:hover { background: var(--brand-600); }
+.btn-outline { background:#fff; border-color: var(--border-strong); color: var(--text-2); }
+.btn-outline:hover { border-color: var(--brand-400); color: var(--brand-500); background: var(--brand-50); }
+.btn-success { background: var(--ok); color:#fff; }
+.btn-danger { background: var(--danger); color:#fff; }
+.btn-warning { background: var(--warn); color:#fff; }
+.btn-sm { padding: 6px 13px; font-size: 14px; border-radius: 7px; }
+.btn-lg { padding: 13px 30px; font-size: 17px; border-radius: 10px; }
+
+/* ===== 卡片 ===== */
+.card {
+  background: var(--surface); border-radius: var(--r-lg); padding: 20px;
+  box-shadow: var(--shadow-sm); border: 1px solid var(--border);
+}
+.card-title {
+  font-size: 16px; font-weight: 700; margin-bottom: 16px; color: var(--text);
+  display: flex; align-items: center; justify-content: space-between;
+}
+.card-title .more { font-size: 13px; color: var(--brand-500); font-weight: 500; cursor: pointer; }
+
+/* ===== 标签（状态一眼看懂）===== */
+.tag { display:inline-flex; align-items:center; gap:4px; padding:3px 11px; border-radius:6px; font-size:13px; font-weight:600; }
+.tag-green { background:var(--ok-bg); color:#12803b; }
+.tag-red { background:var(--danger-bg); color:#c81e1e; }
+.tag-yellow { background:var(--warn-bg); color:#b26a07; }
+.tag-blue { background:var(--brand-100); color:var(--brand-600); }
+.tag-gray { background:#eef1f5; color:var(--text-3); }
+
+/* ===== 表格：行高足、字大 ===== */
+.table { width:100%; border-collapse:collapse; }
+.table th,.table td { padding:12px 14px; text-align:left; border-bottom:1px solid var(--border); font-size:14.5px; }
+.table th { background:#f7f9fc; color:var(--text-2); font-weight:600; white-space:nowrap; }
+.table tbody tr:hover { background:#f8fafd; }
+
+/* ===== 表单 ===== */
+.form-item { margin-bottom:16px; }
+.form-label { display:block; margin-bottom:7px; font-size:14px; color:var(--text-2); font-weight:600; }
+.form-label .req { color:var(--danger); margin-right:2px; }
+.form-input,.form-select,.form-textarea {
+  width:100%; padding:10px 13px; border:1px solid var(--border-strong); border-radius:var(--r-sm);
+  font-size:15px; color:var(--text); background:#fff; font-family:var(--font); transition:.15s;
+}
+.form-input:focus,.form-select:focus,.form-textarea:focus {
+  outline:none; border-color:var(--brand-500); box-shadow:0 0 0 3px rgba(26,92,176,.12);
+}
+
+/* ===== 分页 ===== */
+.pagination { display:flex; gap:6px; justify-content:flex-end; margin-top:16px; align-items:center; }
+.pagination button { padding:7px 13px; border:1px solid var(--border-strong); border-radius:6px; background:#fff; cursor:pointer; color:var(--text-2); font-size:14px; transition:.15s; }
+.pagination button:hover { border-color:var(--brand-400); color:var(--brand-500); }
+.pagination button.active { background:var(--brand-500); color:#fff; border-color:var(--brand-500); }

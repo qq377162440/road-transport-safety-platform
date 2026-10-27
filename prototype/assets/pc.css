@@ -1,0 +1,58 @@
+/* PC 端页面通用布局 v3 —— 清晰易用 */
+.pc-page { background: var(--bg); min-height:100%; padding:22px 26px; overflow-y:auto; max-height:100vh; }
+.pc-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:20px; }
+.pc-header h1 { font-size:22px; font-weight:700; }
+.pc-header .desc { font-size:14px; color:var(--text-3); margin-top:3px; }
+.pc-header .actions { display:flex; gap:10px; }
+
+/* 侧边栏：深蓝底 + 大字号菜单 */
+.pc-shell { display:flex; height:100vh; overflow:hidden; }
+.pc-sidebar {
+  width:216px; background:#123055; color:#c5d2e3; flex-shrink:0; display:flex; flex-direction:column;
+}
+.pc-sidebar .brand {
+  height:60px; display:flex; align-items:center; gap:10px; padding:0 18px;
+  color:#fff; font-weight:700; font-size:16px; border-bottom:1px solid rgba(255,255,255,.1);
+}
+.pc-sidebar .brand .logo-ic { width:30px;height:30px;border-radius:8px;background:var(--brand-500);display:flex;align-items:center;justify-content:center;font-size:16px; }
+.pc-sidebar .menu { flex:1; overflow-y:auto; padding:10px 0; }
+.pc-sidebar .m-group { font-size:12px; color:#6d84a5; padding:16px 20px 6px; font-weight:600; }
+.pc-sidebar .m-item {
+  padding:12px 20px; font-size:15px; cursor:pointer; color:#c5d2e3;
+  display:flex; align-items:center; gap:10px; border-left:3px solid transparent; transition:.15s;
+}
+.pc-sidebar .m-item:hover { background:rgba(255,255,255,.08); color:#fff; }
+.pc-sidebar .m-item.active { background:rgba(26,92,176,.4); color:#fff; border-left-color:#5b9be0; font-weight:600; }
+.pc-sidebar .m-item .ico { font-size:16px; width:22px; text-align:center; }
+
+/* 筛选栏 */
+.filter-bar {
+  background:var(--surface); border-radius:var(--r-lg); padding:16px 18px; margin-bottom:16px;
+  box-shadow:var(--shadow-sm); border:1px solid var(--border);
+  display:flex; flex-wrap:wrap; gap:16px; align-items:center;
+}
+.filter-bar .f-item { display:flex; align-items:center; gap:8px; }
+.filter-bar .f-item label { font-size:14px; color:var(--text-2); white-space:nowrap; }
+.filter-bar .f-item input,.filter-bar .f-item select {
+  padding:8px 12px; border:1px solid var(--border-strong); border-radius:7px; font-size:14px; font-family:var(--font); transition:.15s;
+}
+.filter-bar .f-item input:focus,.filter-bar .f-item select:focus { border-color:var(--brand-500); outline:none; box-shadow:0 0 0 3px rgba(26,92,176,.1); }
+.filter-bar .f-actions { margin-left:auto; display:flex; gap:8px; }
+
+/* 表格底部（记录数+分页）*/
+.table-foot { padding:14px 16px; display:flex; justify-content:space-between; align-items:center; font-size:13px; color:var(--text-3); border-top:1px solid var(--border); }
+.table-foot .pagination { margin:0; }
+
+/* 指标卡 */
+.stat-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:16px; margin-bottom:20px; }
+.stat-card {
+  background:var(--surface); border-radius:var(--r-lg); padding:18px 20px;
+  box-shadow:var(--shadow-sm); border:1px solid var(--border);
+  display:flex; align-items:center; gap:14px; transition:.15s;
+}
+.stat-card:hover { box-shadow:var(--shadow-md); }
+.stat-card .ic { width:50px; height:50px; border-radius:12px; display:flex; align-items:center; justify-content:center; font-size:24px; flex-shrink:0; }
+.stat-card .val { font-size:27px; font-weight:800; line-height:1.1; }
+.stat-card .lbl { font-size:13px; color:var(--text-2); margin-top:3px; }
+.stat-card .delta { font-size:12.5px; margin-top:4px; font-weight:600; }
+.delta-up { color:var(--ok); } .delta-down { color:var(--danger); }

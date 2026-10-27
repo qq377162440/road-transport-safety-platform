@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head><meta charset="UTF-8"><title>小程序·一日三检</title>
+<link rel="stylesheet" href="../assets/mini.css"></head>
+<body>
+<div class="mini-shell">
+<div class="phone">
+  <div class="status-bar"><span>9:41</span><span>电量 100%</span></div>
+  <div class="nav-title"><span class="back">‹</span>一日三检</div>
+  <div class="content">
+    <!-- 车辆信息 -->
+    <div class="mini-card">
+      <div style="display:flex;align-items:center;gap:12px">
+        <div style="width:52px;height:52px;border-radius:12px;background:#fff3e2;color:#ff7a00;display:flex;align-items:center;justify-content:center;font-size:28px"><span class="ico" data-icon="truck"></span></div>
+        <div><div style="font-size:20px;font-weight:800">粤E·12345</div><div class="mini-text-sm">货运 · 牵引车</div></div>
+        <div style="margin-left:auto;text-align:right"><div class="mini-text-sm" style="color:#6b7a8d">今日已检</div><div style="font-size:22px;font-weight:800;color:#1a9e50">2/3</div></div>
+      </div>
+    </div>
+
+    <!-- 选时段 -->
+    <div class="mini-card-title">第1步 · 选择检查时段</div>
+    <div style="display:flex;gap:10px;margin-bottom:18px">
+      <button class="mini-btn mini-btn-primary" style="flex:1"><span class="ico" data-icon="sun"></span> 出车前</button>
+      <button class="mini-btn mini-btn-gray" style="flex:1"><span class="ico" data-icon="map"></span> 行车中</button>
+      <button class="mini-btn mini-btn-gray" style="flex:1"><span class="ico" data-icon="moon"></span> 收车后</button>
+    </div>
+
+    <!-- 检查项 -->
+    <div class="mini-card-title">第2步 · 逐项打勾</div>
+    <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:18px">
+      <div class="task-item" style="background:#eefbf1;border:2px solid #16a34a"><div class="t-ico" style="color:#16a34a"><span class="ico" data-icon="checkCircle"></span></div><div class="t-info"><div class="t-title">轮胎气压正常</div></div></div>
+      <div class="task-item" style="background:#eefbf1;border:2px solid #16a34a"><div class="t-ico" style="color:#16a34a"><span class="ico" data-icon="checkCircle"></span></div><div class="t-info"><div class="t-title">刹车正常</div></div></div>
+      <div class="task-item" style="background:#eefbf1;border:2px solid #16a34a"><div class="t-ico" style="color:#16a34a"><span class="ico" data-icon="checkCircle"></span></div><div class="t-info"><div class="t-title">灯光正常</div></div></div>
+      <div class="task-item"><div class="t-ico" style="color:#c9d2dd"><span class="ico" data-icon="circle"></span></div><div class="t-info"><div class="t-title">灭火器在位</div></div></div>
+      <div class="task-item"><div class="t-ico" style="color:#c9d2dd"><span class="ico" data-icon="circle"></span></div><div class="t-info"><div class="t-title">油/水/电正常</div></div></div>
+      <div class="task-item"><div class="t-ico" style="color:#c9d2dd"><span class="ico" data-icon="circle"></span></div><div class="t-info"><div class="t-title">货物捆扎牢固</div></div></div>
+    </div>
+
+    <!-- 异常上报（说人话）-->
+    <div class="mini-card" style="background:#fff8f8;border:1px solid #fdecec;margin-bottom:16px">
+      <div style="display:flex;align-items:center;gap:10px">
+        <span style="color:#d92b2b;font-size:22px"><span class="ico" data-icon="alertTriangle"></span></span>
+        <div style="flex:1"><div style="font-size:16px;font-weight:700;color:#c81e1e">发现有毛病？</div><div class="mini-text-sm" style="color:#6b7a8d">点一下，拍照说明，直接报修</div></div>
+        <button class="mini-btn" style="min-height:44px;padding:0 16px;background:#d92b2b;color:#fff;font-size:16px;width:auto">报修车</button>
+      </div>
+    </div>
+
+    <!-- 提交 -->
+    <button class="mini-btn mini-btn-primary" style="height:60px;font-size:20px">确 认 提 交</button>
+    <div class="mini-text-xs" style="text-align:center;margin-top:10px">已检查 3 / 6 项 · 点一下就选中，不用打字</div>
+  </div>
+  <div class="tabbar">
+    <div class="tab"><span class="ico" data-icon="home"></span>首页</div>
+    <div class="tab active"><span class="ico" data-icon="clipboard"></span>三检</div>
+    <div class="tab"><span class="ico" data-icon="bookOpen"></span>学习</div>
+    <div class="tab"><span class="ico" data-icon="user"></span>我的</div>
+  </div>
+</div>
+</div>
+<script src="../assets/icons.js"></script>
+</body>
+</html>
