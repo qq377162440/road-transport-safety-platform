@@ -4,19 +4,32 @@ dist/
 build/
 *.class
 target/
+*.jar
+.vite/
 
-# 环境与密钥
+# 环境与密钥（.env.example 作为模板保留）
 .env
 .env.*
+!.env.example
 *.pem
 *.key
+docker-compose.override.yml
 
-# 编辑器/系统
+# 编辑器 / 系统
 .DS_Store
 .idea/
 .vscode/
 *.log
+pnpm-debug.log*
 
 # 临时文件
 __pycache__/
 *.pyc
+
+# 临时验证产物：根目录调试截图、测试 PDF、页面截图
+/shot_*.png
+/test_*.pdf
+/*_page*.png
+
+# 说明：src/main/resources/fonts/ 下的中文字体是 PDF 渲染的运行时资产，
+# Docker 构建时会打包进 jar，必须入库，不要忽略。
