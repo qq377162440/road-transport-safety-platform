@@ -26,8 +26,8 @@ import java.util.List;
 @Service
 public class ArchiveService {
 
-    /** 安全生产责任制子项 catalog_id（对齐种子数据 3101） */
-    private static final Long CATALOG_RESPONSIBILITY = 3101L;
+    /** 安全生产责任制子项 catalog_id（V5 统一目录后的固定 id，见 gen_biz_meta.py） */
+    private static final Long CATALOG_RESPONSIBILITY = 40099L;
 
     private final ArchiveItemMapper itemMapper;
     private final ArchivePdfMapper pdfMapper;
