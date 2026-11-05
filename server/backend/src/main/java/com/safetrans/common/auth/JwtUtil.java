@@ -25,20 +25,21 @@ public class JwtUtil {
 
     /** 生成 access token，载荷携带 userId/tenantId/username/userType */
     public String genAccessToken(Long userId, Long tenantId, String username, String userType) {
-        return build(userId, tenantId, username, userType, props.getAccessTokenTtl());
+        return build(userId, tenantId, username, userType, "access", props.getAccessTokenTtl());
     }
 
     public String genRefreshToken(Long userId, Long tenantId, String username, String userType) {
-        return build(userId, tenantId, username, userType, props.getRefreshTokenTtl());
+        return build(userId, tenantId, username, userType, "refresh", props.getRefreshTokenTtl());
     }
 
-    private String build(Long userId, Long tenantId, String username, String userType, long ttlSeconds) {
+    private String build(Long userId, Long tenantId, String username, String userType, String typ, long ttlSeconds) {
         Date now = new Date();
         return Jwts.builder()
                 .subject(String.valueOf(userId))
                 .claim("tenantId", tenantId)
                 .claim("username", username)
                 .claim("userType", userType)
+                .claim("typ", typ)
                 .issuedAt(now)
                 .expiration(new Date(now.getTime() + ttlSeconds * 1000))
                 .signWith(key)

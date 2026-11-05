@@ -82,6 +82,50 @@ public class AuthService {
         return new LoginResp(access, refresh, info);
     }
 
+    /** A3：用 refresh token 换取新的 access token；refresh 不可当 access 使用 */
+    public LoginResp refresh(String refreshToken) {
+        io.jsonwebtoken.Claims c;
+        try {
+            c = jwtUtil.parse(refreshToken);
+        } catch (Exception e) {
+            throw new BizException(401, "刷新令牌无效，请重新登录");
+        }
+        if (!"refresh".equals(c.get("typ", String.class))) {
+            throw new BizException(401, "请使用 refresh token 刷新");
+        }
+        Long userId = Long.valueOf(c.getSubject());
+        Long tenantId = c.get("tenantId", Long.class);
+        String username = c.get("username", String.class);
+        String userType = c.get("userType", String.class);
+        SysUser user = userMapper.selectById(userId);
+        if (user == null || (user.getStatus() != null && user.getStatus() == 0)) {
+            throw new BizException(401, "账号不可用，请重新登录");
+        }
+        String access = jwtUtil.genAccessToken(userId, tenantId, username, userType);
+        redis.opsForValue().set(AuthInterceptor.WHITELIST_KEY + userId, access, Duration.ofSeconds(7200));
+        LoginResp.UserInfo info = new LoginResp.UserInfo(
+                userId, tenantId, username, user.getRealName(), userType);
+        return new LoginResp(access, refreshToken, info);
+    }
+
+    /** A3：修改密码（校验旧密码 + 强度策略：≥8 位且含字母与数字） */
+    public void changePassword(Long userId, String oldPassword, String newPassword) {
+        if (newPassword == null || !newPassword.matches("^(?=.*[A-Za-z])(?=.*\\d).{8,}$")) {
+            throw new BizException(400, "新密码需至少 8 位，且同时包含字母和数字");
+        }
+        SysUser user = userMapper.selectById(userId);
+        if (user == null) throw new BizException(404, "用户不存在");
+        if (!passwordEncoder.matches(oldPassword, user.getPassword())) {
+            throw new BizException(400, "原密码不正确");
+        }
+        SysUser upd = new SysUser();
+        upd.setId(userId);
+        upd.setPassword(passwordEncoder.encode(newPassword));
+        userMapper.updateById(upd);
+        // 密码变更后强制旧 token 失效
+        redis.delete(AuthInterceptor.WHITELIST_KEY + userId);
+    }
+
     public void logout(Long userId) {
         redis.delete(AuthInterceptor.WHITELIST_KEY + userId);
     }
