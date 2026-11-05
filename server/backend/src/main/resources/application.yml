@@ -1,0 +1,72 @@
+server:
+  port: 8080
+  servlet:
+    context-path: /
+
+spring:
+  application:
+    name: safetrans-backend
+  datasource:
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    url: jdbc:mysql://${MYSQL_HOST:localhost}:${MYSQL_PORT:3306}/${MYSQL_DB:safetrans}?useUnicode=true&characterEncoding=utf8&useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true
+    username: ${MYSQL_USER:root}
+    password: ${MYSQL_PASSWORD:root123}
+    hikari:
+      minimum-idle: 2
+      maximum-pool-size: 10
+      connection-timeout: 30000
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD:}
+      database: 0
+      timeout: 3000ms
+  flyway:
+    enabled: true
+    baseline-on-migrate: true
+    locations: classpath:db/migration
+    encoding: UTF-8
+  thymeleaf:
+    cache: false
+    mode: HTML
+    encoding: UTF-8
+
+mybatis-plus:
+  configuration:
+    map-underscore-to-camel-case: true
+    log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
+  global-config:
+    banner: false
+    db-config:
+      id-type: assign_id
+      logic-delete-field: deleted
+      logic-delete-value: 1
+      logic-not-delete-value: 0
+
+# 平台自定义配置
+safetrans:
+  jwt:
+    secret: ${JWT_SECRET:safetrans-dev-secret-key-please-change-in-prod-0123456789}
+    access-token-ttl: 7200   # 秒，2 小时
+    refresh-token-ttl: 604800 # 秒，7 天
+  pdf:
+    font-dir: ${PDF_FONT_DIR:classpath:fonts}
+  storage:
+    type: minio            # minio | oss
+    minio:
+      endpoint: ${MINIO_ENDPOINT:http://localhost:9000}
+      access-key: ${MINIO_ACCESS_KEY:minioadmin}
+      secret-key: ${MINIO_SECRET_KEY:minioadmin}
+      bucket: archive
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+
+logging:
+  level:
+    com.safetrans: debug
+    org.flywaydb: info
