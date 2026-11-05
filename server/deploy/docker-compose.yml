@@ -122,11 +122,14 @@ services:
     environment:
       BASE_URL: http://backend:8080
       REDIS_HOST: redis
+      FRONTEND_URL: http://frontend
     depends_on:
       backend:
         condition: service_healthy
       redis:
         condition: service_healthy
+      frontend:
+        condition: service_started
 
 volumes:
   mysql-data:
