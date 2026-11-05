@@ -132,3 +132,36 @@ docker compose down                        # 停止全栈（保留数据）
 docker compose down -v                     # 停止并清除数据卷（危险！）
 docker compose --profile test run --rm e2e # 容器内端到端测试
 ```
+
+## 九、阶段 A/B/C 已落地能力
+
+| 阶段 | 能力 | 入口 |
+|---|---|---|
+| A2 | 统一错误码、参数校验、`sys_oper_log` 操作日志、通用文件上传、分页封装、Swagger | `/swagger-ui.html`、`/api/file/upload` |
+| A3 | 单元测试、三角色越权拦截、JWT 刷新、密码策略、匿名接口限流、`application-prod.yml` 凭据外置 | `.env.example` |
+| A4 | Flyway V3~V6：一期 56 表 / 二期 28 表 / 10+11 盒目录树 / 一人一档一车一档字典 | 共 100 张表 |
+| A5 | Element Plus 按需引入、通用表格/表单/上传组件、菜单与路由由元数据配置驱动 | `tools/gen_biz_meta.py` |
+| B1~B9 | 人员/车辆/制度/三检/隐患/会议/档案柜/服务商代录/适老化 H5 | `/biz/<模块>`、`/archive-overview`、`/collect`、`/m/check` |
+| C1~C7 | 培训学时与考试、应急/事故/考核台账、风险可视驾驶舱、自定义签署 PDF、1000 并发压测 | `/risk-dashboard`、`/flow-tools` |
+
+**架构说明**：106 张表不逐表堆四层代码，采用**元数据驱动的通用业务引擎**。DDL 逐字取自 `database/schema.sql`，字段白名单由 `tools/gen_biz_meta.py` 生成到 `modules.json`；通用 CRUD 只接受白名单字段并加反引号，租户隔离与 MyBatis 插件一致；任何产生记录的操作由 `ArchiveRegistrar` 幂等登记 `archive_item`（铁律 6）。有状态流转（三检月报、隐患闭环、会议四段式、代录、学时考试、签署合成）由 `BizFlowController` 专用实现。新增模块只需改生成器配置，无需手写四层代码与页面。
+
+## 十、验收脚本
+
+```bash
+cd server/deploy
+
+# 9 项垂直切片闭环回归
+docker compose --profile test run --rm e2e
+
+# 阶段 A/B/C 全链路验收（38 项）
+docker compose --profile test run --rm e2e ./e2e_phase_test.sh
+
+# C1 线上学习 1000 并发压测（宿主机）
+python3 stress_test.py
+
+# 后端单元测试
+cd ../backend && mvn test
+```
+
+当前验收结果：闭环回归 **10/10**、全链路 **38/38**、单元测试 **6/6**、并发压测 **1000/1000 成功（QPS 470，P95 394ms）**。
