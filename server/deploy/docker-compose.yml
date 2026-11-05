@@ -1,9 +1,17 @@
+# 道路运输安全生产管理平台 · 全栈编排
+#
+# 常驻 5 服务：frontend / backend / mysql / redis / minio
+# 测试服务 e2e 挂在 profile=test 下，仅 `docker compose --profile test run --rm e2e` 时启动。
+#
+# 卷名显式固定，避免备份/恢复脚本受 compose 项目名影响。
+
 services:
   mysql:
     image: mysql:8.0
     container_name: safetrans-mysql
+    restart: unless-stopped
     environment:
-      MYSQL_ROOT_PASSWORD: root123
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-root123}
       MYSQL_DATABASE: safetrans
       TZ: Asia/Shanghai
     command: --character-set-server=utf8mb4 --collation-server=utf8mb4_general_ci --default-authentication-plugin=mysql_native_password
@@ -12,14 +20,16 @@ services:
     volumes:
       - mysql-data:/var/lib/mysql
     healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-proot123"]
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-p${MYSQL_ROOT_PASSWORD:-root123}"]
       interval: 5s
       timeout: 5s
       retries: 20
+      start_period: 30s
 
   redis:
     image: redis:7-alpine
     container_name: safetrans-redis
+    restart: unless-stopped
     ports:
       - "6379:6379"
     volumes:
@@ -33,10 +43,11 @@ services:
   minio:
     image: minio/minio:latest
     container_name: safetrans-minio
+    restart: unless-stopped
     command: server /data --console-address ":9001"
     environment:
-      MINIO_ROOT_USER: minioadmin
-      MINIO_ROOT_PASSWORD: minioadmin
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-minioadmin}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-minioadmin}
       TZ: Asia/Shanghai
     ports:
       - "9000:9000"
@@ -54,17 +65,18 @@ services:
       context: ../backend
       dockerfile: Dockerfile
     container_name: safetrans-backend
+    restart: unless-stopped
     environment:
       MYSQL_HOST: mysql
       MYSQL_PORT: 3306
       MYSQL_DB: safetrans
       MYSQL_USER: root
-      MYSQL_PASSWORD: root123
+      MYSQL_PASSWORD: ${MYSQL_ROOT_PASSWORD:-root123}
       REDIS_HOST: redis
       REDIS_PORT: 6379
       MINIO_ENDPOINT: http://minio:9000
-      MINIO_ACCESS_KEY: minioadmin
-      MINIO_SECRET_KEY: minioadmin
+      MINIO_ACCESS_KEY: ${MINIO_ROOT_USER:-minioadmin}
+      MINIO_SECRET_KEY: ${MINIO_ROOT_PASSWORD:-minioadmin}
       TZ: Asia/Shanghai
     ports:
       - "8080:8080"
@@ -75,18 +87,51 @@ services:
         condition: service_healthy
       minio:
         condition: service_healthy
+    # jre 基础镜像自带 bash，用 /dev/tcp 做端口就绪探测，无需额外装 curl
+    healthcheck:
+      test: ["CMD-SHELL", "bash -c 'echo > /dev/tcp/127.0.0.1/8080' || exit 1"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+      start_period: 40s
 
   frontend:
     build:
       context: ../frontend
       dockerfile: Dockerfile
     container_name: safetrans-frontend
+    restart: unless-stopped
     ports:
       - "80:80"
     depends_on:
-      - backend
+      backend:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost/"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  # 端到端测试容器：在 compose 网络内直接跑 9 项闭环，不依赖宿主机 docker 命令
+  e2e:
+    profiles: ["test"]
+    build:
+      context: .
+      dockerfile: Dockerfile.e2e
+    container_name: safetrans-e2e
+    environment:
+      BASE_URL: http://backend:8080
+      REDIS_HOST: redis
+    depends_on:
+      backend:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
 
 volumes:
   mysql-data:
+    name: safetrans-mysql-data
   redis-data:
+    name: safetrans-redis-data
   minio-data:
+    name: safetrans-minio-data

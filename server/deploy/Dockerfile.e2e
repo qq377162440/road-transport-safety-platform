@@ -1,0 +1,8 @@
+# 端到端测试容器：bash + curl + python3 + redis-cli
+# 在 compose 网络内运行 e2e_test.sh，通过 REDIS_HOST=redis 直取验证码
+FROM alpine:3.20
+RUN apk add --no-cache bash curl python3 redis
+WORKDIR /e2e
+COPY e2e_test.sh .
+RUN chmod +x e2e_test.sh
+ENTRYPOINT ["./e2e_test.sh"]
