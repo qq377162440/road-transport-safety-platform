@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>成立安全生产领导小组的通知 - 范本系统化改造样例</title>
+<style>
+  :root {
+    --primary: #1a73e8; --border: #e0e0e0; --bg: #f5f6f8;
+    --text: #1f2329; --muted: #8a919f; --danger: #d93025;
+    --ok: #188038; --warn: #b06000;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif; background: var(--bg); color: var(--text); font-size: 14px; }
+  .topbar { background: #fff; border-bottom: 1px solid var(--border); padding: 12px 24px; display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
+  .topbar h1 { font-size: 17px; }
+  .topbar .hint { color: var(--muted); font-size: 12px; }
+  .layout { display: grid; grid-template-columns: 380px 1fr; gap: 16px; padding: 16px 24px; max-width: 1500px; margin: 0 auto; height: calc(100vh - 56px); }
+  .panel { background: #fff; border: 1px solid var(--border); border-radius: 10px; display: flex; flex-direction: column; overflow: hidden; }
+  .panel-left { overflow-y: auto; }
+  .panel-header { padding: 12px 16px; border-bottom: 1px solid var(--border); font-weight: 600; display: flex; justify-content: space-between; align-items: center; font-size: 14px; }
+  .panel-body { padding: 14px 16px; }
+  .section { margin-bottom: 18px; }
+  .section-title { font-size: 12px; font-weight: 600; color: var(--muted); margin-bottom: 8px; letter-spacing: 0.5px; }
+  .field { margin-bottom: 10px; }
+  .field label { display: block; font-size: 12px; margin-bottom: 3px; color: #444; }
+  .field label .req { color: var(--danger); }
+  .field input, .field select, .field textarea { width: 100%; padding: 7px 9px; border: 1px solid var(--border); border-radius: 6px; font-size: 13px; font-family: inherit; }
+  .field textarea { resize: vertical; min-height: 54px; line-height: 1.5; }
+  .field input:focus, .field select:focus, .field textarea:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 2px rgba(26,115,232,0.1); }
+  .field .empty-mark { background: #fffdf5; border-style: dashed; }
+  .field .auto-badge { float: right; font-size: 10px; color: var(--primary); background: #e8f0fe; padding: 1px 6px; border-radius: 8px; }
+  .btn { display: inline-flex; align-items: center; gap: 6px; padding: 9px 16px; border-radius: 8px; border: 1px solid transparent; font-size: 13px; cursor: pointer; font-family: inherit; }
+  .btn-primary { background: var(--primary); color: #fff; }
+  .btn-primary:hover { background: #1557b3; }
+  .btn-outline { background: #fff; border-color: var(--border); color: var(--text); }
+  .btn-outline:hover { background: #f5f6f8; }
+  .btn-block { width: 100%; justify-content: center; }
+  .preview-toolbar { display: flex; gap: 6px; padding: 10px 16px; border-bottom: 1px solid var(--border); flex-wrap: wrap; align-items: center; }
+  .tab { padding: 6px 13px; border-radius: 6px; border: 1px solid var(--border); background: #fff; cursor: pointer; font-size: 12px; font-family: inherit; }
+  .tab.active { background: var(--primary); color: #fff; border-color: var(--primary); }
+  .preview-body { flex: 1; overflow-y: auto; overflow-x: auto; background: #e8eaed; padding: 28px; }
+  .paper-wrap { position: relative; margin: 0 auto; }
+  .paper { background: #fff; width: 720px; min-height: 900px; padding: 56px 52px; box-shadow: 0 2px 12px rgba(0,0,0,0.12); font-family: "SimSun", "宋体", serif; font-size: 15px; line-height: 1.9; color: #000; }
+  .paper .doc-head { text-align: center; }
+  .paper .doc-no { text-align: center; font-size: 15px; margin-top: 4px; }
+  .paper .rule { border-top: 1px solid #d33; margin: 6px auto 14px; width: 90%; }
+  .paper h1.title { text-align: center; font-size: 22px; letter-spacing: 4px; margin: 8px 0 22px; font-weight: normal; }
+  .paper p { text-indent: 2em; margin: 5px 0; }
+  .paper p.no-indent { text-indent: 0; }
+  .paper .member-list { margin: 8px 0 8px 4em; line-height: 2.1; }
+  .paper .member-list .role { display: inline-block; width: 3.5em; }
+  .paper h2 { font-size: 16px; margin: 18px 0 8px; }
+  .paper ol.duty { padding-left: 2.4em; }
+  .paper ol.duty li { margin: 3px 0; }
+  .paper .sign-zone { margin-top: 46px; text-align: right; }
+  .paper .sign-zone .company { font-size: 16px; margin-bottom: 4px; }
+  .paper .sign-zone .date { margin-top: 4px; }
+  .fill-var { color: #1a4b8c; font-weight: bold; }
+  .fill-empty { color: #aaa; border-bottom: 1px dashed #bbb; padding: 0 18px; }
+  .badge { display: inline-block; font-size: 10px; padding: 1px 7px; border-radius: 9px; margin-left: 5px; }
+  .badge.auto { background: #e8f0fe; color: var(--primary); }
+  .badge.list { background: #e6f4ea; color: var(--ok); }
+  .badge.fixed { background: #f1f3f4; color: var(--muted); }
+
+  /* 红章 */
+  .seal-anchor { position: relative; display: inline-block; }
+  .seal-on-line { position: absolute; left: calc(100% - 55px); top: 50%; transform: translate(-50%, -42%) rotate(-7deg); pointer-events: none; opacity: 0.88; }
+  .seal-wrap { width: 148px; height: 148px; pointer-events: none; }
+  .seal-wrap svg { width: 100%; height: 100%; display: block; }
+
+  .tip { background: #fff8e1; border: 1px solid #f0d99a; border-radius: 8px; padding: 9px 11px; font-size: 12px; color: #7a5c00; margin-bottom: 14px; line-height: 1.6; }
+  .note { font-size: 11px; color: var(--muted); margin-top: 4px; line-height: 1.5; }
+  .divider { height: 1px; background: var(--border); margin: 14px 0; }
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <h1>成立安全生产领导小组的通知 — 范本系统化改造样例</h1>
+  <span class="hint">数据来源：企业信息 + 组织架构（主要负责人/安全员自动带出）· 11条职责为系统内置固定文本</span>
+</div>
+
+<div class="layout">
+  <!-- 左：变量录入 -->
+  <div class="panel panel-left">
+    <div class="panel-header">① 录入 / 自动带出变量</div>
+    <div class="panel-body">
+
+      <div class="tip">
+        <b>验证要点</b><br>
+        组长自动=主要负责人、副组长=安全员、成员=组织架构其余人员；<br>
+        文号按「企业简称＋年度＋序号」规则自动生成，可改。
+      </div>
+
+      <div class="section">
+        <div class="section-title">企业信息 <span class="badge auto">自动带出</span></div>
+        <div class="field"><label>企业全称 <span class="req">*</span></label>
+          <input id="company_name" value="佛山市励硕物流有限公司"></div>
+        <div class="field"><label>企业简称（文号前缀）</label>
+          <input id="doc_no_prefix" value="LSWL"></div>
+      </div>
+
+      <div class="section">
+        <div class="section-title">文号 <span class="badge auto">自动生成</span></div>
+        <div class="field"><label>发文字号</label>
+          <input id="doc_no" value="LSWL通知【2025】21号" class="empty-mark"></div>
+        <div class="note">规则：{{简称}}通知【{{年度}}】{{序号}}号；序号从文档编号池递增。</div>
+      </div>
+
+      <div class="section">
+        <div class="section-title">领导小组 <span class="badge list">列表变量</span></div>
+        <div class="field"><label>组长（自动=主要负责人）</label>
+          <input id="leader_name" value="万君"></div>
+        <div class="field"><label>副组长（自动=安全员，逗号分隔）</label>
+          <input id="deputy_names" value="夏倩君"></div>
+        <div class="field"><label>成员（自动=其余人员，逗号分隔）</label>
+          <input id="member_names" value="宋传雨,万良俊,梅霞,高如飞,杨涛"></div>
+      </div>
+
+      <div class="section">
+        <div class="section-title">落款</div>
+        <div class="field"><label>成文日期</label><input id="sign_date" value="2025-10-09"></div>
+        <div class="field"><label>印章</label>
+          <select id="seal_type">
+            <option value="auto">系统自动生成圆形红章</option>
+            <option value="none">不盖章</option>
+          </select></div>
+      </div>
+
+      <div class="divider"></div>
+      <button class="btn btn-primary btn-block" onclick="renderAll()">生成通知预览</button>
+      <div style="height:8px"></div>
+      <button class="btn btn-outline btn-block" onclick="resetData()">重置为样例数据</button>
+    </div>
+  </div>
+
+  <!-- 右：预览 -->
+  <div class="panel panel-right">
+    <div class="preview-toolbar">
+      <span style="font-size:12px;color:var(--muted);margin-right:6px">② 预览：</span>
+      <button class="tab active" onclick="renderAll()">通知正文</button>
+      <span style="font-size:12px;color:var(--muted);margin-left:auto">一键签名：下方"落款"已自动套用企业公章 + 主要负责人签名</span>
+    </div>
+    <div class="preview-body">
+      <div class="paper-wrap"><div class="paper" id="paper"></div></div>
+    </div>
+  </div>
+</div>
+
+<script>
+const DUTIES = [
+  '组织制定并审核本公司全员安全生产责任制，加强安全生产标准化建设；',
+  '组织制定并审核本公司安全生产规章制度、操作规程和生产安全事故应急救援预案，并监督落实；',
+  '组织制定并审核本公司安全生产教育和培训计划，并监督落实；',
+  '定期召开安全生产领导机构会议，听取各部门安全生产工作汇报，研究解决安全生产运行中的相关问题；',
+  '组织建立并审核安全风险分级管控和隐患排查治理双重预防工作机制，督促、检查本单位的安全生产工作，并监督工作开展情况；',
+  '组织开展危险源辨识和评估，督促落实本单位重大危险源的安全管理措施；',
+  '督促落实本公司安全生产整改措施；',
+  '督促各部门及工作人员履行安全生产职责，组织安全生产考核，提出奖惩意见建议；',
+  '组织开展公司事故调查、处置及事故责任追究等工作；',
+  '督促落实本单位安全生产整改措施；',
+  '法律、法规规定的其他安全生产职责。',
+];
+
+function v(id){ return document.getElementById(id).value; }
+function esc(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+function fill(val){ return val && val.trim() ? '<span class="fill-var">'+esc(val)+'</span>' : '<span class="fill-empty"></span>'; }
+function splitList(s){ return String(s||'').split(/[,，、]/).map(x=>x.trim()).filter(Boolean); }
+
+function renderMemberList(){
+  const leader = v('leader_name').trim();
+  const deputies = splitList(v('deputy_names'));
+  const members = splitList(v('member_names'));
+  let html = '';
+  if(leader) html += '<div>组&nbsp;&nbsp;长：<span class="fill-var">'+esc(leader)+'</span></div>';
+  if(deputies.length) html += '<div>副组长：<span class="fill-var">'+esc(deputies.join('、'))+'</span></div>';
+  if(members.length) html += '<div>成&nbsp;&nbsp;员：<span class="fill-var">'+esc(members.join('、'))+'</span></div>';
+  return html || '<div class="fill-empty"></div>';
+}
+
+function sealSVG(company){
+  const name = esc(company||'');
+  // 简化红章：圆 + 星 + 公司名（弧形排字用 textPath 简化处理，取公司名沿上半弧）
+  const r = 60;
+  return '<svg viewBox="-75 -75 150 150" xmlns="http://www.w3.org/2000/svg">' +
+    '<circle cx="0" cy="0" r="70" fill="none" stroke="#d0021b" stroke-width="3.5"/>' +
+    '<circle cx="0" cy="0" r="60" fill="none" stroke="#d0021b" stroke-width="1.2"/>' +
+    '<path id="sealarc" d="M -48 26 A 55 55 0 0 1 48 26" fill="none"/>' +
+    '<text font-size="12" fill="#d0021b" font-family="SimSun,serif" font-weight="bold"><textPath href="#sealarc" startOffset="50%" text-anchor="middle">'+name+'</textPath></text>' +
+    '<polygon points="0,-18 4,-5 18,-5 7,3 11,16 0,8 -11,16 -7,3 -18,-5 -4,-5" fill="#d0021b"/>' +
+    '</svg>';
+}
+
+function renderAll(){
+  const company = v('company_name').trim();
+  const docNo = v('doc_no').trim();
+  const signDate = v('sign_date').trim();
+  const sealOn = v('seal_type') === 'auto';
+
+  let sealHtml = '';
+  if(sealOn && company){
+    sealHtml = '<span class="seal-anchor">' + fill(company) +
+      '<span class="seal-on-line"><span class="seal-wrap">' + sealSVG(company) + '</span></span></span>';
+  } else {
+    sealHtml = fill(company);
+  }
+
+  const html =
+    '<div class="doc-head"><span class="fill-var">'+esc(company||'（企业全称）')+'</span></div>' +
+    '<div class="doc-no">' + fill(docNo) + '</div>' +
+    '<div class="rule"></div>' +
+    '<h1 class="title">关于公司成立安全生产<br>领导小组的通知</h1>' +
+    '<p>公司各部门：</p>' +
+    '<p>为加强本公司安全生产管理工作，提高全员安全意识，严格认真地落实企业主体责任，做好制度和操作规程管理、安全投入、监控管理、教育培训、现场检查、危险源辨识、隐患排查、风险管控、职业健康、安全文化、应急管理、事故处理、持续改进等规范管理工作，我公司决定成立安全生产领导小组。具体人员组成如下：</p>' +
+    '<div class="member-list">' + renderMemberList() + '</div>' +
+    '<p>安全生产领导小组职责附后。</p>' +
+    '<div class="sign-zone">' +
+      '<div class="company">' + sealHtml + '</div>' +
+      '<div class="date">' + fill(signDate) + '</div>' +
+    '</div>' +
+    '<hr style="border:none;border-top:1px dashed #ccc;margin:28px 0">' +
+    '<h2>安全生产领导小组职责</h2>' +
+    '<ol class="duty">' + DUTIES.map(function(d,i){ return '<li>（'+ (i+1) +'）'+d+'</li>'; }).join('') + '</ol>';
+
+  document.getElementById('paper').innerHTML = html;
+}
+
+function resetData(){
+  document.getElementById('company_name').value = '佛山市励硕物流有限公司';
+  document.getElementById('doc_no_prefix').value = 'LSWL';
+  document.getElementById('doc_no').value = 'LSWL通知【2025】21号';
+  document.getElementById('leader_name').value = '万君';
+  document.getElementById('deputy_names').value = '夏倩君';
+  document.getElementById('member_names').value = '宋传雨,万良俊,梅霞,高如飞,杨涛';
+  document.getElementById('sign_date').value = '2025-10-09';
+  document.getElementById('seal_type').value = 'auto';
+  renderAll();
+}
+
+renderAll();
+</script>
+</body>
+</html>

@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>人员任命书 - 范本合并样例（增减型）</title>
+<style>
+  body {
+    font-family: "SimSun", "宋体", serif;
+    font-size: 14px;
+    line-height: 1.8;
+    color: #000;
+    max-width: 720px;
+    margin: 0 auto;
+    padding: 40px;
+  }
+  .center { text-align: center; }
+  .title { font-size: 18px; font-weight: bold; letter-spacing: 1px; }
+  p { text-indent: 2em; margin: 8px 0; }
+  .sign { margin-top: 40px; text-align: right; }
+  .sign-line { margin: 4px 0; }
+</style>
+</head>
+<body>
+
+<!-- 标题：部分岗位带公司名前缀，用条件处理 -->
+<p class="center title">{{title_prefix}}关于任命{{post_title}}的通知</p>
+
+<p>公司{{dept_scope}}：</p>
+
+<p>
+{{appoint_intro}}
+</p>
+
+<p>特此通知。</p>
+
+<div class="sign">
+  <div class="sign-line">公司：{{company_name}}</div>
+  <div class="sign-line">生效日期：{{effect_date}}</div>
+</div>
+
+</body>
+</html>
+
+<!-- ============ 变量填充对照表（以5个岗位为例） ============
+字段字典：
+  title_prefix   : 标题公司名前缀（安全员/监控员="公司名\n"，其他=""）
+  post_title     : 岗位中文名（主要负责人/专职安全生产管理人员/监控人员/驾驶员/财务人员）
+  dept_scope     : 抬头（全体人员 / 各部门及全体人员）
+  appoint_intro  : 任命正文（含人名、岗位、职责描述，整段可变）
+  effect_date    : 生效日期
+
+示例填充：
+  主要负责人  → title_prefix=""         post_title="主要负责人"  dept_scope="全体人员"
+                appoint_intro="为加强本公司安全生产管理工作，严格认真地落实安全生产工作，经公司研究决定任命 马志勇 为公司主要负责人。"
+  安全员      → title_prefix="公司名\n" post_title="专职安全生产管理人员" dept_scope="各部门及全体人员"
+                appoint_intro="为加强本公司安全生产管理工作，严格认真地落实安全生产，做好制度和操作规程管理、安全投入、教育培训、现场检查、危险源辨识、隐患排查、职业健康、安全文化、应急管理、事故处理、持续改进等规范管理工作，经公司研究决定任命 黎建英 同志担任公司安全员，作为公司专职安全生产管理人员，负责公司安全生产监督管理工作。"
+-->

@@ -1,0 +1,423 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>复工复产"六个一"套装 - 范本系统化改造样例</title>
+<style>
+  :root {
+    --primary: #1a73e8; --border: #e0e0e0; --bg: #f5f6f8;
+    --text: #1f2329; --muted: #8a919f; --danger: #d93025;
+    --ok: #188038; --warn: #b06000;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif; background: var(--bg); color: var(--text); font-size: 14px; }
+  .topbar { background: #fff; border-bottom: 1px solid var(--border); padding: 12px 24px; display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
+  .topbar h1 { font-size: 17px; }
+  .topbar .hint { color: var(--muted); font-size: 12px; }
+  .layout { display: grid; grid-template-columns: 380px 1fr; gap: 16px; padding: 16px 24px; max-width: 1500px; margin: 0 auto; height: calc(100vh - 56px); }
+  .panel { background: #fff; border: 1px solid var(--border); border-radius: 10px; display: flex; flex-direction: column; overflow: hidden; }
+  .panel-left { overflow-y: auto; }
+  .panel-header { padding: 12px 16px; border-bottom: 1px solid var(--border); font-weight: 600; display: flex; justify-content: space-between; align-items: center; font-size: 14px; }
+  .panel-body { padding: 14px 16px; }
+  .section { margin-bottom: 16px; }
+  .section-title { font-size: 12px; font-weight: 600; color: var(--muted); margin-bottom: 8px; letter-spacing: 0.5px; }
+  .field { margin-bottom: 9px; }
+  .field label { display: block; font-size: 12px; margin-bottom: 3px; color: #444; }
+  .field label .req { color: var(--danger); }
+  .field input, .field select, .field textarea { width: 100%; padding: 7px 9px; border: 1px solid var(--border); border-radius: 6px; font-size: 13px; font-family: inherit; }
+  .field textarea { resize: vertical; min-height: 48px; line-height: 1.5; }
+  .field input:focus, .field textarea:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 2px rgba(26,115,232,0.1); }
+  .btn { display: inline-flex; align-items: center; gap: 6px; padding: 9px 16px; border-radius: 8px; border: 1px solid transparent; font-size: 13px; cursor: pointer; font-family: inherit; }
+  .btn-primary { background: var(--primary); color: #fff; }
+  .btn-primary:hover { background: #1557b3; }
+  .btn-outline { background: #fff; border-color: var(--border); color: var(--text); }
+  .btn-outline:hover { background: #f5f6f8; }
+  .btn-block { width: 100%; justify-content: center; }
+  .btn-danger-outline { background: #fff; border-color: #f0b9b3; color: var(--danger); }
+  .preview-toolbar { display: flex; gap: 5px; padding: 10px 16px; border-bottom: 1px solid var(--border); flex-wrap: wrap; align-items: center; }
+  .tab { padding: 5px 11px; border-radius: 6px; border: 1px solid var(--border); background: #fff; cursor: pointer; font-size: 12px; font-family: inherit; white-space: nowrap; }
+  .tab.active { background: var(--primary); color: #fff; border-color: var(--primary); }
+  .tab .n { color: var(--muted); font-size: 10px; }
+  .tab.active .n { color: #cfe1ff; }
+  .preview-body { flex: 1; overflow-y: auto; overflow-x: auto; background: #e8eaed; padding: 28px; }
+  .paper-wrap { position: relative; margin: 0 auto; }
+  .paper { background: #fff; width: 720px; min-height: 900px; padding: 52px 48px; box-shadow: 0 2px 12px rgba(0,0,0,0.12); font-family: "SimSun", "宋体", serif; font-size: 14px; line-height: 1.85; color: #000; }
+  .paper h1.doc-title { text-align: center; font-size: 20px; letter-spacing: 2px; margin-bottom: 18px; font-weight: bold; }
+  .paper h2 { font-size: 15px; margin: 14px 0 6px; font-weight: bold; }
+  .paper h3 { font-size: 14px; margin: 10px 0 4px; font-weight: bold; }
+  .paper p { text-indent: 2em; margin: 4px 0; }
+  .paper p.no-indent { text-indent: 0; }
+  .paper .meta { margin: 8px 0; }
+  .paper ol { padding-left: 2.4em; }
+  .paper ol li { margin: 2px 0; }
+  .paper .sign-zone { margin-top: 34px; text-align: right; }
+  .paper .sign-left { text-align: left; margin-top: 34px; }
+  .paper table { border-collapse: collapse; width: 100%; margin: 10px 0; font-size: 12px; }
+  .paper table th, .paper table td { border: 1px solid #000; padding: 4px 6px; text-align: center; }
+  .paper table th { background: #f2f2f2; font-weight: bold; }
+  .paper .sign-line { display: inline-block; min-width: 110px; border-bottom: 1px solid #000; padding: 0 6px; min-height: 1.1em; }
+  .fill-var { color: #1a4b8c; font-weight: bold; }
+  .fill-empty { color: #aaa; border-bottom: 1px dashed #bbb; padding: 0 16px; }
+  .badge { display: inline-block; font-size: 10px; padding: 1px 7px; border-radius: 9px; margin-left: 5px; }
+  .badge.auto { background: #e8f0fe; color: var(--primary); }
+  .badge.sign { background: #fce8e6; color: var(--danger); }
+  .badge.hand { background: #fff3e0; color: var(--warn); }
+  .tip { background: #fff8e1; border: 1px solid #f0d99a; border-radius: 8px; padding: 9px 11px; font-size: 12px; color: #7a5c00; margin-bottom: 14px; line-height: 1.6; }
+  .note { font-size: 11px; color: var(--muted); margin-top: 4px; line-height: 1.5; }
+  .divider { height: 1px; background: var(--border); margin: 14px 0; }
+  .seal-anchor { position: relative; display: inline-block; }
+  .seal-on-line { position: absolute; left: calc(100% - 55px); top: 50%; transform: translate(-50%, -42%) rotate(-7deg); pointer-events: none; opacity: 0.88; }
+  .seal-wrap { width: 130px; height: 130px; pointer-events: none; }
+  .seal-wrap svg { width: 100%; height: 100%; display: block; }
+  .photo-holder { border: 1px dashed #aaa; height: 90px; margin: 8px 0; display: flex; align-items: center; justify-content: center; color: #aaa; font-size: 12px; }
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <h1>复工复产"六个一"套装 — 范本系统化改造样例</h1>
+  <span class="hint">一套范本组 · 共用变量一键生成 7 份文件 · 现场照片/签到表/手填项由企业补齐</span>
+</div>
+
+<div class="layout">
+  <!-- 左：变量 -->
+  <div class="panel panel-left">
+    <div class="panel-header">① 录入 / 自动带出变量（7份共用）</div>
+    <div class="panel-body">
+      <div class="tip">
+        <b>验证要点</b><br>
+        企业全称、复工领导小组、复工日期填一次，7 份文件联动生成；<br>
+        负责人签名/企业盖章自动套用；<span style="color:var(--warn)">现场照片、签到表、培训试卷、检查记录表勾选</span>由企业复工后补。
+      </div>
+
+      <div class="section">
+        <div class="section-title">企业信息 <span class="badge auto">自动带出</span></div>
+        <div class="field"><label>企业全称 <span class="req">*</span></label><input id="company_name" value="广东佳邦通达物流有限公司"></div>
+        <div class="field"><label>应急（值班）电话</label><input id="tel" value="18923277715"></div>
+      </div>
+
+      <div class="section">
+        <div class="section-title">复工领导小组 <span class="badge auto">默认复用安全生产领导小组</span></div>
+        <div class="field"><label>组长（主要负责人）</label><input id="leader_name" value="柴国顺"></div>
+        <div class="field"><label>副组长（安全员）</label><input id="deputy_names" value="韩雪"></div>
+        <div class="field"><label>成员（逗号分隔）</label><input id="member_names" value="陈秀清"></div>
+      </div>
+
+      <div class="section">
+        <div class="section-title">复工时间 <span class="badge auto">默认取节后首工作日</span></div>
+        <div class="field"><label>复工日期（贯穿培训/会议/检查）</label><input id="resume_date" value="2026-02-24"></div>
+        <div class="field"><label>培训/会议地点</label><input id="place" value="办公室"></div>
+        <div class="field"><label>授课人</label><input id="teacher" value="柴国顺"></div>
+      </div>
+
+      <div class="divider"></div>
+      <button class="btn btn-primary btn-block" onclick="renderAll()">一键生成 7 份文件</button>
+      <div style="height:8px"></div>
+      <button class="btn btn-outline btn-block" onclick="resetData()">重置为样例数据</button>
+    </div>
+  </div>
+
+  <!-- 右：预览 -->
+  <div class="panel panel-right">
+    <div class="preview-toolbar">
+      <span style="font-size:12px;color:var(--muted);margin-right:4px">② 预览：</span>
+      <button class="tab active" data-t="1" onclick="switchTab('1')">① 承诺书 <span class="badge sign">签名</span></button>
+      <button class="tab" data-t="2" onclick="switchTab('2')">② 专题会议</button>
+      <button class="tab" data-t="3" onclick="switchTab('3')">③ 复工方案</button>
+      <button class="tab" data-t="4" onclick="switchTab('4')">④ 员工大会</button>
+      <button class="tab" data-t="5" onclick="switchTab('5')">⑤ 培训教育</button>
+      <button class="tab" data-t="6" onclick="switchTab('6')">⑥ 应急方案</button>
+      <button class="tab" data-t="7" onclick="switchTab('7')">⑦ 检查记录表 <span class="badge hand">手填</span></button>
+    </div>
+    <div class="preview-body">
+      <div class="paper-wrap"><div class="paper" id="paper"></div></div>
+    </div>
+  </div>
+</div>
+
+<script>
+let curTab = '1';
+
+function v(id){ return document.getElementById(id).value; }
+function esc(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+function fill(val){ return val && val.trim() ? '<span class="fill-var">'+esc(val)+'</span>' : '<span class="fill-empty"></span>'; }
+function splitList(s){ return String(s||'').split(/[,，、]/).map(x=>x.trim()).filter(Boolean); }
+function D(){ return { c: v('company_name').trim(), t: v('tel').trim(), leader: v('leader_name').trim(), deputies: splitList(v('deputy_names')), members: splitList(v('member_names')), d: v('resume_date').trim(), place: v('place').trim(), teacher: v('teacher').trim() }; }
+
+function sealSVG(company){
+  return '<svg viewBox="-75 -75 150 150" xmlns="http://www.w3.org/2000/svg">' +
+    '<circle cx="0" cy="0" r="70" fill="none" stroke="#d0021b" stroke-width="3.5"/>' +
+    '<circle cx="0" cy="0" r="60" fill="none" stroke="#d0021b" stroke-width="1.2"/>' +
+    '<path id="sealarc" d="M -48 26 A 55 55 0 0 1 48 26" fill="none"/>' +
+    '<text font-size="11" fill="#d0021b" font-family="SimSun,serif" font-weight="bold"><textPath href="#sealarc" startOffset="50%" text-anchor="middle">'+esc(company||'')+'</textPath></text>' +
+    '<polygon points="0,-18 4,-5 18,-5 7,3 11,16 0,8 -11,16 -7,3 -18,-5 -4,-5" fill="#d0021b"/>' +
+    '</svg>';
+}
+function sealInline(company){
+  return '<span class="seal-anchor">'+fill(company)+'<span class="seal-on-line"><span class="seal-wrap">'+sealSVG(company)+'</span></span></span>';
+}
+function leaderBlock(d){
+  let h = '';
+  if(d.leader) h += '<div>组&nbsp;&nbsp;长：<span class="fill-var">'+esc(d.leader)+'</span></div>';
+  if(d.deputies.length) h += '<div>副组长：<span class="fill-var">'+esc(d.deputies.join('、'))+'</span></div>';
+  if(d.members.length) h += '<div>成&nbsp;&nbsp;员：<span class="fill-var">'+esc(d.members.join('、'))+'</span></div>';
+  return h || '<span class="fill-empty"></span>';
+}
+
+// ---------- 各文件模板 ----------
+function tpl1(d){ // 承诺书
+  return '<h1 class="doc-title">安全生产诚信承诺书</h1>' +
+    '<p>为切实履行安全生产主体责任，防止和减少生产安全事故发生，<span class="fill-var">'+esc(d.c)+'</span>现向本单位从业人员和社会郑重承诺：</p>' +
+    '<p>一、切实履行节后复产复工"六个一"（即企业主要负责人主持召开一次企业领导班子安全生产专题会议、制定一份周密的复工复产方案、召开一次全体员工大会、开展一次全员安全教育、制定一套应急处置方案、开展一次全厂性安全检查）。</p>' +
+    '<p>二、建立、完善和落实全员安全生产责任制和安全管理制度。企业主要负责人定期听取安全生产工作报告、研究安全生产问题、至少每半年组织一次安全生产全面检查。</p>' +
+    '<p>三、依法配置安全生产管理机构和人员，切实保障以上机构和人员履行安全管理职责。</p>' +
+    '<p>四、依法保证安全生产资金投入，依法提取和使用安全生产费用，不挤占、不挪用；按规定购买安全生产责任保险。</p>' +
+    '<p>五、落实全员安全生产培训制度，明确告知从业人员岗位危险因素、防范措施和应急措施，保证安全培训不合格者不得上岗、未持证者不得从事特种作业。</p>' +
+    '<p>六、依法为从业人员提供劳动防护用品并教育从业人员正确佩带；及时纠正违章操作行为，坚决杜绝违章指挥和强令违章冒险作业。</p>' +
+    '<p>七、切实加强对涉气、爆破、吊装、高空悬挂、有限空间等危险作业的安全管理。每半年至少开展一次风险点危险源排查，全面识别安全风险，有效落实管控措施。定期开展事故隐患排查，及时消除隐患，按规定向当地应急管理部门报告重大事故隐患排查治理情况。</p>' +
+    '<p>八、严格落实建设项目安全设施"三同时"，做好安全警示和安全设备日常维护，不使用淘汰的或明令禁止的工艺、设备和材料。</p>' +
+    '<p>九、严格依照许可范围从事矿山生产、危险化学品生产经营使用、烟花爆竹经营等活动，严禁非法违法生产经营。</p>' +
+    '<p>十、组织制定并实施本单位生产安全事故应急救援预案，按规定建立应急管理队伍，储备必要应急物资，每半年至少组织一次事故应急救援演练。如发生生产安全事故，保证及时、如实报告当地应急管理部门。</p>' +
+    '<p>我单位将严格遵守《中华人民共和国安全生产法》和《广东省安全生产条例》等国家及省有关安全生产法律、法规和标准规定，认真履行承诺，依法建设施工和生产经营，积极配合应急管理部门的监督检查，自觉维护从业人员和公众权益，接受社会监督。如有违反，我单位愿意承担相应法律责任。</p>' +
+    '<div class="sign-zone">' +
+      '<div>承诺单位（盖章）：'+sealInline(d.c)+'</div>' +
+      '<div style="margin-top:12px">法定代表人签字：<span class="sign-line"></span></div>' +
+      '<div style="margin-top:12px">'+fill(d.d.split('-')[0])+' 年&nbsp;&nbsp;&nbsp;&nbsp;月&nbsp;&nbsp;&nbsp;&nbsp;日</div>' +
+    '</div>';
+}
+
+function tpl2(d){ // 专题会议
+  return '<h1 class="doc-title">'+esc(d.c)+'<br>'+fill(d.d.split('-')[0])+'年节后复产领导班子安全生产专题会议</h1>' +
+    '<p class="no-indent meta">培训时间：'+fill(d.d)+'&nbsp;&nbsp;培训地点：'+fill(d.place)+'</p>' +
+    '<p class="no-indent meta">培训人数：<span class="fill-empty"></span>人&nbsp;&nbsp;培训方式：线下</p>' +
+    '<p class="no-indent"><b>培训主要内容：</b></p>' +
+    '<ol><li>复工复产六个一的安排工作；</li><li>节后复工复产安全工作目标；</li><li>"三个一"（高危行业"六个一"）解读；</li><li>督促落实全员安全生产责任制；</li><li>'+fill(d.d.split('-')[0])+'年度风险辨识；</li><li>制定排查方案；</li><li>全员安全生产培训；</li><li>新入职员工入职三级教育；公司级、部门级、岗位级安全教育层层落实；</li><li>应急物资检查；</li><li>督促大家去线上学习复工复产第一课。</li></ol>' +
+    '<div class="sign-zone">企业盖章：<br><span style="display:inline-block;margin-top:6px">'+sealInline(d.c)+'</span></div>' +
+    '<h2 style="margin-top:26px">会议记录表</h2>' +
+    '<p class="no-indent">培训时间：'+fill(d.d)+'&nbsp;&nbsp;培训地点：'+fill(d.place)+'&nbsp;&nbsp;授课人：'+fill(d.teacher)+'</p>' +
+    '<p class="no-indent"><b>内容摘要：</b>（同上培训主要内容）</p>' +
+    '<div class="photo-holder">现场照片（企业拍摄后上传）</div>' +
+    '<h2>会议签到表</h2>' + signSheet();
+}
+
+function tpl3(d){ // 复工方案
+  return '<h1 class="doc-title">'+esc(d.c)+'<br>'+fill(d.d.split('-')[0])+'年节后复工复产方案</h1>' +
+    '<p>根据各级关于企业节后复工复产工作要求精神，切实加强我司（厂）安全生产工作，保证安全生产工作的顺利推进，确保做到"安全第一、预防为主"的安全方针政策，特制定本复工复产方案，确保我司（厂）各项复工复产安全生产工作有序进行。</p>' +
+    '<h2>一、成立节后复工复产领导小组</h2>' +
+    '<div style="margin-left:3em">'+leaderBlock(d)+'</div>' +
+    '<p>领导小组组成：必须由企业主要负责人带队，由安全员、监控员等重要岗位负责人组成。</p>' +
+    '<h2>二、复工复产安全生产培训教育计划</h2>' +
+    '<p class="no-indent">（一）培训方式：线上+线下培训</p>' +
+    '<p class="no-indent">（二）培训时间：'+fill(d.d)+'</p>' +
+    '<p class="no-indent">（三）培训地点：'+fill(d.place)+'</p>' +
+    '<p class="no-indent">（四）培训内容</p>' +
+    '<p>1.安全生产法律法规、规章制度、操作规程、应急救援及应急处置技能、复工复产安全措施。</p>' +
+    '<p>2.职业病及劳保用品防护使用知识。</p>' +
+    '<p>3.车间危险源及管控措施培训。</p>' +
+    '<p class="no-indent">（五）培训对象：全体员工</p>' +
+    '<p class="no-indent">（六）培训考核要求：通过安全教育培训使全体员工提高安全生产意识，掌握公司及本人岗位安全风险要点、防护措施和应急处置措施；自觉遵守公司各项规章制度和安全操作规程。</p>' +
+    '<h2>三、复工复产安全检查内容</h2>' +
+    '<p class="no-indent">1.检查时间：'+fill(d.d.split('-')[1])+' 月 '+fill(d.d.split('-')[2])+' 日</p>' +
+    '<p class="no-indent">2.检查内容：电气线路和设备安全检查；机械设备安全检查；车间、仓库作业环境安全检查；消防设备设施安全检查；职业卫生、劳动防护安全检查；特种设备安全检查。</p>' +
+    '<h2>四、隐患整改及落实</h2>' +
+    '<p class="no-indent">1、管理上缺失隐患，需形成制度，加强日后监督管理；</p>' +
+    '<p class="no-indent">2、存在重大安全隐患部位，一律不允许复产生产；</p>' +
+    '<p class="no-indent">3、一般安全隐患，立即快速处理整改，当天处理不了的必须限期整改；</p>' +
+    '<p class="no-indent">4、安全隐患必须定责任人、定期、定资金、重大安全隐患还需定方案和验收。</p>' +
+    '<div class="sign-zone">' +
+      '<div>企业名称（盖章）：'+sealInline(d.c)+'</div>' +
+      '<div style="margin-top:8px">'+fill(d.d)+'</div>' +
+    '</div>';
+}
+
+function tpl4(d){ // 员工大会
+  return '<h1 class="doc-title">'+esc(d.c)+'<br>'+fill(d.d.split('-')[0])+'年节后复产全体员工大会</h1>' +
+    '<p class="no-indent meta">会议时间：'+fill(d.d)+'&nbsp;&nbsp;会议地点：'+fill(d.place)+'</p>' +
+    '<p class="no-indent meta">会议人数：<span class="fill-empty"></span>人&nbsp;&nbsp;会议方式：线下</p>' +
+    '<p class="no-indent"><b>会议主要内容：</b></p>' +
+    '<ol><li>近期政府宣贯文件或内部需传达的安全事项、文件等；</li><li>我司复工复产方案；</li><li>事故分析通报、解剖事故案例；</li><li>下月安全生产工作的实施部署和其他需要讨论研究的事宜；</li><li>道路运输驾驶员应急驾驶操作培训。</li></ol>' +
+    '<div class="sign-zone">企业盖章：<br><span style="display:inline-block;margin-top:6px">'+sealInline(d.c)+'</span></div>' +
+    '<h2 style="margin-top:26px">会议记录表</h2>' +
+    '<p class="no-indent">会议时间：'+fill(d.d)+'&nbsp;&nbsp;会议地点：'+fill(d.place)+'&nbsp;&nbsp;授课人：'+fill(d.teacher)+'</p>' +
+    '<div class="photo-holder">现场照片（企业拍摄后上传）</div>' +
+    '<h2>会议签到表</h2>' + signSheet();
+}
+
+function tpl5(d){ // 培训教育
+  return '<h1 class="doc-title">'+esc(d.c)+'<br>'+fill(d.d.split('-')[0])+'年节后复产专题培训班</h1>' +
+    '<p class="no-indent meta">培训时间：'+fill(d.d)+'&nbsp;&nbsp;培训地点：'+fill(d.place)+'</p>' +
+    '<p class="no-indent meta">培训人数：<span class="fill-empty"></span>人</p>' +
+    '<p class="no-indent"><b>培训主要内容：</b></p>' +
+    '<ol><li>"线上"必修课【安全复工复产第一课】；</li><li>复工复产培训通用培训企业版；</li><li>"一线三排"工作机制、工作指引、实施指南等相关文件；</li><li>其他重要的政策法规及工作要求；</li><li>新员工入职公司级安全生产知识；</li><li>员工安全意识培养和行为安全管理培训教材；</li><li>观看历年警示教育片。</li></ol>' +
+    '<div class="sign-zone">企业盖章：<br><span style="display:inline-block;margin-top:6px">'+sealInline(d.c)+'</span></div>' +
+    '<h2 style="margin-top:26px">安全培训教育班情况记录表</h2>' +
+    '<p class="no-indent">培训时间：'+fill(d.d)+'&nbsp;&nbsp;培训地点：'+fill(d.place)+'&nbsp;&nbsp;授课人：'+fill(d.teacher)+'</p>' +
+    '<div class="photo-holder">现场照片（企业拍摄后上传）</div>' +
+    '<h2>安全培训签到表</h2>' + signSheet() +
+    '<h2 style="margin-top:22px">复工复产培训试卷</h2>' +
+    '<p class="no-indent">姓名：<span class="sign-line"></span>&nbsp;&nbsp;分数：<span class="sign-line"></span></p>' +
+    '<p class="no-indent"><b>一、选择题（每题10分，总分60分）</b></p>' +
+    '<p class="no-indent">1.从业人员上岗要求是保证具备必要的安全生产知识。（&nbsp;&nbsp;）A.正确 B.错误</p>' +
+    '<p class="no-indent">2.从业人员具有拒绝违章权。（&nbsp;&nbsp;）A.正确 B.错误</p>' +
+    '<p class="no-indent">3.当发生严重火灾时，应及时拨打119电话。（&nbsp;&nbsp;）A.正确 B.错误</p>' +
+    '<p class="no-indent">4.发生事故时应及时上报领导或者公司。（&nbsp;&nbsp;）A.正确 B.错误</p>' +
+    '<p class="no-indent">5.连续行驶（&nbsp;&nbsp;）小时以上属于疲劳驾驶。A.2 B.3 C.4 D.5</p>' +
+    '<p class="no-indent">6.（多选题）以下属于安全生产"三不违原则"的是（&nbsp;&nbsp;）。A.不违章指挥 B.不违章作业 C.不违反劳动纪律 D.不违反领导的安排</p>' +
+    '<p class="no-indent"><b>二、填空题（每空5分，总分20分）</b></p>' +
+    '<p class="no-indent">1.处理事故的"四不放过"原则指的是&nbsp;&nbsp;&nbsp;&nbsp;不放过、&nbsp;&nbsp;&nbsp;&nbsp;不放过和&nbsp;&nbsp;&nbsp;&nbsp;不放过、&nbsp;&nbsp;&nbsp;&nbsp;不放过。</p>' +
+    '<p class="no-indent"><b>三、判断题（每题4分，总分20分）</b></p>' +
+    '<p class="no-indent">1、灭火器和配电箱前可以随意被遮挡。（&nbsp;&nbsp;）&nbsp;2、员工可以要求企业把劳动防护用品折现成现金或者其它物品。（&nbsp;&nbsp;）</p>' +
+    '<p class="no-indent">3、疏散通道处可以存放物品，只要不影响正常的生产工作。（&nbsp;&nbsp;）&nbsp;4、大多数的安全生产事故是由物的不安全状态造成的。（&nbsp;&nbsp;）</p>' +
+    '<p class="no-indent">5、员工佩不佩戴劳动防护用品无关紧要。（&nbsp;&nbsp;）</p>';
+}
+
+function tpl6(d){ // 应急方案
+  return '<h1 class="doc-title">'+esc(d.c)+'<br>节后复工复产应急处置工作方案</h1>' +
+    '<p>因春节后复工复产历年来是各类生产安全事故易发多发时期。为深刻吸取历年多起生产安全事故教训，扭转春季事故多发态势，确保全年安全生产形势良好开局，根据区委区政府关于节后复产安全生产工作的部署，结合我司实际，且为认真贯彻落实《安全生产法》《突发事件应对法》《生产安全事故应急条例》《生产安全事故应急预案管理办法》等法律法规要求，有效应对公司生产安全事故发生，进一步提高我公司在春运期间突发事件处理的综合指挥能力、紧急救援反应速度和协调水平，以"安全第一，预防为主，综合治理"的方针，采取措施，加强协调，狠抓落实，努力圆满完成春运复工复产任务，特制定'+fill(d.d.split('-')[0])+'年春节后复工复产应急处置工作方案。</p>' +
+    '<h2>一、编制依据</h2>' +
+    '<p>依据《安全生产法》《突发事件应对法》《生产安全事故应急条例》《生产安全事故应急预案管理办法》《企业职工伤亡事故分类》等法律法规，制订本工作方案。</p>' +
+    '<h2>二、适用范围</h2>' +
+    '<p>本应急救援工作方案适用于本公司春运复工复产期间因突发交通事故、消防事故、社会安全事件、自然灾害等原因引发的危及或者损害乘客生命财产安全等及其它公共突发事件。</p>' +
+    '<h2>三、应急组织及职责</h2>' +
+    '<p class="no-indent"><b>（一）成立应急领导小组</b></p>' +
+    '<div style="margin-left:3em">'+leaderBlock(d)+'</div>' +
+    '<p class="no-indent">应急救援电话：'+fill(d.t)+'</p>' +
+    '<p class="no-indent"><b>领导小组职责：</b></p>' +
+    '<ol><li>决定启动和终止突发事件预警状态和应急响应行动；</li><li>负责统一领导突发事件的应急处置工作发布指挥调度命令，并督促检查执行情况；</li><li>根据上级领导部门要求，或根据应急处置需要指定成立现场工作组，并派往突发事件现场开展应急处置工作；</li><li>根据需要，会同上级有关部门，制定应对突发事件的联合行动方案，并监督实施；</li><li>当突发事件由上级领导部门统一指挥时，应急领导小组按照领导部门的指令执行相应的应急行动；</li><li>其他相关重大事项。</li></ol>' +
+    '<p class="no-indent"><b>（二）应急工作小组职责：</b></p>' +
+    '<p>1、综合协调组：事故发生时，立即奔赴现场进行指挥，组织开展救援工作。</p>' +
+    '<p>2、现场抢救组：协调指挥做好救险救援工作，调配消防器材、救援物资，实施抢救，保障乘客安全有序地撤离现场，力争在最短时间、最大限度地补救灾情，减少损失等。</p>' +
+    '<p>3、后勤保障组：负责救援工作所需要的办公用品采购，保证补给用品充足，保障一线工作不受影响等。</p>' +
+    '<p>4、医疗救护组：负责现场简易的医疗救护，协助医疗救护机构对重伤员的转运工作等。</p>' +
+    '<h2>三、应急处理程序</h2>' +
+    '<p class="no-indent"><b>（一）运营车辆发生交通事故的处理程序：</b></p>' +
+    '<p>1、驾驶员应将车辆熄火，切断车辆油电路，防止车辆起火爆炸，向公安交警部门报案，开展应急处置，保护好事故现场，做好救援和疏散乘客工作，并向过往的车辆、行人以及附近的住户求救，并及时向单位报告；</p>' +
+    '<p>2、应急领导小组接到通知后，要立即组织车管科人员赶赴事故现场，了解事故情况、分析事故原因，调度指挥车辆输送乘客，协助公安交警、医疗救护、保险等有关部门做好善后处理工作。</p>' +
+    '<p class="no-indent"><b>（二）火灾事故的应急处理程序：</b></p>' +
+    '<p>1、在灾情附近岗位的员工，确定灾情发生后，马上利用通讯设备报告，报告完毕后必须利用最近的灭火器材赶往灾情现场；</p>' +
+    '<p>2、指挥调度组立刻通知现场施救组奔赴现场；</p>' +
+    '<p>3、现场施救组到达现场后，展开施救工作；</p>' +
+    '<p>4、如果火势较轻，没有涉及乘客安全，财物无大损失，待消防人员扑灭火源后，组长可考虑撤离现场的救援小组，随后必须要总结此次经验教训；</p>' +
+    '<p>5、善后处理组拨打火警119、120请求救援，确认联系后，到路口接应消防车、救护车。同时并安排人员封锁现场，指挥人员撤离。对受伤的人员及时救治，对重伤者重点照顾，按救护程序正确处理，等待转送医院的救治；</p>' +
+    '<p>6、后勤保障组根据救援现场的需要及时保证所需物资的供给；</p>' +
+    '<p>7、火灾扑救完毕后，善后处理组负责现场保护工作，协助公安、消防机关和有关部门调查起火原因，及负责善后处理工作，做好灾情过程的记录和存档。</p>' +
+    '<p class="no-indent"><b>（三）发生爆炸事件应急处理程序：</b></p>' +
+    '<p>1、发现可疑爆炸物品时，第一发现人及时通知联络协调办公室，联络协调办公室召集消防灭火组赶往现场疏散周围人群，并报告应急救援指挥组组长，并拨打119、120报警，并派专员在路口接应消防人员；</p>' +
+    '<p>2、现场施救组穿好防护衣赶往可疑爆炸点封锁现场，迅速准备好消防器材等，减少爆炸引起火灾造成的人员伤亡和建筑的破坏；</p>' +
+    '<p>3、现场施救组再安排人员检查附近的是否有可疑爆炸品，发现要即时报告组长及协调联络办公室；</p>' +
+    '<p>4、善后处理组抽调工作人员到达现场指挥、维持秩序，其它应急救援小组随时候命；</p>' +
+    '<p>5、现场救援组对乘客说明情况，要求不要惊慌，由在场工作人员指引乘客、车辆向安全方向撤离；</p>' +
+    '<p>6、发生爆炸后，按火灾事故应急程序操作，配合公安、消防工作人员指挥疏散群众，控制现场，及做好善后工作。</p>' +
+    '<p class="no-indent"><b>（四）发生恶劣天气的应急处理程序：</b></p>' +
+    '<p>1、出现雨、雪、雾等恶劣天气，领导小组应迅速启动预案，在确定会影响安全行车时，及时发布停运信息，做好监控工作；</p>' +
+    '<p>2、加强运输组织工作，储备足够运力，按照上级部门指挥调度要求，配合做好人员运输工作，最大限度降低恶劣天气对公共交通出行的影响；</p>' +
+    '<p>3、加强对驾驶人员的应急培训，增强其恶劣天气条件下的行车安全意识。同时做好车辆安全技术检测工作，并应随车配备相关安全设备，确保运输安全。</p>' +
+    '<p class="no-indent"><b>（五）发生恐怖事件的应急处理程序：</b></p>' +
+    '<p>1、驾驶员要及时启动报警按钮，同时尽量分散恐怖分子注意力，拖延时间；</p>' +
+    '<p>2、应急领导小组成员得知恐怖事件发生后，要立即向上级有关部门报告，并配合公安部门处理好；</p>' +
+    '<p>3、公安、武警、交通、卫生等部门调派力量到达现场后，应急救援小组各施其职，协助有关部门实施救护，维持秩序。</p>' +
+    '<p class="no-indent"><b>（六）发生自然灾害的应急处理程序：</b></p>' +
+    '<p>自然灾害发生后，应急领导小组成员应立即到位，及时向上级管理部门报告，服从区政府及有关部门调遣，及时调度车辆运送救灾物资和输送受灾群众，并按灾害破坏程度，及时调整运营服务，避免车辆通过险桥、险路。</p>' +
+    '<p class="no-indent"><b>（六）发生突发性群体上访的处理程序：</b></p>' +
+    '<p>1、突发性群体上访事件发生后，应急领导小组成员要及时向区交通运输局汇报，赶赴事发现场，按照行业政策和法规做好解释工作，化解矛盾，运用各种措施、方法、手段防止事态扩大及恶化，使社会负面影响降至最小程度。重大突发性群体事件，按区交通运输局及相关管理部门要求，配合做好现场的协调解决工作；</p>' +
+    '<p>2、发生导致国、省道干线公路和城市主要道路中断2小时以上或严重影响到交通秩序和社会稳定的重大突发性群体上访事件时，应急领导小组成员要立即向区交通运输局报告，前往事件现场进行调查，积极协调有关部门进行处理。</p>' +
+    '<h2>四、应急救援的要求</h2>' +
+    '<p class="no-indent">（一）事故现场急救必须遵循"先救人后救物、先救命后疗伤"的原则；</p>' +
+    '<p class="no-indent">（二）参加现场灭火人员要沉着冷静、遇险不慌、按照"应急要求"执行程序操作；</p>' +
+    '<p class="no-indent">（三）服从命令、听从指挥、坚守岗位，履行职责，做到令行禁止；</p>' +
+    '<p class="no-indent">（四）公安消防机关到达火灾现场后，所有人员要积极主动并服从他们的指挥和安排，协助做好救援和现场警卫等工作。</p>' +
+    '<h2>五、应急处置基本原则</h2>' +
+    '<p>应急处置遵循的原则：以人为本，安全第一；统一领导，分级响应；预防为主，防救结合；快速反应，协同应对；防止次生、衍生灾害，减少人员伤亡和财产损失。</p>' +
+    '<h2>六、责任追究</h2>' +
+    '<p>预案启动后，各部门及全体人员必须听从指挥，无条件立即行动。对拒不行动、见死不救、行动迟缓、贻误时机的人员，要严厉惩罚，触犯法律的，依法交相关部门处理。</p>' +
+    '<div class="sign-zone">' +
+      '<div>'+esc(d.c)+'</div>' +
+      '<div style="margin-top:6px">'+fill(d.d)+'</div>' +
+    '</div>';
+}
+
+function tpl7(d){ // 检查记录表
+  return '<h1 class="doc-title">'+esc(d.c)+'<br>'+fill(d.d.split('-')[0])+'年节后复产安全检查记录表</h1>' +
+    '<table><tr><td style="width:22%">时间</td><td>'+fill(d.d)+'</td><td style="width:22%">组织者（带队人）</td><td><span class="sign-line"></span></td></tr>' +
+    '<tr><td>检查人员</td><td colspan="3"><span class="sign-line" style="width:70%"></span></td></tr>' +
+    '<tr><td>检查区域</td><td colspan="3"><span class="sign-line" style="width:70%"></span></td></tr></table>' +
+    '<p class="no-indent"><b>检查发现问题：</b></p><p>1.<br>2.<br>3.<br>4.<br>5.</p>' +
+    '<p class="no-indent"><b>整改措施：</b></p><p>1.<br>2.<br>3.<br>4.<br>5.</p>' +
+    '<p class="no-indent">整改责任人（签名）：<span class="sign-line"></span>&nbsp;&nbsp;落实整改时间：<span class="sign-line"></span></p>' +
+    '<p class="no-indent"><b>复查结论：</b></p><p>1.<br>2.<br>3.<br>4.<br>5.</p>' +
+    '<p class="no-indent">复查人签字：<span class="sign-line"></span>&nbsp;&nbsp;复查时间：<span class="sign-line"></span></p>' +
+    '<h2>检查项目清单（在□打"√"）</h2>' +
+    checkTable();
+}
+
+function checkTable(){
+  const rows = [
+    ['安全设施','消防设备齐全、摆放整齐、性能良好','消防通道畅通','疏散指示标志、应急照明完好','有应急预案，车辆设施完好齐全'],
+    ['建筑物','建筑结构无变形、裂缝等现象','室内顶棚完好'],
+    ['厂区环境','厂貌整洁，布局合理','厂区通道照明，厂区消防、消防通道符合要求'],
+    ['车间作业环境','实行定置摆放','车间通道、地面、通风、采光消防及疏散、设备布局合理'],
+    ['电气设备','无乱拉、乱接临时线、临时灯行为','带电部位屏护正常'],
+    ['易燃物品材料场所','料场堆放整齐稳定可靠，道路畅通','在入口及重点位置设置了防火安全标志','消防设施齐全完备，电器设备符合要求，防火间距达到要求'],
+    ['劳动保护','按规定为员工配备劳动防护用品','职业卫生符合国家规定的标准'],
+    ['机械设备','建立机械设备及其各种保护装置使用管理制度','定期进行机械设备及其各种保护装置安全检查和维修保养','对机械设备及其各种保护装置进行班前检查','操作者经培训合格','机械设备其运动（转动）部件、传动（传输）装置安装有防护装置'],
+    ['用电安全','电器设备、电源线路由专业施工队安装、敷设','内有增大电气装置的额定容量','没有任意改动保护装置的整定值和保护元件的规格','电气装置没有超负荷运行或带故障使用','在用电设备和电气线路的周围留有足够的安全通道和工作空间'],
+    ['照明配电箱（柜、板）','箱(柜、板）符合作业要求，内外整洁','有足够的操作空间，PE可靠','各种原件及线路接触良好，保护装置齐全'],
+    ['危险化学品','化学危险品物品标识','分类、分开堆放','稳固、无超高、无倾斜','防漏措施、应急措施'],
+    ['仓库','环境、建筑符合仓库要求','物品分类、分开、分库存放','物料摆放整齐、合理','物料堆放无超高、五距符合要求','消防器材、器材分布合理'],
+    ['有限空间作业','对有限空间作业场所进行辨识，并建立完善有限空间管理台帐','在辨识出的有限空间作业场所或设备附近设置警示标志和危险告知牌','配备合格的有限空间作业检测、通风、应急救援等安全设施设备'],
+    ['动火作业','持证上岗，清理可燃物，防火防爆，测爆，安全距离，监护','先审批、派监护、安全措施要到位'],
+    ['高处作业','个体防护（安全帽、安全带），工具包、杂物箱等，脚手架检查，监护','高处作业严禁上下抛物'],
+    ['吊装作业','吊具检查，持证及人员能力，作业过程中管理','当起重、吊钩或吊物下面有人时不得进行起重操作'],
+  ];
+  let html = '<table><tr><th style="width:16%">检查项目</th><th>检查内容</th><th style="width:18%">检查情况</th><th style="width:14%">存在问题</th></tr>';
+  rows.forEach(function(r){
+    const cat = r[0], items = r.slice(1);
+    html += '<tr><td rowspan="'+items.length+'">'+cat+'</td><td style="text-align:left">'+items[0]+'</td><td>□是 □否</td><td></td></tr>';
+    for(let i=1;i<items.length;i++){
+      html += '<tr><td style="text-align:left">'+items[i]+'</td><td>□是 □否</td><td></td></tr>';
+    }
+  });
+  html += '</table>';
+  return html;
+}
+
+function signSheet(){
+  let html = '<table><tr><th style="width:12%">序号</th><th style="width:20%">部门</th><th style="width:30%">签到</th><th>联系电话</th><th style="width:12%">序号</th><th style="width:20%">部门</th><th style="width:30%">签到</th><th>联系电话</th></tr>';
+  for(let i=1;i<=15;i++){
+    html += '<tr><td>'+i+'</td><td></td><td></td><td></td><td>'+(i+15)+'</td><td></td><td></td><td></td></tr>';
+  }
+  html += '</table>';
+  return html;
+}
+
+const TPLS = { '1': tpl1, '2': tpl2, '3': tpl3, '4': tpl4, '5': tpl5, '6': tpl6, '7': tpl7 };
+
+function renderAll(){
+  const d = D();
+  const fn = TPLS[curTab] || tpl1;
+  document.getElementById('paper').innerHTML = fn(d);
+}
+
+function switchTab(t){
+  curTab = t;
+  document.querySelectorAll('.tab').forEach(function(b){ b.classList.toggle('active', b.dataset.t === t); });
+  renderAll();
+}
+
+function resetData(){
+  document.getElementById('company_name').value = '广东佳邦通达物流有限公司';
+  document.getElementById('tel').value = '18923277715';
+  document.getElementById('leader_name').value = '柴国顺';
+  document.getElementById('deputy_names').value = '韩雪';
+  document.getElementById('member_names').value = '陈秀清';
+  document.getElementById('resume_date').value = '2026-02-24';
+  document.getElementById('place').value = '办公室';
+  document.getElementById('teacher').value = '柴国顺';
+  renderAll();
+}
+
+renderAll();
+</script>
+</body>
+</html>
