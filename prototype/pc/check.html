@@ -1,10 +1,102 @@
 <!DOCTYPE html>
-<html lang="zh-CN"><head><meta charset="UTF-8"><title>一日三检</title>
+<html lang="zh-CN"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>一日三检</title>
 <link rel="stylesheet" href="../assets/common.css"><link rel="stylesheet" href="../assets/pc.css">
-<style></style></head><body>
+<style>
+  .doc-preview{border:1px solid var(--border);background:#fff;padding:28px 32px;font-family:"SimSun","宋体",serif;color:#000;font-size:13.5px;line-height:1.9}
+  .doc-preview .title{text-align:center;font-size:18px;letter-spacing:1px;font-weight:bold;margin-bottom:14px}
+  .doc-preview table{width:100%;border-collapse:collapse;margin:6px 0;font-size:12.5px}
+  .doc-preview table th,.doc-preview table td{border:1px solid #000;padding:3px 6px;text-align:center}
+  .doc-preview table th{background:#f2f2f2}
+  .doc-preview .grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:0 12px;margin:8px 0}
+  .doc-preview .grid .cell{display:flex;justify-content:space-between;gap:6px;padding:2px 0}
+  .fill{color:#1a4b8c;font-weight:bold}
+  .modal-mask{position:fixed;inset:0;background:rgba(20,28,43,.45);display:none;align-items:center;justify-content:center;z-index:100}
+  .modal-mask.show{display:flex}
+  .modal{background:#fff;border-radius:var(--r-lg);width:760px;max-width:94vw;max-height:90vh;overflow:auto;box-shadow:var(--shadow-md)}
+  .modal-head{display:flex;align-items:center;justify-content:space-between;padding:16px 20px;border-bottom:1px solid var(--border);font-weight:700;font-size:16px}
+  .modal-head .x{cursor:pointer;font-size:24px;color:var(--text-3);line-height:1}
+  .modal-body{padding:20px}
+</style></head><body>
 <div class="pc-page">
-<div class="pc-header"><div><h1>一日三检</h1><div class="desc">车辆一日三检记录</div></div><div class="actions"><button class="btn btn-primary"><span class="ico" data-icon="plus"></span> 新增检查</button></div></div><div class="filter-bar"><div class="f-item"><label>日检日期</label><input type="text" placeholder="2026-10-27"></div><div class="f-item"><label>车牌号</label><input type="text" placeholder="请输入车牌号"></div><div class="f-item"><label>人员</label><input type="text" placeholder="请输入人员"></div><div class="f-actions"><button class="btn btn-primary btn-sm"><span class="ico" data-icon="search"></span> 查询</button><button class="btn btn-outline btn-sm">重置</button></div></div><div class="card" style="padding:0;overflow:hidden"><table class="table"><thead><tr><th>车牌号</th><th>驾驶员/押运员</th><th>状态</th><th>出车检查</th><th>行车检查</th><th>收车检查</th><th>里程</th><th>操作</th></tr></thead><tbody><tr><td>粤E·12345</td><td>陈刚</td><td><span class="tag tag-green">已完成</span></td><td><span class="tag tag-green">合格</span></td><td><span class="tag tag-green">合格</span></td><td><span class="tag tag-green">合格</span></td><td>256 km</td><td><a class="btn btn-primary btn-sm">详情</a> </td></tr><tr><td>粤E·67890</td><td>刘洋</td><td><span class="tag tag-blue">进行中</span></td><td><span class="tag tag-green">合格</span></td><td>—</td><td>—</td><td>180 km</td><td><a class="btn btn-primary btn-sm">详情</a> </td></tr><tr><td>粤E·54321</td><td>赵敏</td><td><span class="tag tag-gray">未开始</span></td><td>—</td><td>—</td><td>—</td><td>—</td><td><a class="btn btn-primary btn-sm">详情</a> </td></tr></tbody></table>
-<div class="table-foot"><span>共 3 条记录</span>
-<div class="pagination"><button>&lt;</button><button class="active">1</button><button>2</button><button>3</button><button>…</button><button>&gt;</button></div></div></div>
+  <div class="pc-header"><div><h1>一日三检</h1><div class="desc">行车日志 + 出车/行车/收车三检 · 字段与台账「一日三检·行车日志」对应</div></div>
+    <div class="actions">
+      <button class="btn btn-outline" onclick="window.parent.gotoPage('pc/archive_flow.html?box=9')"><span class="ico" data-icon="archive"></span> 存档到电子档案柜（盒九）</button>
+      <button class="btn btn-primary" onclick="openNew()"><span class="ico" data-icon="plus"></span> 新增检查</button>
+    </div>
+  </div>
+
+  <div class="filter-bar">
+    <div class="f-item"><label>日检日期</label><input type="text" placeholder="2026-10-27"></div>
+    <div class="f-item"><label>车牌号</label><input type="text" placeholder="请输入车牌号"></div>
+    <div class="f-item"><label>人员</label><input type="text" placeholder="请输入人员"></div>
+    <div class="f-actions"><button class="btn btn-primary btn-sm"><span class="ico" data-icon="search"></span> 查询</button><button class="btn btn-outline btn-sm">重置</button></div>
+  </div>
+
+  <div class="card" style="margin-bottom:16px">
+    <div class="card-title">行车日志范本预览 <span style="font-size:13px;color:var(--text-3);font-weight:400">车牌/日期/里程/货物/起止地 + 出车检查明细</span></div>
+    <div class="doc-preview" id="docPreview"></div>
+  </div>
+
+  <div class="card" style="padding:0;overflow:hidden">
+    <div class="card-title" style="padding:16px 20px 0">检查记录</div>
+    <div style="padding:0 20px 16px"><table class="table"><thead><tr><th>车牌号</th><th>驾驶员/押运员</th><th>状态</th><th>出车检查</th><th>行车检查</th><th>收车检查</th><th>里程</th><th>操作</th></tr></thead>
+    <tbody>
+      <tr><td>粤Y37763</td><td>陈刚</td><td><span class="tag tag-green">已完成</span></td><td><span class="tag tag-green">合格</span></td><td><span class="tag tag-green">合格</span></td><td><span class="tag tag-green">合格</span></td><td>210 km</td><td><a class="btn btn-primary btn-sm" onclick="openDetail('粤Y37763')">详情</a></td></tr>
+      <tr><td>粤E·67890</td><td>刘洋</td><td><span class="tag tag-blue">进行中</span></td><td><span class="tag tag-green">合格</span></td><td>—</td><td>—</td><td>180 km</td><td><a class="btn btn-primary btn-sm" onclick="openDetail('粤E·67890')">详情</a></td></tr>
+      <tr><td>粤E·54321</td><td>赵敏</td><td><span class="tag tag-gray">未开始</span></td><td>—</td><td>—</td><td>—</td><td>—</td><td><a class="btn btn-primary btn-sm" onclick="openDetail('粤E·54321')">详情</a></td></tr>
+    </tbody></table></div>
+  </div>
 </div>
-<script src="../assets/icons.js"></script></body></html>
+
+<div class="modal-mask" id="detailModal">
+  <div class="modal">
+    <div class="modal-head">行车日志详情 <span class="x" onclick="closeModal('detailModal')">×</span></div>
+    <div class="modal-body"><div class="doc-preview" id="detailPreview"></div></div>
+  </div>
+</div>
+
+<script src="../assets/icons.js"></script>
+<script>
+const OUT_CHECK = ['发动机运转情况','发动机外部传动带','油底壳','散热器','制动液','润滑油','冷却液温度','散热器及冷却液','风窗玻璃清洗液','刮水器（雨刷）','转向盘（方向盘）','行李舱及舱门','内、外后视镜','仪表指示、报警灯','视频监控装置','卫星定位装置','制动气压','安全带','灯光','轮胎','轮胎螺栓','驱动桥壳','制动踏板（刹车）','离合器踏板','驻车制动器操纵杆（手刹）','变速器操纵杆（档把）','缓速器操纵装置','制动管路','可见线束（外露线路）','燃油箱及油箱盖','燃油箱','鞍座、牵引销、锁止机构（头与挂连接处）','蓄电池（电瓶）','危险品车辆标识','车辆反光标识','侧、后防护装置','货物装载、固定','汽车尾气','资质证件','车辆通行证','业务相关证件单据','安全卡','化学品安全技术说明书','电子运单','安全标签','号牌','灭火器','危险警告标志（三角牌）','三角木、反光衣','危险三角灯、牌','防护服、帽、鞋、防毒面具、手套、应急药箱、头盔','检查运单'];
+const MID_CHECK = ['发动机运转情况','制动性能','转向系统','轮胎温度与气压','货物装载、捆绑情况','危险品标识'];
+const IN_CHECK = ['发动机熄火情况','车辆停放、手刹','货物卸载及残留','随车证件收存','消防器材复位','里程记录'];
+
+function renderPreview(){
+  const cells = OUT_CHECK.map(n=>`<div class="cell"><span>${n}</span><span>√</span></div>`).join('');
+  document.getElementById('docPreview').innerHTML = `
+    <div class="title">企业车辆行车日志（粤Y37763，2026-08-22）</div>
+    <table>
+      <tr><td style="width:15%">车牌号</td><td class="fill" style="width:25%">粤Y37763</td><td style="width:15%">日期</td><td class="fill" style="width:25%">2026-08-22</td></tr>
+      <tr><td>出车公里数</td><td class="fill">756879</td><td>收车公里数</td><td class="fill">757089</td></tr>
+      <tr><td>货物名称</td><td class="fill">柴油</td><td>货物数量</td><td class="fill">33吨</td></tr>
+      <tr><td>始发地</td><td>塘安公司</td><td>中途停靠地</td><td>南海小虎岛</td></tr>
+      <tr><td>目的地</td><td>塘安公司</td><td>日检情况</td><td class="fill">正常</td></tr>
+    </table>
+    <div class="title" style="font-size:15px">一日三检记录表 · 出车检查</div>
+    <div class="grid">${cells}</div>
+    <p style="text-indent:0">驾驶员/押运员签字：________</p>`;
+}
+function renderDetail(plate){
+  document.getElementById('detailPreview').innerHTML = `
+    <div class="title">企业车辆行车日志（${plate}）</div>
+    <table>
+      <tr><td style="width:15%">车牌号</td><td class="fill" style="width:25%">${plate}</td><td style="width:15%">日期</td><td class="fill" style="width:25%">2026-08-22</td></tr>
+      <tr><td>出车公里数</td><td class="fill">756879</td><td>收车公里数</td><td class="fill">757089</td></tr>
+      <tr><td>货物名称</td><td class="fill">柴油</td><td>货物数量</td><td class="fill">33吨</td></tr>
+      <tr><td>始发地</td><td>塘安公司</td><td>中途停靠地</td><td>南海小虎岛</td></tr>
+      <tr><td>目的地</td><td>塘安公司</td><td>日检情况</td><td class="fill">正常</td></tr>
+    </table>
+    <div class="title" style="font-size:15px">出车检查</div>
+    <div class="grid">${OUT_CHECK.map(n=>`<div class="cell"><span>${n}</span><span>√</span></div>`).join('')}</div>
+    <div class="title" style="font-size:15px">行车中检查</div>
+    <div class="grid">${MID_CHECK.map(n=>`<div class="cell"><span>${n}</span><span>√</span></div>`).join('')}</div>
+    <div class="title" style="font-size:15px">收车后检查</div>
+    <div class="grid">${IN_CHECK.map(n=>`<div class="cell"><span>${n}</span><span>√</span></div>`).join('')}</div>
+    <p style="text-indent:0">驾驶员/押运员签字：________</p>`;
+}
+function openNew(){ alert('新增检查（模拟）：跳转小程序端「一日三检」录入'); }
+function openDetail(plate){ renderDetail(plate); document.getElementById('detailModal').classList.add('show'); }
+function closeModal(id){ document.getElementById(id).classList.remove('show'); }
+
+renderPreview();
+</script></body></html>

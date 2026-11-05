@@ -1,10 +1,120 @@
 <!DOCTYPE html>
-<html lang="zh-CN"><head><meta charset="UTF-8"><title>应急预案管理</title>
+<html lang="zh-CN"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>应急预案管理</title>
 <link rel="stylesheet" href="../assets/common.css"><link rel="stylesheet" href="../assets/pc.css">
-<style></style></head><body>
+<style>
+  .scene-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:12px}
+  .scene{display:flex;align-items:flex-start;gap:12px;padding:14px;border:1px solid var(--border);border-radius:10px;cursor:pointer;transition:.12s}
+  .scene:hover{border-color:var(--brand-400)}
+  .scene.on{border-color:var(--brand-500);background:var(--brand-50);box-shadow:0 0 0 1px var(--brand-500)}
+  .scene .cb{width:18px;height:18px;border:2px solid #c3cbd6;border-radius:4px;margin-top:2px;flex-shrink:0;display:flex;align-items:center;justify-content:center;color:#fff;font-size:12px;font-weight:700}
+  .scene.on .cb{background:var(--brand-500);border-color:var(--brand-500)}
+  .scene .sc-name{font-weight:600;font-size:14px}
+  .scene .sc-code{font-size:12px;color:var(--brand-500);font-family:monospace;margin-left:6px}
+  .scene .sc-desc{font-size:12px;color:var(--text-3);margin-top:3px}
+  .scene .sc-tag{font-size:11px;padding:1px 7px;border-radius:8px;margin-left:auto;white-space:nowrap}
+  .t-all{background:#e8f1fc;color:#1a5bb0}
+  .t-danger{background:#FEF2F2;color:#d03030}
+  .doc-preview{border:1px solid var(--border);background:#fff;padding:28px 32px;font-family:"SimSun","宋体",serif;color:#000;font-size:14px;line-height:1.9;min-height:260px}
+  .doc-preview .title{text-align:center;font-size:19px;letter-spacing:2px;font-weight:bold;margin-bottom:12px}
+  .doc-preview p{text-indent:2em;margin:5px 0}
+  .doc-preview p.ni{text-indent:0}
+  .fill{color:#1a4b8c;font-weight:bold}
+  .modal-mask{position:fixed;inset:0;background:rgba(20,28,43,.45);display:none;align-items:center;justify-content:center;z-index:100}
+  .modal-mask.show{display:flex}
+  .modal{background:#fff;border-radius:var(--r-lg);width:760px;max-width:94vw;max-height:88vh;overflow:auto;box-shadow:var(--shadow-md)}
+  .modal-head{display:flex;align-items:center;justify-content:space-between;padding:16px 20px;border-bottom:1px solid var(--border);font-weight:700;font-size:16px}
+  .modal-head .x{cursor:pointer;font-size:24px;color:var(--text-3);line-height:1}
+  .modal-body{padding:20px}
+</style></head><body>
 <div class="pc-page">
-<div class="pc-header"><div><h1>应急预案管理</h1><div class="desc">应急预案编制、版本、备案</div></div><div class="actions"><button class="btn btn-primary"><span class="ico" data-icon="plus"></span> 新增预案</button></div></div><div class="card" style="padding:0;overflow:hidden"><table class="table"><thead><tr><th>计划名称</th><th>计划编号</th><th>版本号</th><th>发布日期</th><th>实施日期</th><th>状态</th><th>操作</th></tr></thead><tbody><tr><td>道路运输事故应急预案</td><td>YJ-2026-001</td><td>V2.0</td><td>2026-06-01</td><td>2026-06-01</td><td><span class="tag tag-green">生效</span></td><td><a class="btn btn-primary btn-sm">查看</a> <a class="btn btn-outline btn-sm">编辑</a></td></tr><tr><td>危险品泄漏应急预案</td><td>YJ-2026-002</td><td>V1.0</td><td>2026-06-01</td><td>2026-06-01</td><td><span class="tag tag-green">生效</span></td><td><a class="btn btn-primary btn-sm">查看</a> <a class="btn btn-outline btn-sm">编辑</a></td></tr><tr><td>消防应急预案</td><td>YJ-2025-003</td><td>V1.0</td><td>2025-12-01</td><td>2026-01-01</td><td><span class="tag tag-green">生效</span></td><td><a class="btn btn-primary btn-sm">查看</a> </td></tr></tbody></table>
-<div class="table-foot"><span>共 3 条记录</span>
-<div class="pagination"><button>&lt;</button><button class="active">1</button><button>2</button><button>3</button><button>…</button><button>&gt;</button></div></div></div>
+  <div class="pc-header"><div><h1>应急预案管理</h1><div class="desc">多套场景范本组合调用 · 一键生成完整预案 · 版本管理</div></div><div class="actions"><button class="btn btn-primary" onclick="openGen()"><span class="ico" data-icon="plus"></span> 生成预案</button></div></div>
+
+  <div class="card" style="margin-bottom:16px">
+    <div class="card-title">应急预案列表 <span style="font-size:13px;color:var(--text-3);font-weight:400">预案 = 综合预案 + 勾选专项预案 + 现场处置方案 组合渲染</span></div>
+    <div style="padding:0 20px 16px"><table class="table"><thead><tr><th>预案名称</th><th>版本</th><th>涵盖场景</th><th>发布日期</th><th>状态</th><th>操作</th></tr></thead>
+    <tbody>
+    <tr><td>道路运输综合应急预案</td><td>V2.0</td><td>综合 + 道路交通事故 + 车辆火灾 + 恶劣天气 + 货物散落 + 人员伤亡（6项）</td><td>2026-06-01</td><td><span class="tag tag-green">生效</span></td><td><a class="btn btn-primary btn-sm" onclick="previewPlan(0)">查看</a> <a class="btn btn-outline btn-sm">编辑</a></td></tr>
+    <tr><td>道路运输综合应急预案（危货）</td><td>V1.0</td><td>综合 + 危化品泄漏 + 车辆火灾 + 恶劣天气 + 人员伤亡（5项）</td><td>2026-06-01</td><td><span class="tag tag-green">生效</span></td><td><a class="btn btn-primary btn-sm" onclick="previewPlan(1)">查看</a> <a class="btn btn-outline btn-sm">编辑</a></td></tr>
+    <tr><td>消防专项应急预案</td><td>V1.0</td><td>车辆火灾（1项）</td><td>2025-12-01</td><td><span class="tag tag-green">生效</span></td><td><a class="btn btn-primary btn-sm" onclick="previewPlan(2)">查看</a></td></tr></tbody></table></div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">预案正文预览 <span id="planName" style="font-size:13px;color:var(--brand-500);font-weight:600"></span></div>
+    <div class="doc-preview" id="docPreview"></div>
+  </div>
 </div>
-<script src="../assets/icons.js"></script></body></html>
+
+<div class="modal-mask" id="genModal">
+  <div class="modal">
+    <div class="modal-head">生成应急预案 · 勾选场景范本 <span class="x" onclick="closeModal('genModal')">×</span></div>
+    <div class="modal-body">
+      <div style="font-size:13px;color:var(--text-3);margin-bottom:14px">系统内置 7 套场景范本，企业按营运类型 + 实际承运场景勾选组合。普货默认 5 项，危货自动追加「危化品泄漏」。</div>
+      <div class="scene-grid" id="sceneGrid"></div>
+      <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:18px">
+        <button class="btn btn-outline" onclick="closeModal('genModal')">取消</button>
+        <button class="btn btn-primary" onclick="doGen()">生成预案正文</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="../assets/icons.js"></script>
+<script>
+// 7 套场景范本（对齐 15-应急管理 3.1）
+const SCENES = [
+  {code:'comprehensive', name:'综合应急预案',    desc:'总纲（总则/组织/响应/保障）', scope:'all'},
+  {code:'road_accident', name:'道路交通事故专项', desc:'碰撞、追尾、刮擦处置', scope:'all'},
+  {code:'vehicle_fire',  name:'车辆火灾事故专项', desc:'起火处置', scope:'all'},
+  {code:'bad_weather',   name:'恶劣天气专项',     desc:'台风/暴雨/大雾/结冰', scope:'all'},
+  {code:'cargo_spill',   name:'货物散落、受损专项', desc:'货物散落/受损处置', scope:'general'},
+  {code:'hazmat_leak',   name:'危化品泄漏专项',   desc:'危化品泄漏处置', scope:'danger'},
+  {code:'casualty',      name:'人员伤亡专项',     desc:'人员伤亡现场处置', scope:'all'}
+];
+let sel = new Set(['comprehensive','road_accident','vehicle_fire','bad_weather','cargo_spill','casualty']); // 普货默认5项+综合
+
+function renderScenes(){
+  document.getElementById('sceneGrid').innerHTML = SCENES.map(s=>{
+    const on = sel.has(s.code);
+    const tag = s.scope==='all' ? '<span class="sc-tag t-all">通用</span>' : (s.scope==='general'?'<span class="sc-tag t-all">普货</span>':'<span class="sc-tag t-danger">危货</span>');
+    return `<div class="scene ${on?'on':''}" onclick="toggle('${s.code}')">
+      <span class="cb">${on?'✓':''}</span>
+      <div><span class="sc-name">${s.name}</span><span class="sc-code">${s.code}</span><div class="sc-desc">${s.desc}</div></div>${tag}</div>`;
+  }).join('');
+}
+function toggle(code){
+  if(code==='comprehensive') return; // 综合预案必选
+  sel.has(code) ? sel.delete(code) : sel.add(code);
+  renderScenes();
+}
+function openGen(){ renderScenes(); document.getElementById('genModal').classList.add('show'); }
+function doGen(){
+  const names = SCENES.filter(s=>sel.has(s.code)).map(s=>s.name);
+  document.getElementById('planName').textContent = `（新生成 · 含 ${names.length} 项场景）`;
+  const el = document.getElementById('docPreview');
+  el.innerHTML = `<div class="title">道路运输综合应急预案</div>
+    <p>本预案依据《中华人民共和国安全生产法》《生产安全事故应急预案管理办法》等编制，适用于公司道路运输生产经营活动中各类突发事件的应急处置。</p>
+    <p class="ni"><b>已勾选场景（${names.length} 项）：</b></p>
+    <p class="ni">${names.map(n=>`<span class="fill">● ${n}</span>`).join('&nbsp;&nbsp;')}</p>
+    <p class="ni"><b>预案结构：</b>第一篇 总则 → 第二篇 应急组织机构及职责 → 第三篇 应急响应 → 第四篇 后期处置与应急保障。</p>
+    <p>（完整正文由范本引擎填充企业信息、应急队伍、值守电话等变量后组合渲染，此处为结构预览）</p>`;
+  alert('已按勾选场景生成预案正文（模拟）');
+  closeModal('genModal');
+}
+function previewPlan(idx){
+  const data = [
+    {n:'道路运输综合应急预案', scenes:'道路交通事故 · 车辆火灾 · 恶劣天气 · 货物散落 · 人员伤亡'},
+    {n:'道路运输综合应急预案（危货）', scenes:'危化品泄漏 · 车辆火灾 · 恶劣天气 · 人员伤亡'},
+    {n:'消防专项应急预案', scenes:'车辆火灾'}
+  ][idx];
+  document.getElementById('planName').textContent = data.n;
+  document.getElementById('docPreview').innerHTML =
+    `<div class="title">${data.n}</div>
+    <p class="ni"><b>涵盖场景：</b><span class="fill">${data.scenes}</span></p>
+    <p>本预案明确了应急组织机构及职责、应急响应程序、应急处置措施、后期处置与应急保障等内容，适用于相应突发事件的预防与处置。</p>
+    <p class="ni"><b>应急组织机构：</b>应急指挥部（主要负责人任总指挥）→ 应急办公室 → 现场处置工作组 → 值守人员。</p>
+    <p class="ni" style="margin-top:20px">编制单位：佛山市悦通物流有限公司&nbsp;&nbsp;&nbsp;&nbsp;签发人：<span class="fill">张伟</span>（盖章）</p>`;
+}
+function closeModal(id){ document.getElementById(id).classList.remove('show'); }
+
+previewPlan(0);
+</script></body></html>

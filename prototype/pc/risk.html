@@ -1,10 +1,105 @@
 <!DOCTYPE html>
-<html lang="zh-CN"><head><meta charset="UTF-8"><title>风险辨识管控</title>
+<html lang="zh-CN"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>风险辨识管控</title>
 <link rel="stylesheet" href="../assets/common.css"><link rel="stylesheet" href="../assets/pc.css">
-<style></style></head><body>
+<style>
+  .seg{display:flex;gap:4px;background:#F1F5F9;padding:4px;border-radius:10px;margin-bottom:16px}
+  .seg .s{flex:1;padding:9px;text-align:center;border-radius:8px;font-size:14px;cursor:pointer;color:var(--text-2);font-weight:600;transition:.12s}
+  .seg .s.on{background:#fff;color:var(--brand-600);box-shadow:var(--shadow-sm)}
+  .seg .s .n{display:block;font-size:12px;color:var(--text-3);font-weight:400;margin-top:1px}
+  .seg .s.on .n{color:var(--brand-400)}
+  .tbl-wrap{overflow:auto}
+  .tbl-wrap table{width:100%;border-collapse:collapse;font-size:13px}
+  .tbl-wrap th,.tbl-wrap td{border:1px solid var(--border);padding:8px 10px;text-align:left;vertical-align:top}
+  .tbl-wrap th{background:#F1F5F9;font-weight:600;white-space:nowrap}
+  .tbl-wrap td.eng{color:var(--brand-600)}
+  .tbl-wrap td.mng{color:var(--ok)}
+  .chip{display:inline-block;padding:2px 9px;border-radius:12px;font-size:12px;font-weight:600}
+  .chip.red{background:var(--danger-bg);color:var(--danger)}
+  .chip.orange{background:var(--warn-bg);color:#B45309}
+  .chip.yellow{background:#fff6d6;color:#8a6d00}
+  .chip.blue{background:var(--brand-100);color:var(--brand-600)}
+  .modal-mask{position:fixed;inset:0;background:rgba(20,28,43,.45);display:none;align-items:center;justify-content:center;z-index:100}
+  .modal-mask.show{display:flex}
+  .modal{background:#fff;border-radius:var(--r-lg);width:560px;max-width:94vw;max-height:88vh;overflow:auto;box-shadow:var(--shadow-md)}
+  .modal-head{display:flex;align-items:center;justify-content:space-between;padding:16px 20px;border-bottom:1px solid var(--border);font-weight:700;font-size:16px}
+  .modal-head .x{cursor:pointer;font-size:24px;color:var(--text-3);line-height:1}
+  .modal-body{padding:20px}
+</style></head><body>
 <div class="pc-page">
-<div class="pc-header"><div><h1>风险辨识管控</h1><div class="desc">风险辨识、评估、分级、管控</div></div><div class="actions"><button class="btn btn-primary"><span class="ico" data-icon="plus"></span> 新增辨识</button></div></div><div class="filter-bar"><div class="f-item"><label>年份</label><select><option>2026</option><option>2025</option></select></div><div class="f-item"><label>名称</label><input type="text" placeholder="请输入"></div><div class="f-actions"><button class="btn btn-primary btn-sm"><span class="ico" data-icon="search"></span> 查询</button><button class="btn btn-outline btn-sm">重置</button></div></div><div class="card" style="padding:0;overflow:hidden"><table class="table"><thead><tr><th>序号</th><th>名称</th><th>年份</th><th>状态</th><th>识别人</th><th>更新时间</th><th>操作</th></tr></thead><tbody><tr><td>1</td><td>危险品运输风险辨识</td><td>2026</td><td><span class="tag tag-green">已发布</span></td><td>李强</td><td>2026-06-30</td><td><a class="btn btn-primary btn-sm">查看</a> <a class="btn btn-outline btn-sm">编辑</a></td></tr><tr><td>2</td><td>货运车辆道路风险辨识</td><td>2026</td><td><span class="tag tag-green">已发布</span></td><td>王芳</td><td>2026-06-30</td><td><a class="btn btn-primary btn-sm">查看</a> <a class="btn btn-outline btn-sm">编辑</a></td></tr><tr><td>3</td><td>客运线路风险辨识</td><td>2025</td><td><span class="tag tag-gray">已归档</span></td><td>李强</td><td>2025-12-31</td><td><a class="btn btn-primary btn-sm">查看</a> </td></tr></tbody></table>
-<div class="table-foot"><span>共 3 条记录</span>
-<div class="pagination"><button>&lt;</button><button class="active">1</button><button>2</button><button>3</button><button>…</button><button>&gt;</button></div></div></div>
+  <div class="pc-header"><div><h1>风险辨识管控</h1><div class="desc">风险辨识、评估、分级、管控 · 两级清单（全面清单 → 分级管控）</div></div>
+    <div class="actions"><button class="btn btn-primary" onclick="openNew()"><span class="ico" data-icon="plus"></span> 新增辨识</button></div>
+  </div>
+
+  <div class="card" style="margin-bottom:16px">
+    <div class="card-title">风险辨识清单预览 <span style="font-size:13px;color:var(--text-3);font-weight:400">两级结构：第一级全面辨识（6列）→ 第二级分级管控（+风险源/后果/控制措施）</span></div>
+    <div class="seg" id="seg">
+      <div class="s on" onclick="switchSeg(0)">① 全面风险辨识清单<span class="n">6列 · 无管控措施</span></div>
+      <div class="s" onclick="switchSeg(1)">② 分级管控清单<span class="n">9列 · 工程+管理措施</span></div>
+    </div>
+    <div class="tbl-wrap" id="tblWrap"></div>
+  </div>
+
+  <div class="card" style="padding:0;overflow:hidden">
+    <div class="card-title" style="padding:16px 20px 0">风险辨识记录</div>
+    <div style="padding:0 20px 16px"><table class="table"><thead><tr><th>序号</th><th>名称</th><th>年份</th><th>状态</th><th>识别人</th><th>更新时间</th><th>操作</th></tr></thead>
+    <tbody><tr><td>1</td><td>道路运输风险辨识（普货）</td><td>2026</td><td><span class="tag tag-green">已发布</span></td><td>李强</td><td>2026-06-30</td><td><a class="btn btn-primary btn-sm" onclick="switchSeg(0)">查看清单</a></td></tr>
+    <tr><td>2</td><td>道路运输风险分级管控（普货）</td><td>2026</td><td><span class="tag tag-green">已发布</span></td><td>王芳</td><td>2026-06-30</td><td><a class="btn btn-primary btn-sm" onclick="switchSeg(1)">查看清单</a></td></tr></tbody></table></div>
+  </div>
 </div>
-<script src="../assets/icons.js"></script></body></html>
+
+<div class="modal-mask" id="newModal">
+  <div class="modal">
+    <div class="modal-head">新增风险辨识 <span class="x" onclick="closeModal('newModal')">×</span></div>
+    <div class="modal-body">
+      <div class="form-item"><label class="form-label">辨识名称 <span class="req">*</span></label><input class="form-input" placeholder="如：2026年道路运输风险辨识"></div>
+      <div class="form-item"><label class="form-label">风险点来源</label>
+        <select class="form-select"><option>系统预置通用风险点库（勾选）</option><option>自定义风险点</option></select></div>
+      <div class="form-item"><label class="form-label">生成内容</label>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <span class="tag tag-blue">风险辨识手册</span><span class="tag tag-blue">全面辨识清单</span><span class="tag tag-blue">分级管控清单</span><span class="tag tag-blue">岗位告知卡</span><span class="tag tag-gray">无重大风险说明</span>
+        </div></div>
+      <div style="display:flex;gap:10px;justify-content:flex-end">
+        <button class="btn btn-outline" onclick="closeModal('newModal')">取消</button>
+        <button class="btn btn-primary" onclick="saveRisk()">一键生成资料</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="../assets/icons.js"></script>
+<script>
+let curSeg = 0;
+
+function lv(v){ return {'红':'red','橙':'orange','黄':'yellow','蓝':'blue'}[v]||'blue'; }
+
+function renderSeg(){
+  const w = document.getElementById('tblWrap');
+  if(curSeg===0){
+    w.innerHTML = `<table>
+      <thead><tr><th>辨识项目</th><th>风险路段/场所/部位</th><th>作业活动</th><th>风险描述</th><th>事故类型</th><th>备注</th></tr></thead>
+      <tbody>
+        <tr><td>环境不良条件</td><td>大雨或暴雨天气运输作业</td><td>恶劣天气</td><td>大雨或暴雨天气，存在光线昏暗、能见度低</td><td>车辆伤害,其他伤害</td><td>人员伤亡、车辆损坏、财产损失</td></tr>
+        <tr><td>环境不良条件</td><td>运输作业经过路窄弯急路段</td><td>道路条件</td><td>狭窄路段和急弯路段，对车辆控制不当，致使驶出路外</td><td>车辆伤害,其他伤害</td><td>人员伤亡、车辆损坏、财产损失</td></tr>
+        <tr><td>人员行为</td><td>长途运输作业</td><td>疲劳驾驶</td><td>驾驶员连续驾驶超时，疲劳驾驶引发操作失误</td><td>车辆伤害</td><td>人员伤亡、财产损失</td></tr>
+      </tbody></table>`;
+  } else {
+    w.innerHTML = `<table>
+      <thead><tr><th>辨识项目</th><th>场所/部位</th><th>风险源</th><th>风险描述</th><th>事故类型</th><th>事故后果</th><th>风险等级</th><th>控制措施·工程技术</th><th>控制措施·管理措施</th></tr></thead>
+      <tbody>
+        <tr><td>环境不良条件</td><td>大雨或暴雨天气运输作业</td><td>恶劣天气</td><td>大雨或暴雨天气，路面湿滑、泥泞</td><td>车辆伤害</td><td>人员伤亡、车辆损坏、财产损失</td><td><span class="chip orange">橙</span></td><td class="eng">使用动态监控系统</td><td class="mng">1、雨天提高警惕，靠右行驶严禁盲目超车；2、严格控制车速；3、对恶劣天气发生地车辆停止运营；4、及时了解恶劣天气信息</td></tr>
+        <tr><td>环境不良条件</td><td>运输作业经过路窄弯急路段</td><td>道路条件</td><td>狭窄路段和急弯路段，对车辆控制不当驶出路外</td><td>车辆伤害</td><td>人员伤亡、车辆损坏、财产损失</td><td><span class="chip yellow">黄</span></td><td class="eng">/</td><td class="mng">1、通过急弯控制车速保持车距；2、夜间交替使用远近光灯；3、对路段进行风险分析制定操作规程；4、加强驾驶员安全培训考核</td></tr>
+        <tr><td>人员行为</td><td>长途运输作业</td><td>疲劳驾驶</td><td>驾驶员连续驾驶超时，疲劳驾驶引发操作失误</td><td>车辆伤害</td><td>人员伤亡、财产损失</td><td><span class="chip orange">橙</span></td><td class="eng">安装智能视频监控报警装置</td><td class="mng">1、严格执行连续驾驶4小时休息20分钟；2、动态监控提醒；3、违规疲劳驾驶严肃处理</td></tr>
+      </tbody></table>`;
+  }
+}
+function switchSeg(i){
+  curSeg = i;
+  document.querySelectorAll('#seg .s').forEach((el,idx)=>el.classList.toggle('on', idx===i));
+  renderSeg();
+}
+function openNew(){ document.getElementById('newModal').classList.add('show'); }
+function saveRisk(){ alert('已一键生成风险辨识资料（手册/两级清单/告知卡/说明，模拟）'); closeModal('newModal'); }
+function closeModal(id){ document.getElementById(id).classList.remove('show'); }
+
+renderSeg();
+</script></body></html>

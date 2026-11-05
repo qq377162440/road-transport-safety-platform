@@ -8,10 +8,10 @@
   position:absolute; top:8px; right:14px; z-index:5;
 }
 .role-switch button {
-  padding:6px 12px; border-radius:8px; font-size:13px; border:2px solid #ff7a00; background:#fff;
-  font-size:14px; font-weight:700; color:#ff7a00; cursor:pointer;
+  padding:6px 12px; border-radius:8px; font-size:13px; border:2px solid #1E40AF; background:#fff;
+  font-size:14px; font-weight:700; color:#1E40AF; cursor:pointer;
 }
-.role-switch button.active { background:#ff7a00; color:#fff; }
+.role-switch button.active { background:#1E40AF; color:#fff; }
 /* 步骤引导 */
 .guide-step {
   display:flex; align-items:center; gap:12px; padding:14px;
@@ -23,7 +23,7 @@
 }
 .guide-step .g-info { flex:1; }
 .guide-step .g-title { font-size:17px; font-weight:700; }
-.guide-step .g-desc { font-size:13px; color:#6b7a8d; margin-top:2px; }
+.guide-step .g-desc { font-size:13px; color:#64748B; margin-top:2px; }
 .guide-step .g-btn { min-height:44px; padding:0 16px; border-radius:10px; border:none; font-size:16px; font-weight:700; cursor:pointer; }
 </style></head>
 <body>
@@ -42,33 +42,33 @@
     <!-- ========== 从业人员视角 ========== -->
     <div id="worker-view">
       <div style="display:flex;align-items:center;gap:14px;margin-bottom:16px">
-        <div style="width:54px;height:54px;border-radius:50%;background:#ff7a00;color:#fff;display:flex;align-items:center;justify-content:center;font-size:26px;font-weight:700">张</div>
+        <div style="width:54px;height:54px;border-radius:50%;background:#1E40AF;color:#fff;display:flex;align-items:center;justify-content:center;font-size:26px;font-weight:700">张</div>
         <div><div style="font-size:22px;font-weight:800">张师傅，早上好</div><div class="mini-text-xs">驾驶员 · 您有 3 件事要办</div></div>
       </div>
 
       <!-- 步骤引导（动态缺项）-->
-      <div class="mini-card" style="border:2px solid #ff7a00">
-        <div class="mini-card-title" style="color:#e56e00"><span class="ico" data-icon="clipboard"></span> 今天按顺序做这 3 步</div>
+      <div class="mini-card" style="border:2px solid #1E40AF">
+        <div class="mini-card-title" style="color:#1D4ED8"><span class="ico" data-icon="clipboard"></span> 今天按顺序做这 3 步</div>
         <div class="guide-step" style="border:2px solid #ffd9b8;background:#fff8f2">
-          <div class="step-num" style="background:#ff7a00">1</div>
+          <div class="step-num" style="background:#1E40AF">1</div>
           <div class="g-info"><div class="g-title">出车前检查</div><div class="g-desc">出发前把车检查一遍</div></div>
           <button class="g-btn mini-btn-primary">去检查</button>
         </div>
         <div class="guide-step" style="border:2px solid #cde8d8;background:#f2fbf5">
-          <div class="step-num" style="background:#1a9e50">2</div>
+          <div class="step-num" style="background:#15803D">2</div>
           <div class="g-info"><div class="g-title">下午2点 安全会议</div><div class="g-desc">到了点签到</div></div>
           <button class="g-btn mini-btn-green">签到</button>
         </div>
         <div class="guide-step" style="border:2px solid #dbeafe;background:#f2f7ff">
-          <div class="step-num" style="background:#1a5cb0">3</div>
+          <div class="step-num" style="background:#1E40AF">3</div>
           <div class="g-info"><div class="g-title">学习安全视频</div><div class="g-desc">还有 1 节课没看完</div></div>
-          <button class="g-btn" style="background:#1a5cb0;color:#fff">去学习</button>
+          <button class="g-btn" style="background:#1E40AF;color:#fff">去学习</button>
         </div>
       </div>
 
       <!-- 通知 -->
-      <div style="background:#fff3e2;border-radius:12px;padding:14px 16px;display:flex;align-items:center;gap:10px;margin-bottom:14px">
-        <span style="font-size:22px"><span class="ico" data-icon="megaphone"></span></span><span class="mini-text" style="font-weight:700;color:#e56e00">有新通知 2 条</span>
+      <div style="background:#DBEAFE;border-radius:12px;padding:14px 16px;display:flex;align-items:center;gap:10px;margin-bottom:14px">
+        <span style="font-size:22px"><span class="ico" data-icon="megaphone"></span></span><span class="mini-text" style="font-weight:700;color:#1D4ED8">有新通知 2 条</span>
         <span class="mini-text-sm" style="flex:1;text-align:right">点我看 ›</span>
       </div>
 
@@ -90,27 +90,27 @@
     <!-- ========== 管理人员视角 ========== -->
     <div id="manager-view" style="display:none">
       <div style="display:flex;align-items:center;gap:14px;margin-bottom:16px">
-        <div style="width:54px;height:54px;border-radius:50%;background:#1a5cb0;color:#fff;display:flex;align-items:center;justify-content:center;font-size:26px;font-weight:700">李</div>
+        <div style="width:54px;height:54px;border-radius:50%;background:#1E40AF;color:#fff;display:flex;align-items:center;justify-content:center;font-size:26px;font-weight:700">李</div>
         <div><div style="font-size:22px;font-weight:800">李经理，您好</div><div class="mini-text-xs">安全员 · 企业安全分 86.5</div></div>
       </div>
 
       <!-- 步骤引导（管理侧重：督办/下发）-->
-      <div class="mini-card" style="border:2px solid #1a5cb0">
-        <div class="mini-card-title" style="color:#1a5cb0"><span class="ico" data-icon="clipboard"></span> 今天按顺序处理这 3 步</div>
-        <div class="guide-step" style="border:2px solid #fdecec;background:#fff8f8">
-          <div class="step-num" style="background:#d92b2b">1</div>
+      <div class="mini-card" style="border:2px solid #1E40AF">
+        <div class="mini-card-title" style="color:#1E40AF"><span class="ico" data-icon="clipboard"></span> 今天按顺序处理这 3 步</div>
+        <div class="guide-step" style="border:2px solid #FEF2F2;background:#FEF2F2">
+          <div class="step-num" style="background:#DC2626">1</div>
           <div class="g-info"><div class="g-title">督办 3 项逾期隐患</div><div class="g-desc">超期未整改，需下发整改任务</div></div>
-          <button class="g-btn" style="background:#d92b2b;color:#fff">去督办</button>
+          <button class="g-btn" style="background:#DC2626;color:#fff">去督办</button>
         </div>
-        <div class="guide-step" style="border:2px solid #fef3e2;background:#fffaf3">
-          <div class="step-num" style="background:#e88600">2</div>
+        <div class="guide-step" style="border:2px solid #FFFBEB;background:#FFFBEB">
+          <div class="step-num" style="background:#B45309">2</div>
           <div class="g-info"><div class="g-title">5 个证件即将到期</div><div class="g-desc">提醒相关人员更新</div></div>
-          <button class="g-btn" style="background:#e88600;color:#fff">去提醒</button>
+          <button class="g-btn" style="background:#B45309;color:#fff">去提醒</button>
         </div>
         <div class="guide-step" style="border:2px solid #dbeafe;background:#f2f7ff">
-          <div class="step-num" style="background:#1a5cb0">3</div>
+          <div class="step-num" style="background:#1E40AF">3</div>
           <div class="g-info"><div class="g-title">今日三检 6 车未完成</div><div class="g-desc">下发督促提醒</div></div>
-          <button class="g-btn" style="background:#1a5cb0;color:#fff">去督促</button>
+          <button class="g-btn" style="background:#1E40AF;color:#fff">去督促</button>
         </div>
       </div>
 
@@ -118,10 +118,10 @@
       <div class="mini-card">
         <div class="mini-card-title">今日数据</div>
         <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:12px">
-          <div style="background:#f7f9fc;border-radius:12px;padding:14px;text-align:center"><div style="font-size:24px;font-weight:800">18/24</div><div style="font-size:13px;color:#5a6a7e;margin-top:4px">三检完成</div></div>
-          <div style="background:#f7f9fc;border-radius:12px;padding:14px;text-align:center"><div style="font-size:24px;font-weight:800;color:#d92b2b">3</div><div style="font-size:13px;color:#5a6a7e;margin-top:4px">逾期隐患</div></div>
-          <div style="background:#f7f9fc;border-radius:12px;padding:14px;text-align:center"><div style="font-size:24px;font-weight:800">2</div><div style="font-size:13px;color:#5a6a7e;margin-top:4px">待培训</div></div>
-          <div style="background:#f7f9fc;border-radius:12px;padding:14px;text-align:center"><div style="font-size:24px;font-weight:800;color:#e88600">5</div><div style="font-size:13px;color:#5a6a7e;margin-top:4px">证件到期</div></div>
+          <div style="background:#F1F5F9;border-radius:12px;padding:14px;text-align:center"><div style="font-size:24px;font-weight:800">18/24</div><div style="font-size:13px;color:#475569;margin-top:4px">三检完成</div></div>
+          <div style="background:#F1F5F9;border-radius:12px;padding:14px;text-align:center"><div style="font-size:24px;font-weight:800;color:#DC2626">3</div><div style="font-size:13px;color:#475569;margin-top:4px">逾期隐患</div></div>
+          <div style="background:#F1F5F9;border-radius:12px;padding:14px;text-align:center"><div style="font-size:24px;font-weight:800">2</div><div style="font-size:13px;color:#475569;margin-top:4px">待培训</div></div>
+          <div style="background:#F1F5F9;border-radius:12px;padding:14px;text-align:center"><div style="font-size:24px;font-weight:800;color:#B45309">5</div><div style="font-size:13px;color:#475569;margin-top:4px">证件到期</div></div>
         </div>
       </div>
 

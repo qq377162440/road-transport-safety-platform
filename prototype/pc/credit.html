@@ -1,10 +1,88 @@
 <!DOCTYPE html>
-<html lang="zh-CN"><head><meta charset="UTF-8"><title>诚信考核</title>
+<html lang="zh-CN"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>诚信考核</title>
 <link rel="stylesheet" href="../assets/common.css"><link rel="stylesheet" href="../assets/pc.css">
-<style></style></head><body>
+<style>
+  .doc-preview{border:1px solid var(--border);background:#fff;padding:28px 32px;font-family:"SimSun","宋体",serif;color:#000;font-size:14px;line-height:1.9}
+  .doc-preview .title{text-align:center;font-size:18px;letter-spacing:1px;font-weight:bold;margin-bottom:14px}
+  .doc-preview table{width:100%;border-collapse:collapse;margin:8px 0;font-size:13px}
+  .doc-preview table th,.doc-preview table td{border:1px solid #000;padding:5px 8px;text-align:center}
+  .doc-preview table th{background:#f2f2f2}
+  .fill{color:#1a4b8c;font-weight:bold}
+  .modal-mask{position:fixed;inset:0;background:rgba(20,28,43,.45);display:none;align-items:center;justify-content:center;z-index:100}
+  .modal-mask.show{display:flex}
+  .modal{background:#fff;border-radius:var(--r-lg);width:700px;max-width:94vw;max-height:88vh;overflow:auto;box-shadow:var(--shadow-md)}
+  .modal-head{display:flex;align-items:center;justify-content:space-between;padding:16px 20px;border-bottom:1px solid var(--border);font-weight:700;font-size:16px}
+  .modal-head .x{cursor:pointer;font-size:24px;color:var(--text-3);line-height:1}
+  .modal-body{padding:20px}
+</style></head><body>
 <div class="pc-page">
-<div class="pc-header"><div><h1>诚信考核</h1><div class="desc">从业人员诚信考核记录</div></div><div class="actions"><button class="btn btn-primary"><span class="ico" data-icon="plus"></span> 新增考核</button></div></div><div class="filter-bar"><div class="f-item"><label>姓名</label><input type="text" placeholder="请输入姓名"></div><div class="f-item"><label>电话</label><input type="text" placeholder="请输入手机号"></div><div class="f-item"><label>岗位</label><select><option>全部</option><option>驾驶员</option><option>押运员</option></select></div><div class="f-actions"><button class="btn btn-primary btn-sm"><span class="ico" data-icon="search"></span> 查询</button><button class="btn btn-outline btn-sm">重置</button></div></div><div class="card" style="padding:0;overflow:hidden"><table class="table"><thead><tr><th>姓名</th><th>手机号</th><th>岗位</th><th>修改时间</th><th>操作</th></tr></thead><tbody><tr><td>陈刚</td><td>138****0004</td><td>驾驶员</td><td>2026-10-20</td><td><a class="btn btn-primary btn-sm">考核</a> <a class="btn btn-outline btn-sm">记录</a></td></tr><tr><td>刘洋</td><td>138****0005</td><td>驾驶员</td><td>2026-10-20</td><td><a class="btn btn-primary btn-sm">考核</a> <a class="btn btn-outline btn-sm">记录</a></td></tr><tr><td>赵敏</td><td>138****0006</td><td>押运员</td><td>2026-10-18</td><td><a class="btn btn-primary btn-sm">考核</a> <a class="btn btn-outline btn-sm">记录</a></td></tr></tbody></table>
-<div class="table-foot"><span>共 3 条记录</span>
-<div class="pagination"><button>&lt;</button><button class="active">1</button><button>2</button><button>3</button><button>…</button><button>&gt;</button></div></div></div>
+  <div class="pc-header"><div><h1>诚信考核</h1><div class="desc">从业人员诚信考核（计分）· 与档案柜「从业人员考核记录」字段对应</div></div>
+    <div class="actions">
+      <button class="btn btn-outline" onclick="window.parent.gotoPage('pc/archive_flow.html?box=11')"><span class="ico" data-icon="archive"></span> 存档到电子档案柜（盒十一）</button>
+      <button class="btn btn-primary" onclick="openNew()"><span class="ico" data-icon="plus"></span> 新增考核</button>
+    </div>
+  </div>
+
+  <div class="filter-bar">
+    <div class="f-item"><label>姓名</label><input type="text" placeholder="请输入姓名"></div>
+    <div class="f-item"><label>电话</label><input type="text" placeholder="请输入手机号"></div>
+    <div class="f-item"><label>岗位</label><select><option>全部</option><option>驾驶员</option><option>押运员</option></select></div>
+    <div class="f-actions"><button class="btn btn-primary btn-sm"><span class="ico" data-icon="search"></span> 查询</button><button class="btn btn-outline btn-sm">重置</button></div>
+  </div>
+
+  <div class="card" style="margin-bottom:16px">
+    <div class="card-title">考核记录范本预览 <span style="font-size:13px;color:var(--text-3);font-weight:400">考核事项/考核内容/考核标准/评分/应得/实得</span></div>
+    <div class="doc-preview" id="docPreview"></div>
+  </div>
+
+  <div class="card" style="padding:0;overflow:hidden">
+    <div class="card-title" style="padding:16px 20px 0">考核记录</div>
+    <div style="padding:0 20px 16px"><table class="table"><thead><tr><th>姓名</th><th>手机号</th><th>岗位</th><th>考核周期</th><th>考核结果</th><th>修改时间</th><th>操作</th></tr></thead>
+    <tbody>
+      <tr><td>陈刚</td><td>138****0004</td><td>驾驶员</td><td>2026-10-01 至 2026-10-31</td><td><span class="tag tag-green">合格</span></td><td>2026-10-20</td><td><a class="btn btn-primary btn-sm" onclick="preview('陈刚')">考核</a> <a class="btn btn-outline btn-sm" onclick="archiveBox11()">存档</a></td></tr>
+      <tr><td>刘洋</td><td>138****0005</td><td>驾驶员</td><td>2026-10-01 至 2026-10-31</td><td><span class="tag tag-green">合格</span></td><td>2026-10-20</td><td><a class="btn btn-primary btn-sm" onclick="preview('刘洋')">考核</a> <a class="btn btn-outline btn-sm" onclick="archiveBox11()">存档</a></td></tr>
+      <tr><td>赵敏</td><td>138****0006</td><td>押运员</td><td>2026-10-01 至 2026-10-31</td><td><span class="tag tag-yellow">待考核</span></td><td>2026-10-18</td><td><a class="btn btn-primary btn-sm" onclick="preview('赵敏')">考核</a> <a class="btn btn-outline btn-sm" onclick="archiveBox11()">存档</a></td></tr>
+    </tbody></table></div>
+  </div>
 </div>
-<script src="../assets/icons.js"></script></body></html>
+
+<div class="modal-mask" id="newModal">
+  <div class="modal">
+    <div class="modal-head">新增考核 <span class="x" onclick="closeModal('newModal')">×</span></div>
+    <div class="modal-body">
+      <div class="form-item"><label class="form-label">被考核人 <span class="req">*</span></label><input class="form-input" placeholder="姓名"></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+        <div class="form-item"><label class="form-label">岗位</label><select class="form-select"><option>驾驶员</option><option>押运员</option><option>安全管理员</option><option>监控员</option></select></div>
+        <div class="form-item"><label class="form-label">考核周期</label><input class="form-input" type="month"></div>
+      </div>
+      <div class="form-item"><label class="form-label">考核事项</label><input class="form-input" placeholder="如：安全教育培训 / 安全会议管理 / 应急管理"></div>
+      <div style="display:flex;gap:10px;justify-content:flex-end">
+        <button class="btn btn-outline" onclick="closeModal('newModal')">取消</button>
+        <button class="btn btn-primary" onclick="saveCredit()">保存并生成考核表</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="../assets/icons.js"></script>
+<script>
+function preview(name){
+  document.getElementById('docPreview').innerHTML = `
+    <div class="title">${name} 安全生产责任制考核记录</div>
+    <p style="text-indent:0">被考核人：<span class="fill">${name}</span></p>
+    <table>
+      <tr><th>考核事项</th><th>考核内容</th><th>考核标准</th><th>评分标准</th><th>应得分</th><th>实得分</th></tr>
+      <tr><td>安全教育培训</td><td>组织、参与本公司安全生产教育和培训，如实记录安全生产教育和培训情况；</td><td>未如实记录安全生产教育和培训情况</td><td>扣2分/项</td><td>4</td><td class="fill">4</td></tr>
+      <tr><td>安全会议管理</td><td>每月至少召开一次安全例会，听取安全生产工作汇报，及时协调研究解决安全生产问题；</td><td>未及时协调并研究解决安全生产工作问题</td><td>扣2分/项</td><td>4</td><td class="fill">4</td></tr>
+      <tr><td>应急管理</td><td>协助组织做好突发事件预防与处置，按规定开展应急救援演练；</td><td>未按规定组织开展并参加应急救援演练</td><td>扣2分/项</td><td>4</td><td class="fill">4</td></tr>
+      <tr><td>责任事故管理目标</td><td>发生一般以上生产安全责任事故0宗，百万车公里行车责任事故死亡率≤0人；</td><td>发生一般以上生产安全责任事故</td><td>扣10分/项</td><td>10</td><td class="fill">10</td></tr>
+    </table>
+    <p style="text-indent:0">考核结论：<span class="fill">合格</span>　考核人签字：____　被考核人签字：____</p>`;
+}
+function openNew(){ document.getElementById('newModal').classList.add('show'); }
+function saveCredit(){ alert('已保存考核并生成考核表（模拟）'); closeModal('newModal'); }
+function closeModal(id){ document.getElementById(id).classList.remove('show'); }
+function archiveBox11(){ window.parent.gotoPage('pc/archive_flow.html?box=11'); }
+
+preview('陈刚');
+</script></body></html>

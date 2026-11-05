@@ -6,7 +6,7 @@
 <title>道路运输安全生产平台 · 交互原型 Demo</title>
 <link rel="stylesheet" href="assets/common.css">
 <style>
-:root { --primary:#1a5cb0; --primary-dark:#123055; }
+:root { --primary:#1E40AF; --primary-dark:#1E3A8A; }
 * { box-sizing: border-box; margin: 0; padding: 0; }
 body { font-family: var(--font); background:#eef1f5; color:var(--text); height:100vh; overflow:hidden; }
 .topbar {
@@ -17,7 +17,11 @@ body { font-family: var(--font); background:#eef1f5; color:var(--text); height:1
 .topbar .logo .mark { width:30px; height:30px; border-radius:8px; background:var(--primary); display:flex; align-items:center; justify-content:center; }
 .topbar .logo .mark .ico { font-size:17px; color:#fff; }
 .topbar .sub { font-size:12.5px; opacity:.75; margin-left:14px; }
-.topbar .tag-demo { margin-left:auto; background:rgba(255,255,255,.14); padding:5px 14px; border-radius:20px; font-size:12.5px; }
+.topbar .tag-demo { background:rgba(255,255,255,.14); padding:5px 14px; border-radius:20px; font-size:12.5px; }
+.cargo-switch { margin-left:auto; display:flex; align-items:center; gap:4px; background:rgba(255,255,255,.12); padding:4px; border-radius:10px; margin-right:14px; }
+.cargo-switch .cs-label { font-size:12px; opacity:.8; padding:0 8px; }
+.cargo-switch .cs-btn { border:none; background:transparent; color:#fff; font-size:12.5px; font-weight:600; padding:5px 12px; border-radius:7px; cursor:pointer; transition:.12s; }
+.cargo-switch .cs-btn.on { background:#fff; color:var(--primary-dark); }
 
 .tabs { height:46px; background:#fff; border-bottom:1px solid var(--border); display:flex; align-items:center; padding:0 16px; gap:6px; }
 .tabs .tab {
@@ -40,6 +44,16 @@ body { font-family: var(--font); background:#eef1f5; color:var(--text); height:1
 
 .content { flex:1; padding:14px; overflow:hidden; display:flex; flex-direction:column; }
 .content iframe { flex:1; width:100%; border:none; background:#fff; border-radius:12px; box-shadow:0 2px 12px rgba(0,0,0,.08); }
+
+.impersonate-bar { display:flex; align-items:center; gap:14px; background:#F59E0B; color:#78350f;
+  padding:9px 20px; font-size:13.5px; }
+.impersonate-bar .imp-txt { flex:1; }
+.impersonate-bar .imp-btn { border:none; background:#78350f; color:#fff; padding:7px 16px; border-radius:6px;
+  font-size:13px; font-weight:600; cursor:pointer; }
+.impersonate-bar .imp-btn:hover { background:#92400e; }
+.logout-btn { border:none; background:rgba(255,255,255,.14); color:#fff; padding:7px 14px; border-radius:8px;
+  font-size:13px; cursor:pointer; }
+.logout-btn:hover { background:rgba(255,255,255,.24); }
 </style>
 </head>
 <body>
@@ -47,7 +61,26 @@ body { font-family: var(--font); background:#eef1f5; color:var(--text); height:1
 <div class="topbar">
   <div class="logo"><span class="mark"><span class="ico" data-icon="truck"></span></span>道路运输安全生产管理平台</div>
   <div class="sub">逆向重构 · 高保真交互原型</div>
+  <div class="cargo-switch" id="roleSwitch">
+    <span class="cs-label">角色</span>
+    <button class="cs-btn r-btn" data-role="enterprise" onclick="switchRole('enterprise')">企业</button>
+    <button class="cs-btn r-btn" data-role="provider" onclick="switchRole('provider')">服务商</button>
+    <button class="cs-btn r-btn" data-role="admin" onclick="switchRole('admin')">超管</button>
+  </div>
+  <div class="cargo-switch" id="cargoSwitch">
+    <span class="cs-label">客户类型</span>
+    <button class="cs-btn on" data-cargo="普货" onclick="switchCargo('普货')">普货</button>
+    <button class="cs-btn" data-cargo="危货" onclick="switchCargo('危货')">危货</button>
+    <button class="cs-btn" data-cargo="客运" onclick="switchCargo('客运')">客运</button>
+  </div>
   <div class="tag-demo">Demo v1.0</div>
+  <button class="logout-btn" onclick="logout()" title="退出登录">退出</button>
+</div>
+
+<!-- 服务商代登企业时的返回横幅 -->
+<div class="impersonate-bar" id="impersonateBar" style="display:none">
+  <span class="imp-txt">您正在以服务商身份代登企业账号「<b id="impEntName"></b>」</span>
+  <button class="imp-btn" onclick="returnToProvider()">返回服务商账号</button>
 </div>
 
 <div class="tabs" id="tabs">
@@ -63,50 +96,68 @@ body { font-family: var(--font); background:#eef1f5; color:var(--text); height:1
 </div>
 
 <script>
+const ROLE_NAMES = { enterprise:'企业账号', provider:'服务商账号', admin:'超级管理员' };
+
 const pcMenu = [
-  { group: '首页', items: [
+  { group: '首页', roles:['enterprise','provider','admin'], items: [
     { name: '企业安全管理驾驶舱', url: 'pc/dashboard.html' },
   ]},
-  { group: '基础档案管理', items: [
+  { group: '电子档案柜（核心）', roles:['enterprise','provider','admin'], items: [
+    { name: '电子档案柜', url: 'pc/archive_flow.html' },
+    { name: '服务商代录工作台', url: 'pc/quick_gen.html', roles:['provider','admin'] },
+  ]},
+  { group: '服务商运营', roles:['provider','admin'], items: [
+    { name: '架构模板配置', url: 'pc/org_template.html' },
+    { name: '新企业接入引导', url: 'pc/onboarding_guide.html' },
+    { name: '企业管理', url: 'pc/provider_enterprise.html' },
+    { name: '视频库及考题管理', url: 'pc/video_exam.html' },
+    { name: '范本套管理（服务商）', url: 'pc/template_manager.html' },
+    { name: '自定义文件签署', url: 'pc/custom_sign.html' },
+    { name: '范本起草与推送', url: 'pc/template_push.html' },
+    { name: '客户任务清单管理', url: 'pc/template_push.html' },
+  ]},
+  { group: '基础档案管理', roles:['enterprise','admin'], items: [
     { name: '企业信息管理', url: 'pc/company.html' },
     { name: '安全管理架构', url: 'pc/org.html' },
+    { name: '岗位信息管理', url: 'pc/post.html' },
     { name: '人员基础信息', url: 'pc/person.html' },
     { name: '车辆基础信息', url: 'pc/vehicle.html' },
     { name: '企业分组', url: 'pc/tags.html' },
-    { name: '企业用户管理', url: 'pc/users.html' },
+    { name: '企业用户管理', url: 'pc/users.html', roles:['admin'] },
     { name: '法律法规清单', url: 'pc/law.html' },
   ]},
-  { group: '制度档案管理', items: [
+  { group: '制度档案管理', roles:['enterprise','admin'], items: [
+    { name: '企业范本管理', url: 'pc/template_manager.html' },
     { name: '制度范本管理', url: 'pc/doc_sample.html' },
     { name: '制度发布管理', url: 'pc/doc_publish.html' },
     { name: '制度评审修订申请', url: 'pc/doc_review.html' },
   ]},
-  { group: '安全管理工具', items: [
+  { group: '安全管理工具', roles:['enterprise','admin'], items: [
     { name: '一日三检', url: 'pc/check.html' },
     { name: '隐患排查治理', url: 'pc/danger.html' },
     { name: '安全会议管理', url: 'pc/meeting.html' },
     { name: '安全投入管理', url: 'pc/budget.html' },
     { name: '风险辨识管控', url: 'pc/risk.html' },
     { name: '车辆维修保养', url: 'pc/repair.html' },
-    { name: '考核奖惩规则', url: 'pc/reward_rule.html' },
+    { name: '考核奖惩', url: 'pc/reward_rule.html' },
     { name: '诚信考核', url: 'pc/credit.html' },
   ]},
-  { group: '培训教育管理', items: [
-    { name: '岗中安全教育', url: 'pc/training.html' },
+  { group: '培训教育管理', roles:['enterprise','admin'], items: [
+    { name: '安全教育培训（岗前/岗中）', url: 'pc/training.html' },
+    { name: '线上学习（视频库+题库）', url: 'pc/video_exam.html' },
     { name: '学习情况统计', url: 'pc/train_stat.html' },
   ]},
-  { group: '应急管理', items: [
+  { group: '应急管理', roles:['enterprise','admin'], items: [
     { name: '应急预案管理', url: 'pc/emergency.html' },
     { name: '应急物资管理', url: 'pc/emergency_mat.html' },
   ]},
-  { group: '事故管理', items: [
+  { group: '事故管理', roles:['enterprise','admin'], items: [
     { name: '事故上报', url: 'pc/accident.html' },
     { name: '交通违法', url: 'pc/illegal.html' },
   ]},
-  { group: '其它', items: [
+  { group: '其它', roles:['enterprise','provider','admin'], items: [
     { name: '通知公告', url: 'pc/notice.html' },
-    { name: '企业档案柜', url: 'pc/archive.html' },
-    { name: '动态监控（模拟）', url: 'pc/monitor.html' },
+    { name: '动态监控台账', url: 'pc/monitor.html', roles:['enterprise','admin'] },
   ]},
 ];
 
@@ -121,16 +172,24 @@ const miniMenu = [
 ];
 
 let currentMode = 'pc';
+let currentRole = localStorage.getItem('userRole') || 'enterprise';
 
 function renderSidebar() {
   const menu = currentMode === 'pc' ? pcMenu : miniMenu;
   const sb = document.getElementById('sidebar');
   sb.innerHTML = '';
+  // 顶部角色提示
+  const roleBar = document.createElement('div');
+  roleBar.style.cssText = 'padding:10px 20px 2px;font-size:12.5px;font-weight:600;color:var(--primary);';
+  roleBar.textContent = '当前视角：' + ROLE_NAMES[currentRole];
+  sb.appendChild(roleBar);
   menu.forEach(g => {
+    if (g.roles && !g.roles.includes(currentRole)) return;
     const gh = document.createElement('div');
     gh.className = 'group'; gh.textContent = g.group;
     sb.appendChild(gh);
     g.items.forEach(it => {
+      if (it.roles && !it.roles.includes(currentRole)) return;
       const a = document.createElement('a');
       a.className = 'item'; a.textContent = it.name;
       a.dataset.url = it.url;
@@ -140,6 +199,48 @@ function renderSidebar() {
   });
   const first = sb.querySelector('.item');
   if (first) { setActive(first, first.dataset.url); }
+}
+
+function switchRole(role) {
+  currentRole = role;
+  localStorage.setItem('userRole', role);
+  document.querySelectorAll('#roleSwitch .r-btn').forEach(b => b.classList.toggle('on', b.dataset.role === role));
+  if (currentMode !== 'pc') switchMode('pc');
+  else renderSidebar();
+  toast(`已切换为「${ROLE_NAMES[role]}」视角，菜单已按角色过滤`);
+}
+
+// 服务商代登企业 → 返回服务商
+function returnToProvider() {
+  localStorage.removeItem('impersonating');
+  localStorage.removeItem('impersonatedEnt');
+  localStorage.removeItem('serviceProvider');
+  currentRole = 'provider';
+  localStorage.setItem('userRole', 'provider');
+  document.querySelectorAll('#roleSwitch .r-btn').forEach(b => b.classList.toggle('on', b.dataset.role === 'provider'));
+  updateImpersonateBar();
+  if (currentMode !== 'pc') switchMode('pc');
+  else renderSidebar();
+  toast('已返回服务商账号');
+}
+
+function logout() {
+  localStorage.removeItem('loggedIn');
+  localStorage.removeItem('impersonating');
+  localStorage.removeItem('impersonatedEnt');
+  localStorage.removeItem('serviceProvider');
+  location.href = 'login.html';
+}
+
+function updateImpersonateBar() {
+  const bar = document.getElementById('impersonateBar');
+  const imp = localStorage.getItem('impersonating') === '1';
+  if (imp) {
+    bar.style.display = 'flex';
+    document.getElementById('impEntName').textContent = localStorage.getItem('impersonatedEnt') || '企业';
+  } else {
+    bar.style.display = 'none';
+  }
 }
 
 function setActive(el, url) {
@@ -155,6 +256,38 @@ function switchMode(mode) {
   renderSidebar();
 }
 
+// 供子页面按钮跳转到指定模块（在 iframe 内调用 window.parent.gotoPage）
+function gotoPage(url) {
+  const frame = document.getElementById('frame');
+  if (frame) frame.src = url;
+}
+
+let currentCargo = localStorage.getItem('cargoType') || '普货';
+function switchCargo(cargo) {
+  if (cargo === '客运') { toast('客运已暂缓，以后再说'); return; }
+  currentCargo = cargo;
+  localStorage.setItem('cargoType', cargo);
+  document.querySelectorAll('#cargoSwitch .cs-btn').forEach(b => b.classList.toggle('on', b.dataset.cargo === cargo));
+  const frame = document.getElementById('frame');
+  if (frame && frame.src) frame.src = frame.src;
+  toast(`已切换为「${cargo}」视角，页面已联动`);
+}
+function toast(msg) {
+  let t = document.getElementById('toast');
+  if (!t) {
+    t = document.createElement('div'); t.id = 'toast';
+    t.style.cssText = 'position:fixed;top:20px;right:20px;background:#141c2b;color:#fff;padding:12px 20px;border-radius:10px;font-size:14px;z-index:9999;opacity:0;transform:translateY(-10px);transition:.25s;pointer-events:none;box-shadow:0 4px 16px rgba(0,0,0,.2)';
+    document.body.appendChild(t);
+  }
+  t.textContent = msg; t.style.opacity = '1'; t.style.transform = 'translateY(0)';
+  clearTimeout(t._t); t._t = setTimeout(() => { t.style.opacity = '0'; t.style.transform = 'translateY(-10px)'; }, 2200);
+}
+
+// 恢复角色与客户类型按钮状态
+document.querySelectorAll('#roleSwitch .r-btn').forEach(b => b.classList.toggle('on', b.dataset.role === currentRole));
+document.querySelectorAll('#cargoSwitch .cs-btn').forEach(b => b.classList.toggle('on', b.dataset.cargo === currentCargo));
+
+updateImpersonateBar();
 renderSidebar();
 </script>
 <script src="assets/icons.js"></script>

@@ -1,10 +1,106 @@
 <!DOCTYPE html>
-<html lang="zh-CN"><head><meta charset="UTF-8"><title>制度范本管理</title>
+<html lang="zh-CN"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>制度范本管理</title>
 <link rel="stylesheet" href="../assets/common.css"><link rel="stylesheet" href="../assets/pc.css">
-<style></style></head><body>
+<style>
+  .dict-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .dict-item{display:flex;align-items:center;gap:10px;padding:10px 14px;border:1px solid var(--border);border-radius:8px;font-size:14px;cursor:pointer;transition:.12s}
+  .dict-item:hover{border-color:var(--brand-400);background:var(--brand-50)}
+  .dict-item.on{border-color:var(--brand-500);background:var(--brand-50);box-shadow:0 0 0 1px var(--brand-500)}
+  .dict-item .zd{font-weight:700;color:var(--brand-500);font-size:13px;white-space:nowrap}
+  .dict-item .nm{flex:1}
+  .dict-item .badge{font-size:11px;color:var(--text-3)}
+  .doc-preview{border:1px solid var(--border);background:#fff;padding:28px 32px;font-family:"SimSun","宋体",serif;color:#000;font-size:14px;line-height:1.9;min-height:340px}
+  .doc-preview .file-head{text-align:center;margin-bottom:14px}
+  .doc-preview .file-no{text-align:center;font-size:13px;margin-top:2px}
+  .doc-preview .rule{border-top:1px solid #d33;margin:6px auto 12px;width:80%}
+  .doc-preview .title{text-align:center;font-size:20px;letter-spacing:3px;font-weight:bold;margin:8px 0 16px}
+  .doc-preview p{text-indent:2em;margin:6px 0}
+  .doc-preview .meta{display:flex;gap:24px;font-size:13px;margin:6px 0}
+  .fill{color:#1a4b8c;font-weight:bold}
+  .fill-empty{color:#aaa;border-bottom:1px dashed #bbb;padding:0 16px}
+  .sign-zone{margin-top:30px;text-align:right}
+  .modal-mask{position:fixed;inset:0;background:rgba(20,28,43,.45);display:none;align-items:center;justify-content:center;z-index:100}
+  .modal-mask.show{display:flex}
+  .modal{background:#fff;border-radius:var(--r-lg);width:720px;max-width:94vw;max-height:88vh;overflow:auto;box-shadow:var(--shadow-md)}
+  .modal-head{display:flex;align-items:center;justify-content:space-between;padding:16px 20px;border-bottom:1px solid var(--border);font-weight:700;font-size:16px}
+  .modal-head .x{cursor:pointer;font-size:24px;color:var(--text-3);line-height:1}
+  .modal-body{padding:20px}
+</style></head><body>
 <div class="pc-page">
-<div class="pc-header"><div><h1>制度范本管理</h1><div class="desc">安全管理制度/规程范本</div></div><div class="actions"><button class="btn btn-primary"><span class="ico" data-icon="plus"></span> 新增范本</button></div></div><div class="filter-bar"><div class="f-item"><label>关键字</label><input type="text" placeholder="请输入"></div><div class="f-item"><label>业务领域</label><select><option>全部</option><option>货运</option><option>客运</option><option>危运</option></select></div><div class="f-item"><label>范本类型</label><select><option>全部</option><option>安全生产责任制</option><option>管理制度</option><option>操作规程</option></select></div><div class="f-actions"><button class="btn btn-primary btn-sm"><span class="ico" data-icon="search"></span> 查询</button><button class="btn btn-outline btn-sm">重置</button></div></div><div class="card" style="padding:0;overflow:hidden"><table class="table"><thead><tr><th>范本名称</th><th>业务领域</th><th>签字盖章项</th><th>是否需要修订</th><th>更新时间</th><th>操作</th></tr></thead><tbody><tr><td>安全生产责任制（范本）</td><td>货运</td><td>法人签字+盖章</td><td>是</td><td>2026-09-01</td><td><a class="btn btn-primary btn-sm">查看</a> <a class="btn btn-outline btn-sm">编辑</a></td></tr><tr><td>驾驶员安全操作规程（范本）</td><td>货运</td><td>无</td><td>否</td><td>2026-08-15</td><td><a class="btn btn-primary btn-sm">查看</a> <a class="btn btn-outline btn-sm">编辑</a></td></tr><tr><td>危险品运输管理制度（范本）</td><td>危运</td><td>法人签字+盖章</td><td>是</td><td>2026-07-20</td><td><a class="btn btn-primary btn-sm">查看</a> <a class="btn btn-outline btn-sm">编辑</a></td></tr></tbody></table>
-<div class="table-foot"><span>共 3 条记录</span>
-<div class="pagination"><button>&lt;</button><button class="active">1</button><button>2</button><button>3</button><button>…</button><button>&gt;</button></div></div></div>
+  <div class="pc-header"><div><h1>制度范本管理</h1><div class="desc">通用制度层 22 项制度字典（ZD01~ZD22）+ 操作规程 + 风险手册</div></div>
+    <div class="actions"><button class="btn btn-primary" onclick="openAdd()"><span class="ico" data-icon="plus"></span> 新增范本</button></div>
+  </div>
+
+  <div class="card" style="margin-bottom:16px">
+    <div class="card-title">制度字典（点击预览制度头结构）<span style="font-size:13px;color:var(--text-3);font-weight:400">每项制度文件头含「文件编号 + 实施日期 + 签发人 + 盖章」</span></div>
+    <div class="dict-grid" id="dictGrid"></div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">制度范本预览 <span id="previewName" style="font-size:13px;color:var(--brand-500);font-weight:600"></span></div>
+    <div class="doc-preview" id="docPreview"></div>
+  </div>
 </div>
-<script src="../assets/icons.js"></script></body></html>
+
+<div class="modal-mask" id="addModal">
+  <div class="modal">
+    <div class="modal-head">新增/编辑制度范本 <span class="x" onclick="closeModal('addModal')">×</span></div>
+    <div class="modal-body">
+      <div class="form-item"><label class="form-label">制度名称 <span class="req">*</span></label><input class="form-input" id="fName" value="安全生产责任制"></div>
+      <div class="form-item"><label class="form-label">制度编号（ZD 前缀自动分配）</label><input class="form-input" id="fNo" value="ZD01"></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+        <div class="form-item"><label class="form-label">文件编号</label><input class="form-input" id="fDocNo" value="ZD13"></div>
+        <div class="form-item"><label class="form-label">实施日期</label><input class="form-input" id="fDate" value="2026-01-01"></div>
+      </div>
+      <div class="form-item"><label class="form-label">签发人</label><input class="form-input" id="fIssuer" value="张伟"></div>
+      <div class="form-item"><label class="form-label">适用营运类型</label>
+        <select class="form-select" id="fBiz"><option value="all">通用（普货/危货共用）</option><option value="general">普货专用</option><option value="danger">危货专用</option></select></div>
+      <div style="display:flex;gap:10px;justify-content:flex-end">
+        <button class="btn btn-outline" onclick="closeModal('addModal')">取消</button>
+        <button class="btn btn-primary" onclick="saveDoc()">保存</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="../assets/icons.js"></script>
+<script>
+const ZD = [
+  '安全生产责任制','安全生产会议制度','安全生产台账及档案管理制度','安全生产费用提取和使用管理制度',
+  '车辆安全管理制度','安全生产教育培训制度','安全生产监督检查制度','隐患排查及治理制度',
+  '安全事故报告、统计与处理制度','安全生产考核与奖惩制度','驾驶员管理制度','动态监控管理制度',
+  '风险分级管控制度','风险动态监控管理制度','应急预案管理制度','劳动保护用品配备和使用管理制度',
+  '超限超载运输管理规定','车辆装载及装卸作业安全规定','防止货物脱落、扬撒工作措施','消防安全管理制度',
+  '重大危险源管理制度'
+];
+let curZD = 0;
+
+function renderDict(){
+  const g = document.getElementById('dictGrid');
+  g.innerHTML = ZD.map((n,i)=>{
+    const no = 'ZD' + String(i+1).padStart(2,'0');
+    return `<div class="dict-item ${i===curZD?'on':''}" onclick="preview(${i})"><span class="zd">${no}</span><span class="nm">${n}</span><span class="badge">${i<16?'通用':'普货/危货'}</span></div>`;
+  }).join('');
+}
+function preview(i){
+  curZD = i; renderDict();
+  const no = 'ZD' + String(i+1).padStart(2,'0');
+  const name = ZD[i];
+  document.getElementById('previewName').textContent = `${no} ${name}`;
+  document.getElementById('docPreview').innerHTML =
+    `<div class="file-head"><span class="fill">佛山市悦通物流有限公司</span></div>` +
+    `<div class="file-no">文件编号：<span class="fill">${no}</span></div>` +
+    `<div class="rule"></div>` +
+    `<div class="title">${name}</div>` +
+    `<div class="meta"><span>实施日期：<span class="fill">2026-01-01</span></span><span>签 发 人：<span class="fill">张伟</span></span></div>` +
+    `<p>为加强本公司安全生产管理，落实企业安全生产主体责任，依据《中华人民共和国安全生产法》等法律法规，结合公司实际，特制定本制度。</p>` +
+    `<p>本制度适用于公司各部门及全体从业人员，自实施之日起执行。</p>` +
+    `<p>（制度正文条款由范本引擎按岗位/车型拼装，此处为结构预览）</p>` +
+    `<div class="sign-zone"><div>佛山市悦通物流有限公司（盖章）</div><div style="margin-top:6px">2026年1月1日</div></div>`;
+}
+function openAdd(){ document.getElementById('addModal').classList.add('show'); }
+function saveDoc(){ alert('已保存制度范本（模拟）'); closeModal('addModal'); }
+function closeModal(id){ document.getElementById(id).classList.remove('show'); }
+
+renderDict(); preview(0);
+</script></body></html>

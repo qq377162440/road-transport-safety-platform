@@ -1,0 +1,520 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>范本引擎原型测试 v2 — 盒一</title>
+<style>
+  :root {
+    --primary: #1a73e8;
+    --border: #e0e0e0;
+    --bg: #f5f6f8;
+    --text: #1f2329;
+    --muted: #8a919f;
+    --danger: #d93025;
+    --ok: #188038;
+    --warn: #b06000;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif;
+    background: var(--bg); color: var(--text); font-size: 14px;
+  }
+  .topbar {
+    background: #fff; border-bottom: 1px solid var(--border);
+    padding: 12px 24px; display: flex; align-items: center; gap: 16px; flex-wrap: wrap;
+  }
+  .topbar h1 { font-size: 17px; }
+  .topbar .hint { color: var(--muted); font-size: 12px; }
+  .layout {
+    display: grid; grid-template-columns: 380px 1fr; gap: 16px;
+    padding: 16px 24px; max-width: 1500px; margin: 0 auto; height: calc(100vh - 56px);
+  }
+  .panel { background: #fff; border: 1px solid var(--border); border-radius: 10px; display: flex; flex-direction: column; overflow: hidden; }
+  .panel-left { overflow-y: auto; }
+  .panel-header { padding: 12px 16px; border-bottom: 1px solid var(--border); font-weight: 600; display: flex; justify-content: space-between; align-items: center; font-size: 14px; }
+  .panel-body { padding: 14px 16px; }
+  .section { margin-bottom: 18px; }
+  .section-title { font-size: 12px; font-weight: 600; color: var(--muted); margin-bottom: 8px; letter-spacing: 0.5px; }
+  .field { margin-bottom: 10px; }
+  .field label { display: block; font-size: 12px; margin-bottom: 3px; color: #444; }
+  .field label .req { color: var(--danger); }
+  .field input, .field select, .field textarea {
+    width: 100%; padding: 7px 9px; border: 1px solid var(--border); border-radius: 6px;
+    font-size: 13px; font-family: inherit;
+  }
+  .field textarea { resize: vertical; min-height: 54px; line-height: 1.5; }
+  .field input:focus, .field select:focus, .field textarea:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 2px rgba(26,115,232,0.1); }
+  .field .empty-mark { background: #fffdf5; border-style: dashed; }
+  .btn { display: inline-flex; align-items: center; gap: 6px; padding: 9px 16px; border-radius: 8px; border: 1px solid transparent; font-size: 13px; cursor: pointer; font-family: inherit; }
+  .btn-primary { background: var(--primary); color: #fff; }
+  .btn-primary:hover { background: #1557b3; }
+  .btn-outline { background: #fff; border-color: var(--border); color: var(--text); }
+  .btn-outline:hover { background: #f5f6f8; }
+  .btn-block { width: 100%; justify-content: center; }
+  .preview-toolbar { display: flex; gap: 6px; padding: 10px 16px; border-bottom: 1px solid var(--border); flex-wrap: wrap; align-items: center; }
+  .tab { padding: 6px 13px; border-radius: 6px; border: 1px solid var(--border); background: #fff; cursor: pointer; font-size: 12px; font-family: inherit; }
+  .tab.active { background: var(--primary); color: #fff; border-color: var(--primary); }
+  .preview-body { flex: 1; overflow-y: auto; background: #e8eaed; padding: 28px; display: flex; justify-content: center; }
+  .paper {
+    background: #fff; width: 720px; min-height: 900px; padding: 56px 52px;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.12);
+    font-family: "SimSun", "宋体", serif; font-size: 14px; line-height: 1.9; color: #000;
+    position: relative;
+  }
+  .paper h2 { text-align: center; font-size: 21px; letter-spacing: 3px; margin-bottom: 18px; font-weight: normal; }
+  .paper h3 { font-size: 15px; margin: 16px 0 6px; font-weight: bold; }
+  .paper p { text-indent: 2em; margin: 5px 0; }
+  .paper .no-indent { text-indent: 0; }
+  .paper ol { padding-left: 2.6em; }
+  .paper ol li { margin: 2px 0; }
+  .sign-block { margin-top: 36px; }
+  .sign-row { display: flex; justify-content: space-between; margin: 12px 0; }
+  .sign-cell { min-width: 150px; }
+  .sign-line { display: inline-block; min-width: 110px; border-bottom: 1px solid #000; padding: 0 6px; min-height: 1.15em; }
+  .sign-line.filled { color: #1a4b8c; font-weight: bold; }
+  .sign-line.empty { border-bottom-style: dashed; border-bottom-color: #aaa; }
+  .fill-var { color: #1a4b8c; font-weight: bold; }
+  .fill-empty { color: #aaa; border-bottom: 1px dashed #bbb; padding: 0 20px; }
+  .hazard-item { margin: 5px 0; text-indent: 0; }
+  .hazard-name { font-weight: bold; }
+  .badge { display: inline-block; font-size: 10px; padding: 1px 7px; border-radius: 9px; margin-left: 5px; }
+  .badge.merged { background: #e6f4ea; color: var(--ok); }
+  .badge.split { background: #fce8e6; color: var(--danger); }
+  .badge.auto { background: #e8f0fe; color: var(--primary); }
+
+  /* 自动生成的圆形红章 */
+  .seal {
+    position: absolute; width: 130px; height: 130px; border-radius: 50%;
+    border: 3px solid #d0021b; display: flex; align-items: center; justify-content: center;
+    color: #d0021b; font-family: "SimHei", "黑体", sans-serif;
+    transform: rotate(-8deg); opacity: 0.82; pointer-events: none;
+    right: 150px; bottom: 90px;
+  }
+  .seal .inner {
+    position: absolute; width: 108px; height: 108px; border-radius: 50%;
+    border: 1px solid #d0021b;
+  }
+  .seal .star { font-size: 26px; line-height: 1; }
+  .seal .arc-top, .seal .arc-bottom {
+    position: absolute; font-size: 10.5px; letter-spacing: 1px; font-weight: bold;
+  }
+  .seal .arc-top { top: 10px; }
+  .seal .arc-bottom { bottom: 10px; font-size: 9px; }
+
+  .tip { background: #fff8e1; border: 1px solid #f0d99a; border-radius: 8px; padding: 9px 11px; font-size: 12px; color: #7a5c00; margin-bottom: 14px; line-height: 1.6; }
+  .tip b { color: #5a4400; }
+  .note { font-size: 11px; color: var(--muted); margin-top: 4px; line-height: 1.5; }
+  .divider { height: 1px; background: var(--border); margin: 14px 0; }
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <h1>范本引擎原型测试 v2</h1>
+  <span class="hint">盒一「公司档案及管理层档案」— 已按 8 条反馈修正：上级关系 / 双方签字 / 任命范围 / 盖章 / 岗位内容可编辑</span>
+</div>
+
+<div class="layout">
+  <!-- 左：数据录入 -->
+  <div class="panel panel-left">
+    <div class="panel-header">① 录入关键信息</div>
+    <div class="panel-body">
+
+      <div class="tip">
+        <b>新增：组织架构上级关系</b><br>
+        责任书的"责任管理人"从组织架构汇报线读取，不再写死。
+      </div>
+
+      <div class="section">
+        <div class="section-title">企业信息（企业级字段）</div>
+        <div class="field"><label>企业全称 <span class="req">*</span></label>
+          <input id="company_name" value="佛山市优成得物流有限公司"></div>
+        <div class="field"><label>法定代表人</label>
+          <input id="company_legal" value="马志勇"></div>
+        <div class="field"><label>通讯地址 <span style="color:var(--muted)">（留空测试手填）</span></label>
+          <input id="company_address" value="" placeholder="留空 → 打印时手填" class="empty-mark"></div>
+      </div>
+
+      <div class="section">
+        <div class="section-title">人员信息（人员级字段）</div>
+        <div class="field"><label>姓名 <span class="req">*</span></label>
+          <input id="person_name" value="马志勇"></div>
+        <div class="field"><label>岗位 <span class="req">*</span></label>
+          <select id="person_post">
+            <option value="主要负责人">主要负责人</option>
+            <option value="安全员" selected>安全员</option>
+            <option value="监控员">监控员</option>
+            <option value="行政财务">行政财务</option>
+            <option value="车辆技术管理员">车辆技术管理员</option>
+            <option value="装卸管理员">装卸管理员</option>
+            <option value="停车场管理员">停车场管理员</option>
+            <option value="调度员">调度员</option>
+            <option value="驾驶员">驾驶员</option>
+            <option value="押运员">押运员</option>
+          </select>
+          <div class="note">管理岗才有任命书；驾驶员/押运员无任命书</div>
+        </div>
+        <div class="field"><label>直接上级（组织架构汇报关系）<span class="req">*</span></label>
+          <input id="person_manager" value="马志勇（安全主要负责人）" placeholder="从组织架构读取"></div>
+        <div class="field"><label>身份证号 <span style="color:var(--muted)">（留空测试手填）</span></label>
+          <input id="person_idcard" value="" placeholder="留空 → 打印时手填" class="empty-mark"></div>
+      </div>
+
+      <div class="section">
+        <div class="section-title">上下文字段</div>
+        <div class="field"><label>年度</label><input id="year" value="2025"></div>
+        <div class="field"><label>签订日期</label><input id="sign_date" value="2025-06-24"></div>
+        <div class="field"><label>签字时间（告知书用）</label><input id="sign_time" value="2025-06-24"></div>
+      </div>
+
+      <div class="section">
+        <div class="section-title">印章（所有台账都盖章）</div>
+        <div class="field">
+          <label>印章来源</label>
+          <select id="seal_type" onchange="onSealTypeChange()">
+            <option value="auto">② 系统自动生成圆形红章</option>
+            <option value="upload">① 客户上传印章图</option>
+            <option value="none">不盖章（测试对比）</option>
+          </select>
+          <div class="note">自动章：读取公司名生成红章；上传章：客户初始收集时上传</div>
+        </div>
+      </div>
+
+      <div class="divider"></div>
+
+      <div class="section">
+        <div class="section-title">岗位内容库（可编辑，改后范本自动更新）</div>
+        <div class="field"><label>当前岗位：<span id="cur_post_label" style="color:var(--primary);font-weight:bold"></span></label></div>
+        <div class="field"><label>安全职责（每行一条，责任书引用）</label>
+          <textarea id="post_duty"></textarea></div>
+        <div class="field"><label>安全目标（每行一条，责任书引用）</label>
+          <textarea id="post_target" style="min-height:44px"></textarea></div>
+        <div class="field"><label>岗位危害（每行"名称|描述"，告知书引用）</label>
+          <textarea id="post_hazard"></textarea></div>
+      </div>
+
+      <button class="btn btn-primary btn-block" onclick="renderAll()">生成范本预览</button>
+      <div style="height:8px"></div>
+      <button class="btn btn-outline btn-block" onclick="resetData()">重置为样例数据</button>
+    </div>
+  </div>
+
+  <!-- 右：范本预览 -->
+  <div class="panel panel-right">
+    <div class="preview-toolbar">
+      <span style="font-size:12px;color:var(--muted);margin-right:6px">② 预览：</span>
+      <button class="tab active" data-tab="resp" onclick="switchTab('resp')">责任书 <span class="badge split">替换型</span></button>
+      <button class="tab" data-tab="appoint" onclick="switchTab('appoint')">任命书 <span class="badge merged">增减型</span></button>
+      <button class="tab" data-tab="hazard" onclick="switchTab('hazard')">岗位告知书 <span class="badge merged">列表</span></button>
+    </div>
+    <div class="preview-body">
+      <div class="paper" id="paper"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ============ 数据 ============
+function getData() {
+  return {
+    company_name: v('company_name'),
+    company_legal: v('company_legal'),
+    company_address: v('company_address'),
+    person_name: v('person_name'),
+    person_post: v('person_post'),
+    person_manager: v('person_manager'),
+    person_idcard: v('person_idcard'),
+    year: v('year'),
+    sign_date: v('sign_date'),
+    sign_time: v('sign_time'),
+    seal_type: v('seal_type'),
+  };
+}
+function v(id){ return document.getElementById(id).value; }
+function esc(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+function fill(val){ return val && val.trim() ? '<span class="fill-var">'+esc(val)+'</span>' : '<span class="fill-empty"></span>'; }
+function signCell(val){ return val && val.trim() ? '<span class="sign-line filled">'+esc(val)+'</span>' : '<span class="sign-line empty"></span>'; }
+
+// ============ 岗位内容库（外置，可编辑） ============
+const postContent = {
+  '主要负责人': {
+    duty: ['贯彻执行国家安全生产方针、政策和有关安全生产法律、法规、规章及技术标准等；','建立健全并落实本公司全员安全生产责任制，加强安全生产标准化建设；','组织制定并实施本公司安全生产规章制度和操作规程；','确定符合条件的安全生产分管负责人，依法设置安全生产管理机构或配备专职安全生产管理人员；','组织制定并实施本公司安全生产教育和培训计划；','保证本公司安全生产投入的有效实施；','组织建立并落实安全风险分级管控和隐患排查治理双重预防工作机制；','督促、检查本公司的安全生产工作，每年至少参加不少于两次的安全生产全面检查；','每季度召开一次安全生产专题会议；','定期研究安全生产工作，每年向职工大会报告安全生产情况；','组织制定并实施本公司的生产安全事故应急救援预案；','建立、健全本公司的公司负责人现场带班制度；','及时、如实报告生产安全事故；','组织做好公司传染病疫情防控工作。'],
+    target: ['发生一般以上生产安全责任事故0宗','百万车公里行车责任事故频率≤3宗','不发生火灾事故'],
+    hazard: ['颈、腰椎病|久坐不动，长时间一个姿势会引起颈椎僵硬。','脂肪肝|长期饮食不规律、暴饮暴食、缺少运动。','视力下降|总是对着屏幕会对视网膜产生危害。','手腕酸痛|长时间手握鼠标，手腕处用力导致酸痛。'],
+    appoint: '为加强本公司安全生产管理工作，严格认真地落实安全生产工作，经公司研究决定任命 ',
+    appointTitle: '主要负责人',
+  },
+  '安全员': {
+    duty: ['负责公司安全生产工作日常管理工作；','组织或者参与拟订本单位安全生产规章制度、操作规程和生产安全事故应急救援预案；','组织或者参与本单位安全生产教育和培训，如实记录；','组织开展安全风险和危险源辨识、评估；','组织或者参与本单位应急救援演练；','组织安全生产岗位检查、日常安全检查和专业性安全检查；','制止和纠正违章指挥、强令冒险作业、违反操作规程的行为；','督促本单位履行安全生产职责、落实安全生产整改措施，组织安全生产考核；','协助组织召开安全生产工作会议；','协助组织开展安全文化建设及安全生产活动；','监督本公司安全生产资金投入和技术措施的落实；','组织劳动防护用品及应急救援物资的购置及使用管理；','协助组织事故抢险救援工作；','落实公司的职业健康管理工作；','负责安全生产统计与安全生产管理档案建立；','法律、法规、规章、规范、标准规定的其他安全生产管理职责。'],
+    target: ['发生一般及以上生产安全责任事故0宗','隐患排查治理率100%','培训考核合格率100%'],
+    hazard: ['颈、腰椎病|久坐不动，长时间一个姿势。','视力下降|长期面对电脑屏幕。'],
+    appoint: '为加强本公司安全生产管理工作，严格认真地落实安全生产，做好制度和操作规程管理、安全投入、教育培训、现场检查等规范管理工作，经公司研究决定任命 ',
+    appointTitle: '专职安全生产管理人员',
+  },
+  '监控员': {
+    duty: ['负责组织开展公司车辆动态监控管理工作；','负责对卫星定位监控平台使用及监控信息登记，建立动态监控台账；','监督卫星定位监控平台及相关车载设备使用情况；','组织开展驾驶员（车辆）违法违规行为分析；','负责对驾驶员违法违规行为的监督提醒工作；','每月对公司动态监控工作开展情况进行全面的总结分析；','参加公司开展的安全教育培训、安全活动和应急演练；','配合开展事故调查处理工作；','定期开展部门所用设备、器材进行经常性检查；','法律、法规、规章、规范、标准规定的其他安全生产职责。'],
+    target: ['不发生火灾事故','卫星定位装置安装率100%','应急预案演练参与率100%'],
+    hazard: ['前列腺疾病|久坐不动，血液循环不畅。','颈、腰椎病|长时间一个姿势。','视力下降|长期盯屏幕。','手腕酸痛|长时间操作鼠标。'],
+    appoint: '为了进一步加强企业安全生产管理，做好公司车辆动态监控管理工作，经公司研究决定，现任命 ',
+    appointTitle: '监控人员',
+  },
+  '行政财务': {
+    duty: ['参与拟订本公司安全生产规章制度、操作规程和生产安全事故应急救援预案；','认真执行上级对安全生产工作的部署要求和各项安全规章制度；','负责公司日常行政管理；','负责公司安全投入费用的提取和使用管理；','制定、完善财务安全方面的规章制度并组织落实；','负责拟订本公司安全投入费用的提取和管理，梳理安全投入台账；','组织做好财务规范化管理工作，保证安全资金有效使用；','依法为从业人员办理工伤保险，缴纳费用；','落实火灾预防，不发生火灾事故；','负责公司日常资金收支结算、往来帐的结算和清理；','法律、法规、规章、规范、标准规定的其他安全生产职责。'],
+    target: ['不发生火灾事故','安全生产经费投入100%','培训考核合格率100%'],
+    hazard: ['颈、腰椎病|久坐伏案。','视力下降|长期面对电脑。','手腕酸痛|长时间使用鼠标键盘。'],
+    appoint: '为加强本公司安全生产管理工作，严格认真地落实安全生产，做好财务规范化管理以及公司日常行政管理等工作，经公司研究决定任命 ',
+    appointTitle: '财务人员',
+  },
+  '车辆技术管理员': {
+    duty: ['负责公司车辆技术管理工作；','组织落实车辆二级维护、检验、技术等级评定；','建立车辆技术档案并归档管理；','组织车辆维修、主要部件更换的审核与登记；','法律、法规、规章、规范、标准规定的其他安全生产职责。'],
+    target: ['车辆二级维护率100%','车辆年检率100%','不发生火灾事故'],
+    hazard: ['颈、腰椎病|久坐。','视力下降|长期看资料。'],
+    appoint: '为加强本公司安全生产管理工作，做好车辆技术管理工作，经公司研究决定任命 ',
+    appointTitle: '车辆技术管理员',
+  },
+  '装卸管理员': {
+    duty: ['负责装卸作业现场安全管理；','监督装卸人员按操作规程作业；','检查装卸设备、防护用品完好；','制止违章装卸行为，及时消除隐患；','法律、法规、规章、规范、标准规定的其他安全生产职责。'],
+    target: ['不发生火灾、爆炸、泄漏事故','隐患整改率100%'],
+    hazard: ['腰椎损伤|长期搬运重物。','物体打击|装卸作业风险。','化学灼伤|接触危险货物。'],
+    appoint: '为加强本公司安全生产管理工作，做好装卸作业安全管理，经公司研究决定任命 ',
+    appointTitle: '装卸管理员',
+  },
+  '停车场管理员': {
+    duty: ['负责停车场安全管理工作；','落实车辆停放管理，保持通道畅通；','检查消防设施、警示标志完好；','发现隐患及时报告并处理；','法律、法规、规章、规范、标准规定的其他安全生产职责。'],
+    target: ['不发生火灾事故','停车场隐患整改率100%'],
+    hazard: ['车辆伤害|场内车辆行驶风险。','火灾风险|停放车辆集中。'],
+    appoint: '为加强本公司安全生产管理工作，做好停车场安全管理，经公司研究决定任命 ',
+    appointTitle: '停车场管理员',
+  },
+  '调度员': {
+    duty: ['负责运输调度工作，合理安排车辆和驾驶员；','掌握驾驶员资质、车辆状况，杜绝带病运行；','落实动态监控超时、违规提醒；','建立调度台账；','法律、法规、规章、规范、标准规定的其他安全生产职责。'],
+    target: ['不发生火灾、爆炸、泄漏事故','动态监控违规率≤1%'],
+    hazard: ['颈、腰椎病|久坐调度。','视力疲劳|长时间盯屏幕。'],
+    appoint: '为加强本公司安全生产管理工作，做好运输调度管理，经公司研究决定任命 ',
+    appointTitle: '调度员',
+  },
+  '驾驶员': {
+    duty: ['严格遵守国家及地方的法律法规及标准；','严格落实岗位安全责任，遵守本单位的安全生产规章制度、操作规程和应急预案；','接受安全生产教育培训和考核；','随身携带相关有效证件及文书，认真做好车辆及安全防护设施的日常检查和维护；','熟悉车辆性能，熟练驾驶技术；','严格遵守道路交通法规，杜绝违法违规行为，不超载、超速、酒驾、疲劳驾驶；','进出场站低速慢行，服从指挥；','合规停放车辆；','运输作业中发生事故时及时上报并处置；','法律、法规、规章、规范、标准规定的其他安全生产职责。'],
+    target: ['发生一般及以上生产安全责任事故0宗','车辆二级维护率100%','车辆年检率100%'],
+    hazard: ['前列腺疾病|久坐不动，血液循环不畅，憋尿习惯易致慢性前列腺炎。','颈、腰椎病|久坐长时间一个姿势，颈椎僵硬、腰椎劳损。','胃肠道疾病|吃饭不按时，生活不规律。','振动病|车辆行驶振动致手部末梢血管痉挛。','噪声性耳聋|长期接触发动机噪声致听力损伤。','视力疲劳综合症|长时间注视路面导致视力疲劳。','脂肪肝|饮食不规律、油腻食物、缺少运动。','肛肠疾病|过度劳累、饮水少致便秘、痔疮。'],
+    appoint: '', // 驾驶员无任命书
+    appointTitle: '',
+  },
+  '押运员': {
+    duty: ['严格遵守危险货物运输法规；','装卸、运输途中监督货物安全状态；','发生泄漏、事故时立即处置并报告；','正确使用防护用品和应急器材；','法律、法规、规章、规范、标准规定的其他安全生产职责。'],
+    target: ['不发生火灾、爆炸、泄漏事故','押运培训合格率100%'],
+    hazard: ['化学中毒|接触危险货物。','爆炸风险|运输易燃易爆品。','车辆伤害|随车作业。'],
+    appoint: '', // 押运员无任命书
+    appointTitle: '',
+  },
+};
+
+// 从内容库同步到编辑框
+function loadPostContent(){
+  const post = v('person_post');
+  const c = postContent[post];
+  document.getElementById('cur_post_label').textContent = post;
+  document.getElementById('post_duty').value = c ? c.duty.join('\n') : '';
+  document.getElementById('post_target').value = c ? c.target.join('\n') : '';
+  document.getElementById('post_hazard').value = c ? c.hazard.join('\n') : '';
+}
+
+// 从编辑框回写内容库（模拟"用户编辑后范本自动更新"）
+function savePostContent(){
+  const post = v('person_post');
+  const c = postContent[post];
+  if (!c) return;
+  c.duty = v('post_duty').split('\n').filter(x=>x.trim());
+  c.target = v('post_target').split('\n').filter(x=>x.trim());
+  c.hazard = v('post_hazard').split('\n').filter(x=>x.trim());
+}
+
+// ============ 自动生成圆形红章 ============
+function renderSeal(companyName){
+  const type = v('seal_type');
+  if (type === 'none') return '';
+  const text = esc(companyName || '公司名称');
+  if (type === 'upload') {
+    return `<div class="seal" style="opacity:0.85"><span style="font-size:9px;text-align:center;padding:8px">客户上传的印章图<br>（此处为占位）</span></div>`;
+  }
+  // 自动生成红章
+  return `
+    <div class="seal">
+      <div class="inner"></div>
+      <div class="arc-top">${text.slice(0,12)}</div>
+      <div class="star">★</div>
+      <div class="arc-bottom">内部文件专用章</div>
+    </div>`;
+}
+
+// ============ 责任书（替换型，上下级从组织架构取） ============
+function renderResp(d){
+  const isMain = d.person_post === '主要负责人';
+  const c = postContent[d.person_post] || postContent['驾驶员'];
+  const title = isMain ? '安全生产目标责任书' : '安全生产责任书';
+  let relation = isMain ? '公司与主要负责人' : (d.person_manager ? d.person_manager + '与' + d.person_post : '公司与' + d.person_post);
+
+  let dutyHtml = `<ol>${c.duty.map(x=>'<li>'+x+'</li>').join('')}</ol>`;
+  let targetHtml = `<ol>${c.target.map(x=>'<li>'+x+'</li>').join('')}</ol>`;
+
+  let signHtml;
+  if (isMain) {
+    // 主要负责人：无上级，单边签字
+    signHtml = `
+      <div class="sign-row"><span class="sign-cell">责任主体：${fill(d.company_name)}</span><span class="sign-cell">责任人：${d.person_post}</span></div>
+      <div class="sign-row">
+        <span class="sign-cell">盖章：${signCell('')}</span>
+        <span class="sign-cell">签字：${signCell(d.person_name)}</span>
+      </div>
+      <div class="sign-row">
+        <span class="sign-cell">日期：${fill(d.sign_date)}</span>
+        <span class="sign-cell">日期：${fill(d.sign_date)}</span>
+      </div>`;
+  } else {
+    // 有上级：双边签字，上级+责任人 都要签
+    signHtml = `
+      <div class="sign-row">
+        <span class="sign-cell">责任管理人：${fill(d.person_manager)}</span>
+        <span class="sign-cell">责任人：${d.person_post}</span>
+      </div>
+      <div class="sign-row">
+        <span class="sign-cell">签字：${signCell(d.person_manager ? d.person_manager.split('（')[0] : '')}</span>
+        <span class="sign-cell">签字：${signCell(d.person_name)}</span>
+      </div>
+      <div class="sign-row">
+        <span class="sign-cell">日期：${fill(d.sign_date)}</span>
+        <span class="sign-cell">日期：${fill(d.sign_date)}</span>
+      </div>`;
+  }
+
+  return `
+    <h2>${title}</h2>
+    <p>遵循"安全第一，预防为主，综合治理"的安全方针...按照公司《安全生产责任制》要求，
+    ${relation}签订${d.year}年年度《安全生产责任书》，履行公司责任制规定的${d.person_post}的安全生产责任。</p>
+    <h3>一、安全生产目标</h3>
+    <p class="no-indent">责任事故控制及管理工作指标：</p>
+    ${targetHtml}
+    <h3>二、安全职责</h3>
+    ${dutyHtml}
+    <h3>三、责任制考评与奖惩</h3>
+    <p>公司按照绩效考核方案对责任落实进行考评...触犯法律的，交由司法机关处理。</p>
+    <h3>四、其他</h3>
+    <p>（一）本责任书签订人因工作变动，由继任人在任职当日起继续签订本年度责任书；</p>
+    <p>（二）本安全生产责任书期限为一年。</p>
+    <p>（三）本责任书一式贰份，公司与签订人各一份。</p>
+    <div class="sign-block">${signHtml}</div>
+    ${renderSeal(d.company_name)}`;
+}
+
+// ============ 任命书（增减型，仅管理岗） ============
+function renderAppoint(d){
+  const c = postContent[d.person_post];
+  // 驾驶员、押运员无任命书
+  if (!c || !c.appoint) {
+    return `<div style="padding:80px 20px;text-align:center;font-family:sans-serif">
+      <div style="font-size:40px;margin-bottom:16px">—</div>
+      <h2 style="font-family:inherit;letter-spacing:0;font-size:18px;border:none">${d.person_post} 不需要任命书</h2>
+      <p style="text-indent:0;color:#888;margin-top:12px;line-height:1.8">
+        ${d.person_post}属于一线从业人员，凭劳动合同、从业资格证即可，<br>不在任命书适用范围（仅管理岗需要任命书）。
+      </p>
+    </div>`;
+  }
+  const needPrefix = (d.person_post === '安全员' || d.person_post === '监控员');
+  return `
+    <h2>关于任命${c.appointTitle}的通知</h2>
+    ${needPrefix ? '<p class="no-indent" style="text-align:center;margin-bottom:16px">'+fill(d.company_name)+'</p>' : ''}
+    <p>公司全体人员：</p>
+    <p>${c.appoint}${fill(d.person_name)}${d.person_post === '安全员' ? ' 同志担任公司安全员，作为公司专职安全生产管理人员，负责公司安全生产监督管理工作。' : ' 为公司' + c.appointTitle + '。'}</p>
+    <p>特此通知。</p>
+    <div class="sign-block" style="text-align:right">
+      <div>公司：${fill(d.company_name)}</div>
+      <div>生效日期：${fill(d.sign_date)}</div>
+    </div>
+    ${renderSeal(d.company_name)}`;
+}
+
+// ============ 岗位告知书（增减型，列表变量） ============
+function renderHazard(d){
+  const c = postContent[d.person_post] || postContent['驾驶员'];
+  const items = c.hazard.map(h => {
+    const parts = h.split('|');
+    return `<div class="hazard-item"><span class="hazard-name">${esc(parts[0]||'')}</span>${parts[1] ? '：'+esc(parts[1]) : ''}</div>`;
+  }).join('');
+
+  return `
+    <h2>岗位职业病危害因素告知书</h2>
+    <p>根据《中华人民共和国职业病防治法》有关规定要求，我公司将工作过程中可能接触的职业病危害因素、可能产生的职业病危害及其后果、职业病防护措施和待遇等如实告知您。</p>
+    <p>现在您在我公司${d.person_post}岗位任职工作，在此岗位任职期间，公司将按照国家有关规定，对您发放相关安全防护用品，并向您告知该岗位存在职业病危害因素及相关职业病防护措施，具体如下：</p>
+    <h3>1、岗位危害</h3>
+    ${items}
+    <h3>2、防护措施</h3>
+    <p>（1）适当增加活动量，定时休息，避免久坐；</p>
+    <p>（2）饮食有节，定时进餐，生活有规律。</p>
+    <p>一旦发生职业病，本单位将按照国家有关法律、法规，为您提供相应待遇。</p>
+    <p>同时，您有履行以下规定的义务：自觉遵守本岗位职业卫生操作规程和制度，正确使用职业病防护设备和个人职业病防护用品，积极参加职业卫生知识培训。</p>
+    <div class="sign-block">
+      <div class="sign-row"><span class="sign-cell">公司名称（盖章）：${fill(d.company_name)}</span></div>
+      <div class="sign-row">
+        <span class="sign-cell">告知时间：${fill(d.sign_date)}</span>
+      </div>
+      <div class="sign-row">
+        <span class="sign-cell">被告知人（签字）：${signCell(d.person_name)}</span>
+        <span class="sign-cell">签字时间：${fill(d.sign_time)}</span>
+      </div>
+    </div>
+    ${renderSeal(d.company_name)}`;
+}
+
+// ============ 渲染控制 ============
+let currentTab = 'resp';
+function renderAll(){
+  savePostContent();
+  const d = getData();
+  const paper = document.getElementById('paper');
+  if (currentTab === 'resp') paper.innerHTML = renderResp(d);
+  else if (currentTab === 'appoint') paper.innerHTML = renderAppoint(d);
+  else paper.innerHTML = renderHazard(d);
+  paper.closest('.preview-body').scrollTop = 0;
+}
+function switchTab(tab){
+  currentTab = tab;
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  document.querySelector(`.tab[data-tab="${tab}"]`).classList.add('active');
+  renderAll();
+}
+function onSealTypeChange(){ renderAll(); }
+function resetData(){
+  document.getElementById('company_name').value = '佛山市优成得物流有限公司';
+  document.getElementById('company_legal').value = '马志勇';
+  document.getElementById('company_address').value = '';
+  document.getElementById('person_name').value = '马志勇';
+  document.getElementById('person_post').value = '安全员';
+  document.getElementById('person_manager').value = '马志勇（安全主要负责人）';
+  document.getElementById('person_idcard').value = '';
+  document.getElementById('year').value = '2025';
+  document.getElementById('sign_date').value = '2025-06-24';
+  document.getElementById('sign_time').value = '2025-06-24';
+  document.getElementById('seal_type').value = 'auto';
+  // 重置内容库
+  postContent['安全员'].duty = ['负责公司安全生产工作日常管理工作；','组织或者参与拟订本单位安全生产规章制度、操作规程和生产安全事故应急救援预案；','组织或者参与本单位安全生产教育和培训，如实记录；','组织开展安全风险和危险源辨识、评估；','组织或者参与本单位应急救援演练；','组织安全生产岗位检查、日常安全检查和专业性安全检查；','制止和纠正违章指挥、强令冒险作业、违反操作规程的行为；','督促本单位履行安全生产职责、落实安全生产整改措施，组织安全生产考核；','协助组织召开安全生产工作会议；','协助组织开展安全文化建设及安全生产活动；','监督本公司安全生产资金投入和技术措施的落实；','组织劳动防护用品及应急救援物资的购置及使用管理；','协助组织事故抢险救援工作；','落实公司的职业健康管理工作；','负责安全生产统计与安全生产管理档案建立；','法律、法规、规章、规范、标准规定的其他安全生产管理职责。'];
+  postContent['安全员'].hazard = ['颈、腰椎病|久坐不动，长时间一个姿势。','视力下降|长期面对电脑屏幕。'];
+  loadPostContent();
+  renderAll();
+}
+
+// 事件绑定
+['company_name','company_legal','company_address','person_name','person_manager','person_idcard','year','sign_date','sign_time'].forEach(id=>{
+  document.getElementById(id).addEventListener('input', ()=>{ savePostContent(); renderAll(); });
+});
+document.getElementById('person_post').addEventListener('change', ()=>{ loadPostContent(); renderAll(); });
+['post_duty','post_target','post_hazard'].forEach(id=>{
+  document.getElementById(id).addEventListener('input', ()=>{ savePostContent(); renderAll(); });
+});
+
+// 初始化
+loadPostContent();
+renderAll();
+</script>
+</body>
+</html>

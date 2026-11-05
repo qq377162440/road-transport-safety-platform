@@ -1,10 +1,178 @@
 <!DOCTYPE html>
-<html lang="zh-CN"><head><meta charset="UTF-8"><title>安全投入管理</title>
+<html lang="zh-CN"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>安全投入管理</title>
 <link rel="stylesheet" href="../assets/common.css"><link rel="stylesheet" href="../assets/pc.css">
-<style></style></head><body>
+<style>
+  .biz-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px}
+  .num{font-variant-numeric:tabular-nums}
+  .cat-chip{display:inline-flex;align-items:center;gap:6px;padding:6px 12px;border:1px solid var(--border-strong);border-radius:8px;font-size:13px;cursor:pointer;user-select:none;transition:.12s}
+  .cat-chip:hover{border-color:var(--brand-400)}
+  .cat-chip.on{background:var(--brand-500);border-color:var(--brand-500);color:#fff;font-weight:600}
+  .cat-chip .idx{opacity:.6;font-size:12px}
+  .matrix th,.matrix td{font-size:12.5px;padding:8px 6px;text-align:center;white-space:nowrap}
+  .matrix td.lab{text-align:left;font-weight:600;white-space:normal;min-width:180px}
+  .matrix td.sum{background:var(--brand-50);font-weight:700;color:var(--brand-600)}
+  .matrix input{width:72px;padding:4px 6px;border:1px solid var(--border);border-radius:5px;font-size:12.5px;text-align:right}
+  .modal-mask{position:fixed;inset:0;background:rgba(20,28,43,.45);display:none;align-items:center;justify-content:center;z-index:100}
+  .modal-mask.show{display:flex}
+  .modal{background:#fff;border-radius:var(--r-lg);width:640px;max-width:92vw;max-height:88vh;overflow:auto;box-shadow:var(--shadow-md)}
+  .modal-head{display:flex;align-items:center;justify-content:space-between;padding:16px 20px;border-bottom:1px solid var(--border);font-weight:700;font-size:16px}
+  .modal-head .x{cursor:pointer;font-size:24px;color:var(--text-3);line-height:1}
+  .modal-body{padding:20px}
+  .hint{background:var(--brand-50);border:1px solid var(--brand-100);border-radius:8px;padding:10px 14px;font-size:13px;color:var(--brand-600);margin-bottom:14px;line-height:1.7}
+</style></head><body>
 <div class="pc-page">
-<div class="pc-header"><div><h1>安全投入管理</h1><div class="desc">安全费用提取、使用、结余</div></div><div class="actions"><button class="btn btn-primary"><span class="ico" data-icon="plus"></span> 新增预算</button></div></div><div class="filter-bar"><div class="f-item"><label>预算周期</label><input type="text" placeholder="请选择"></div><div class="f-actions"><button class="btn btn-primary btn-sm"><span class="ico" data-icon="search"></span> 查询</button></div></div><div class="card" style="padding:0;overflow:hidden"><table class="table"><thead><tr><th>序号</th><th>预算周期</th><th>上期营收(万)</th><th>提取比例(%)</th><th>上期结余(万)</th><th>已使用(万)</th><th>剩余(万)</th><th>签字</th><th>操作</th></tr></thead><tbody><tr><td>1</td><td>2026年第三季度</td><td>1200</td><td>2.5</td><td>30</td><td>18</td><td>12</td><td><span class="tag tag-green">已签</span></td><td><a class="btn btn-primary btn-sm">详情</a> </td></tr><tr><td>2</td><td>2026年第二季度</td><td>1100</td><td>2.5</td><td>27</td><td>22</td><td>5</td><td><span class="tag tag-green">已签</span></td><td><a class="btn btn-primary btn-sm">详情</a> </td></tr><tr><td>3</td><td>2026年第一季度</td><td>1000</td><td>2.5</td><td>25</td><td>25</td><td>0</td><td><span class="tag tag-green">已签</span></td><td><a class="btn btn-primary btn-sm">详情</a> </td></tr></tbody></table>
-<div class="table-foot"><span>共 3 条记录</span>
-<div class="pagination"><button>&lt;</button><button class="active">1</button><button>2</button><button>3</button><button>…</button><button>&gt;</button></div></div></div>
+  <div class="pc-header"><div><h1>安全投入管理</h1><div class="desc">安全生产费用提取与使用台账 · 依据财资〔2022〕136号 11类支出范围</div></div>
+    <div class="actions">
+      <button class="btn btn-primary" onclick="openNew()"><span class="ico" data-icon="plus"></span> 新增计提</button>
+      <button class="btn btn-outline" onclick="openMatrix()"><span class="ico" data-icon="table"></span> 使用台账（11类×12月）</button>
+    </div>
+  </div>
+
+  <div class="biz-grid">
+    <div class="card">
+      <div class="card-title">2026年度计提 <span class="tag tag-blue" id="rateTag">普货 1%</span></div>
+      <div style="display:flex;gap:24px;flex-wrap:wrap">
+        <div><div style="color:var(--text-3);font-size:13px">上年度营业收入</div><div class="num" style="font-size:22px;font-weight:700">¥12,000,000</div></div>
+        <div><div style="color:var(--text-3);font-size:13px">计提比例</div><div class="num" id="rateNum" style="font-size:22px;font-weight:700">1%</div></div>
+        <div><div style="color:var(--text-3);font-size:13px">应提安全费用</div><div class="num" id="planNum" style="font-size:22px;font-weight:700;color:var(--brand-500)">¥120,000</div></div>
+        <div><div style="color:var(--text-3);font-size:13px">已使用 / 结余</div><div class="num" style="font-size:22px;font-weight:700">¥98,000 <span style="color:var(--text-3);font-size:15px">/</span> <span id="balanceNum" style="color:var(--ok)">¥22,000</span></div></div>
+      </div>
+      <div style="margin-top:12px;height:8px;background:#F1F5F9;border-radius:4px;overflow:hidden"><div id="progressBar" style="width:81.7%;height:100%;background:var(--brand-500)"></div></div>
+      <div style="margin-top:6px;font-size:12px;color:var(--text-3)" id="progressTxt">使用进度 81.7%（财资136号要求专款专用，未足额/超提将提示）</div>
+    </div>
+    <div class="card">
+      <div class="card-title">计提规则 <span class="tag tag-green">自动匹配</span></div>
+      <div class="hint" style="margin-bottom:8px">当年应提 = 上年度营业收入 × 比例；比例随营运类型自动匹配（普货 1% / 危货 1.5%）。</div>
+      <div style="display:flex;gap:12px;flex-wrap:wrap">
+        <span class="tag tag-blue">普货 1%</span><span class="tag tag-gray">危货 1.5%</span>
+        <span style="font-size:13px;color:var(--text-2)">依据《企业安全生产费用提取和使用管理办法》财资〔2022〕136号</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="card" style="padding:0;overflow:hidden">
+    <div class="card-title" style="padding:16px 20px 0">支出登记 <span style="font-size:13px;color:var(--text-3);font-weight:400">按 11 类标准支出范围登记，每笔上传发票/收据</span></div>
+    <div style="padding:0 20px 16px">
+      <table class="table"><thead><tr><th>日期</th><th>费用类别</th><th>事由</th><th style="text-align:right">金额(元)</th><th>凭证</th><th>操作</th></tr></thead>
+      <tbody id="expenseRows"></tbody></table>
+    </div>
+  </div>
+
+  <div class="card" style="margin-top:16px">
+    <div class="card-title">费用类别（财资〔2022〕136号 11类）<span style="font-size:13px;color:var(--text-3);font-weight:400">登记支出时按此分类，政府检查按此对账</span></div>
+    <div id="catBox" style="display:flex;flex-wrap:wrap;gap:8px"></div>
+  </div>
 </div>
-<script src="../assets/icons.js"></script></body></html>
+
+<div class="modal-mask" id="newModal">
+  <div class="modal">
+    <div class="modal-head">新增年度计提 <span class="x" onclick="closeModal('newModal')">×</span></div>
+    <div class="modal-body">
+      <div class="form-item"><label class="form-label">计提年度 <span class="req">*</span></label><input class="form-input" id="nYear" value="2027"></div>
+      <div class="form-item"><label class="form-label">营运类型 <span class="req">*</span></label>
+        <select class="form-select" id="nBiz" onchange="onBizChange()"><option value="general">普货（1%）</option><option value="danger">危货（1.5%）</option></select></div>
+      <div class="form-item"><label class="form-label">上年度营业收入（元）<span class="req">*</span></label><input class="form-input" id="nRevenue" type="number" value="13000000" oninput="calcPlan()"></div>
+      <div class="hint">应提安全费用 = 营业收入 × <span id="nRateTxt">1%</span> = <b id="nPlan">¥130,000</b>（系统自动计算）</div>
+      <div style="display:flex;gap:10px;justify-content:flex-end">
+        <button class="btn btn-outline" onclick="closeModal('newModal')">取消</button>
+        <button class="btn btn-primary" onclick="savePlan()">保存计提</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="modal-mask" id="matrixModal">
+  <div class="modal" style="width:1000px">
+    <div class="modal-head">安全生产费用使用台账（11类 × 12月）<span class="x" onclick="closeModal('matrixModal')">×</span></div>
+    <div class="modal-body" style="overflow:auto">
+      <div class="hint">横向 11 类费用 × 纵向 12 月，与线下台账版式一致；金额可点击编辑，系统自动合计。</div>
+      <table class="table matrix" id="matrixTbl"></table>
+    </div>
+  </div>
+</div>
+
+<script src="../assets/icons.js"></script>
+<script>
+const CATS = [
+  '完善改造维护安全防护设施设备','购置安装车辆卫星定位/视频监控装置','配备维护应急救援器材及演练',
+  '危险源监控与隐患排查整改','安全检查评价咨询标准化','配备更新安全防护用品',
+  '安全宣传教育培训及奖励','新技术新标准新工艺新装备推广','设施及特种设备检测检验',
+  '安全生产责任保险及承运人责任险','其他与安全生产直接相关'
+];
+const EXPENSES = [
+  {d:'2026-03-15',c:2,desc:'车载GPS定位装置更新',amt:18000,rec:'发票.pdf'},
+  {d:'2026-04-20',c:3,desc:'消防演练器材',amt:8500,rec:'收据.jpg'},
+  {d:'2026-06-10',c:7,desc:'全员安全培训',amt:12000,rec:'发票.pdf'},
+  {d:'2026-08-05',c:10,desc:'承运人责任险',amt:45000,rec:'发票.pdf'},
+  {d:'2026-10-12',c:6,desc:'驾驶员劳保用品',amt:14500,rec:'发票.pdf'},
+];
+let catOn = new Set();
+
+function renderCats(){
+  const box = document.getElementById('catBox');
+  box.innerHTML = CATS.map((c,i)=>`<span class="cat-chip ${catOn.has(i)?'on':''}" onclick="toggleCat(${i})"><span class="idx">${i+1}</span>${c}</span>`).join('');
+}
+function toggleCat(i){ catOn.has(i)?catOn.delete(i):catOn.add(i); renderCats(); }
+
+function renderExpenses(){
+  const t = document.getElementById('expenseRows');
+  t.innerHTML = EXPENSES.map(e=>`<tr><td>${e.d}</td><td><span class="tag tag-blue">${e.c}. ${CATS[e.c-1].slice(0,10)}…</span></td><td>${e.desc}</td><td class="num" style="text-align:right">${e.amt.toLocaleString()}</td><td><span class="tag tag-gray">${e.rec}</span></td><td><a class="btn btn-outline btn-sm">查看</a></td></tr>`).join('');
+}
+
+function calcPlan(){
+  const biz = document.getElementById('nBiz').value;
+  const rev = parseFloat(document.getElementById('nRevenue').value)||0;
+  const rate = biz==='general'?0.01:0.015;
+  document.getElementById('nRateTxt').textContent = biz==='general'?'1%':'1.5%';
+  document.getElementById('nPlan').textContent = '¥'+(rev*rate).toLocaleString();
+}
+function onBizChange(){ calcPlan(); }
+function openNew(){ document.getElementById('newModal').classList.add('show'); calcPlan(); }
+function savePlan(){ alert('已保存计提（模拟）'); closeModal('newModal'); }
+function closeModal(id){ document.getElementById(id).classList.remove('show'); }
+
+function renderMatrix(){
+  const months = ['1月','2月','3月','4月','5月','6月','7月','8月','9月','10月','11月','12月'];
+  let h = '<thead><tr><th class="lab">费用类别</th>' + months.map(m=>`<th>${m}</th>`).join('') + '<th>合计</th></tr></thead><tbody>';
+  const sums = new Array(12).fill(0);
+  const demo = {1:[0,0,5000,0,0,0,0,0,0,0,0,0],3:[0,0,0,8500,0,0,0,0,0,0,0,0],6:[0,0,0,0,0,0,0,0,0,14500,0,0]};
+  CATS.forEach((c,i)=>{
+    const ci = i+1;
+    let rowTotal = 0;
+    let cells = '';
+    for(let m=0;m<12;m++){
+      const v = (demo[ci]&&demo[ci][m])||0;
+      rowTotal += v; sums[m] += v;
+      cells += `<td>${v?`<input value="${v}" oninput="matrixSum()">`:'—'}</td>`;
+    }
+    h += `<tr><td class="lab">${ci}. ${c}</td>${cells}<td class="sum">${rowTotal.toLocaleString()}</td></tr>`;
+  });
+  let grand = sums.reduce((a,b)=>a+b,0);
+  h += `<tr><td class="lab sum">合计</td>${sums.map(s=>`<td class="sum">${s.toLocaleString()}</td>`).join('')}<td class="sum">${grand.toLocaleString()}</td></tr>`;
+  h += '</tbody>';
+  document.getElementById('matrixTbl').innerHTML = h;
+}
+function matrixSum(){ /* 演示用，实际由后端汇总 */ }
+function openMatrix(){ document.getElementById('matrixModal').classList.add('show'); renderMatrix(); }
+
+// 客户类型联动：读取顶部切换器写入的 cargoType，危货计提 1.5%
+function applyCargo(){
+  const cargo = localStorage.getItem('cargoType') || '普货';
+  const isDanger = cargo === '危货';
+  const rev = 12000000, used = 98000;
+  const rate = isDanger ? 0.015 : 0.01;
+  const plan = rev * rate;
+  const balance = plan - used;
+  const pct = (used / plan * 100).toFixed(1);
+  const tag = document.getElementById('rateTag');
+  tag.textContent = (isDanger ? '危货' : '普货') + ' ' + (isDanger ? '1.5%' : '1%');
+  tag.className = 'tag ' + (isDanger ? 'tag-yellow' : 'tag-blue');
+  document.getElementById('rateNum').textContent = isDanger ? '1.5%' : '1%';
+  document.getElementById('planNum').textContent = '¥' + plan.toLocaleString();
+  document.getElementById('balanceNum').textContent = '¥' + balance.toLocaleString();
+  document.getElementById('progressBar').style.width = pct + '%';
+  document.getElementById('progressTxt').textContent = '使用进度 ' + pct + '%（财资136号要求专款专用，未足额/超提将提示）';
+}
+
+renderCats(); renderExpenses(); calcPlan(); applyCargo();
+</script></body></html>

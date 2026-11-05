@@ -1,10 +1,146 @@
 <!DOCTYPE html>
-<html lang="zh-CN"><head><meta charset="UTF-8"><title>岗中安全教育</title>
+<html lang="zh-CN"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>安全教育培训</title>
 <link rel="stylesheet" href="../assets/common.css"><link rel="stylesheet" href="../assets/pc.css">
-<style></style></head><body>
+<style>
+  .seg{display:flex;gap:4px;background:#F1F5F9;padding:4px;border-radius:10px;margin-bottom:16px}
+  .seg .s{flex:1;padding:9px;text-align:center;border-radius:8px;font-size:14px;cursor:pointer;color:var(--text-2);font-weight:600;transition:.12s}
+  .seg .s.on{background:#fff;color:var(--brand-600);box-shadow:var(--shadow-sm)}
+  .seg .s .n{display:block;font-size:12px;color:var(--text-3);font-weight:400;margin-top:1px}
+  .seg .s.on .n{color:var(--brand-400)}
+  .doc-preview{border:1px solid var(--border);background:#fff;padding:30px 34px;font-family:"SimSun","宋体",serif;color:#000;font-size:14px;line-height:1.9;min-height:380px}
+  .doc-preview .title{text-align:center;font-size:19px;letter-spacing:2px;font-weight:bold;margin-bottom:16px}
+  .doc-preview h4{font-size:15px;margin:14px 0 6px;font-weight:bold}
+  .doc-preview table{width:100%;border-collapse:collapse;margin:8px 0;font-size:13px}
+  .doc-preview table th,.doc-preview table td{border:1px solid #000;padding:5px 8px;text-align:center}
+  .doc-preview table th{background:#f2f2f2}
+  .fill{color:#1a4b8c;font-weight:bold}
+  .level-head{display:flex;justify-content:space-between;align-items:center;background:#eef3fb;border:1px solid #c7d8f0;padding:6px 10px;margin:12px 0 6px;font-weight:bold;font-size:14px;flex-wrap:wrap;gap:4px}
+  .photo{height:70px;border:1px dashed #aaa;margin:8px 0;display:flex;align-items:center;justify-content:center;color:#aaa;font-size:12px}
+  .modal-mask{position:fixed;inset:0;background:rgba(20,28,43,.45);display:none;align-items:center;justify-content:center;z-index:100}
+  .modal-mask.show{display:flex}
+  .modal{background:#fff;border-radius:var(--r-lg);width:700px;max-width:94vw;max-height:88vh;overflow:auto;box-shadow:var(--shadow-md)}
+  .modal-head{display:flex;align-items:center;justify-content:space-between;padding:16px 20px;border-bottom:1px solid var(--border);font-weight:700;font-size:16px}
+  .modal-head .x{cursor:pointer;font-size:24px;color:var(--text-3);line-height:1}
+  .modal-body{padding:20px}
+  .hint{background:var(--brand-50);border:1px solid var(--brand-100);border-radius:8px;padding:10px 14px;font-size:12.5px;color:var(--text-2);margin-bottom:16px;line-height:1.7}
+</style></head><body>
 <div class="pc-page">
-<div class="pc-header"><div><h1>岗中安全教育</h1><div class="desc">培训计划、课程、学习记录</div></div><div class="actions"><button class="btn btn-primary"><span class="ico" data-icon="plus"></span> 新建培训</button></div></div><div class="filter-bar"><div class="f-item"><label>计划名称</label><input type="text" placeholder="请输入"></div><div class="f-item"><label>类型</label><select><option>全部</option><option>安全教育</option><option>岗前培训</option><option>安全例会</option><option>靶向教育</option></select></div><div class="f-actions"><button class="btn btn-primary btn-sm"><span class="ico" data-icon="search"></span> 查询</button><button class="btn btn-outline btn-sm">重置</button></div></div><div class="card" style="padding:0;overflow:hidden"><table class="table"><thead><tr><th>计划名称</th><th>类型</th><th>学习形式</th><th>开始时间</th><th>状态</th><th>操作</th></tr></thead><tbody><tr><td>冬季行车安全培训</td><td>安全教育</td><td>线上学习</td><td>2026-10-25 09:00</td><td><span class="tag tag-blue">进行中</span></td><td><a class="btn btn-primary btn-sm">详情</a> </td></tr><tr><td>危险驾驶行为靶向教育</td><td>靶向教育</td><td>线上学习</td><td>2026-10-28 10:00</td><td><span class="tag tag-gray">未开始</span></td><td><a class="btn btn-primary btn-sm">详情</a> </td></tr><tr><td>新员工岗前培训</td><td>岗前培训</td><td>线下集中</td><td>2026-11-01 09:00</td><td><span class="tag tag-gray">未开始</span></td><td><a class="btn btn-primary btn-sm">详情</a> </td></tr></tbody></table>
-<div class="table-foot"><span>共 3 条记录</span>
-<div class="pagination"><button>&lt;</button><button class="active">1</button><button>2</button><button>3</button><button>…</button><button>&gt;</button></div></div></div>
+  <div class="pc-header"><div><h1>安全教育培训</h1><div class="desc">岗前三级培训 + 岗中月度培训 · 字段与台账「岗前教育学习报告 / 岗中教育学习报告」对应</div></div>
+    <div class="actions">
+      <button class="btn btn-outline" onclick="window.parent.gotoPage('pc/archive_flow.html?box=4')"><span class="ico" data-icon="archive"></span> 存档到电子档案柜（盒四）</button>
+      <button class="btn btn-primary" onclick="openNew()"><span class="ico" data-icon="plus"></span> 新建培训</button>
+    </div>
+  </div>
+
+  <div class="hint">💡 <b>培训频率与台账对应</b>：<b>岗前培训</b>＝入职一次（换岗/复工重训），归档「岗前安全教育培训记录」三级（公司级/部门级/岗位级）；<b>岗中培训</b>＝每月一次，归档「安全生产月度培训」学习报告（应学/已学学时＋课程＋考试）。年度培训计划每年制定一次。</div>
+
+  <div class="card" style="margin-bottom:16px">
+    <div class="card-title">台账范本预览 <span id="previewName" style="font-size:13px;color:var(--brand-500);font-weight:600"></span></div>
+    <div class="seg" id="seg">
+      <div class="s on" onclick="switchSeg(0)">岗前·三级培训<span class="n">公司/部门/岗位级</span></div>
+      <div class="s" onclick="switchSeg(1)">岗中·月度学习报告<span class="n">应学/已学+课程+考试</span></div>
+    </div>
+    <div class="doc-preview" id="docPreview"></div>
+  </div>
+
+  <div class="card" style="padding:0;overflow:hidden">
+    <div class="card-title" style="padding:16px 20px 0">培训列表</div>
+    <div style="padding:0 20px 16px"><table class="table"><thead><tr><th>计划名称</th><th>类型</th><th>学习形式</th><th>培训学时</th><th>考试得分</th><th>开始时间</th><th>状态</th><th>操作</th></tr></thead>
+    <tbody>
+      <tr><td>新员工岗前培训（谭仁勇）</td><td>岗前培训（入职一次）</td><td>线下集中</td><td>72（三级各24）</td><td>90分</td><td>2026-08-01</td><td><span class="tag tag-green">合格</span></td><td><a class="btn btn-primary btn-sm" onclick="preview(0,'新员工岗前培训（谭仁勇）')">预览</a> <a class="btn btn-outline btn-sm" onclick="archiveBox4()">存档</a></td></tr>
+      <tr><td>2026年8月安全教育培训（邓佐成）</td><td>岗中安全教育（每月）</td><td>线上学习</td><td>92分59秒</td><td>85分</td><td>2026-08-19</td><td><span class="tag tag-green">合格</span></td><td><a class="btn btn-primary btn-sm" onclick="preview(1,'2026年8月安全教育培训（邓佐成）')">预览</a> <a class="btn btn-outline btn-sm" onclick="archiveBox4()">存档</a></td></tr>
+      <tr><td>危险驾驶行为靶向教育</td><td>靶向教育</td><td>线上学习</td><td>—</td><td>—</td><td>2026-10-28 10:00</td><td><span class="tag tag-gray">未开始</span></td><td><a class="btn btn-primary btn-sm" onclick="preview(1,'危险驾驶行为靶向教育')">预览</a></td></tr>
+    </tbody></table></div>
+  </div>
 </div>
-<script src="../assets/icons.js"></script></body></html>
+
+<div class="modal-mask" id="newModal">
+  <div class="modal">
+    <div class="modal-head">新建培训 <span class="x" onclick="closeModal('newModal')">×</span></div>
+    <div class="modal-body">
+      <div class="form-item"><label class="form-label">培训类型 <span class="req">*</span></label>
+        <select class="form-select"><option>岗前培训（入职一次）</option><option>岗中安全教育（每月）</option><option>靶向教育</option></select></div>
+      <div class="form-item"><label class="form-label">培训对象（姓名） <span class="req">*</span></label><input class="form-input" placeholder="如：谭仁勇"></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+        <div class="form-item"><label class="form-label">培训级别（岗前）</label><input class="form-input" placeholder="公司级/部门级/岗位级"></div>
+        <div class="form-item"><label class="form-label">培训学时</label><input class="form-input" placeholder="如 24"></div>
+      </div>
+      <div class="form-item"><label class="form-label">培训内容</label><textarea class="form-textarea" rows="3" placeholder="培训内容（与岗前三级培训记录表逐条对应）"></textarea></div>
+      <div style="display:flex;gap:10px;justify-content:flex-end">
+        <button class="btn btn-outline" onclick="closeModal('newModal')">取消</button>
+        <button class="btn btn-primary" onclick="saveTrain()">保存并生成台账</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="../assets/icons.js"></script>
+<script>
+let curSeg = 0;
+
+function switchSeg(i){
+  curSeg = i;
+  document.querySelectorAll('#seg .s').forEach((el,idx)=>el.classList.toggle('on', idx===i));
+  renderSeg();
+}
+function preview(i, name){ curSeg = i; document.getElementById('previewName').textContent = name; switchSeg(i); }
+function renderSeg(){
+  const el = document.getElementById('docPreview');
+  if(curSeg===0){
+    el.innerHTML = `
+      <div class="title">佛山市悦通物流有限公司岗前教育培训记录表</div>
+      <table>
+        <tr><td style="width:12%">姓名</td><td class="fill" style="width:20%">谭仁勇</td><td style="width:10%">性别</td><td style="width:12%">男</td><td style="width:12%">出生日期</td><td style="width:12%"></td><td style="width:10%">联系电话</td><td style="width:12%"></td></tr>
+        <tr><td>岗位</td><td class="fill">运输押运人员</td><td>学历</td><td></td><td>入职时间</td><td></td><td>培训起止时间</td><td>08.01-08.07</td></tr>
+      </table>
+      <div class="level-head"><span>培训级别：公司级</span><span>培训学时 <span class="fill">24</span> · 考试得分 <span class="fill">90（分）</span> · 是否合格 <span class="fill">合格</span> · 培训人签字 ____</span></div>
+      <table><tr><th style="width:70%">培训内容</th><th>培训时间</th></tr>
+        <tr><td>1、国家有关安全生产的法律、法规、条例，国家与行业标准、危险货物运输安全规章制度；</td><td>08月01日 8:00-12:00,14:00-18:00</td></tr>
+        <tr><td>2、本公司安全生产情况及安全生产基本知识、安全生产管理目标；</td><td>08月02日 8:00-12:00,14:00-18:00</td></tr>
+        <tr><td>3、公司的安全生产规章制度、劳动纪律、安全考核奖惩；</td><td>08月03日 8:00-12:00</td></tr>
+        <tr><td>4、从业人员安全生产权利和义务、安全事故法律责任规定；</td><td>08月03日 14:00-18:00</td></tr>
+        <tr><td>5、危险货物道路运输相关的安全生产事故案例；</td><td>08月03日 8:00-10:00</td></tr></table>
+      <div class="level-head"><span>培训级别：部门级</span><span>培训学时 <span class="fill">24</span> · 考试得分 <span class="fill">90（分）</span> · 是否合格 <span class="fill">合格</span> · 培训人签字 ____</span></div>
+      <table><tr><th style="width:70%">培训内容</th><th>培训时间</th></tr>
+        <tr><td>1、本岗位工作及作业环境范围内的危险因素及防范措施，典型事故案例分析；</td><td>08月03日 10:00-12:00,14:00-18:00</td></tr>
+        <tr><td>2、岗位安全职责、部门操作技能及强制性管理标准；</td><td>08月04日 8:00-12:00</td></tr>
+        <tr><td>3、安全检查及隐患排查、自救互救、急救方法、疏散和现场紧急情况的处理；</td><td>08月04日 14:00-18:00</td></tr>
+        <tr><td>4、安全设施、个人防护用品的使用和维护保管；</td><td>08月05日 8:00-12:00</td></tr>
+        <tr><td>5、危险货物运输货物的基本性质、灭火方法、应急处置措施、运输相关知识、应急设备设施的使用；</td><td>08月05日 14:00</td></tr></table>
+      <div class="level-head"><span>培训级别：岗位级</span><span>培训学时 <span class="fill">24</span> · 考试得分 <span class="fill">90（分）</span> · 是否合格 <span class="fill">合格</span> · 培训人签字 ____</span></div>
+      <table><tr><th style="width:70%">培训内容</th><th>培训时间</th></tr>
+        <tr><td>1、岗位安全技术规程、操作规程、岗位运输流程、车辆设备设施操作；</td><td>08月05日 14:00-18:00</td></tr>
+        <tr><td>2、职业卫生与劳动防护注意事项；</td><td>08月06日 8:00-12:00</td></tr>
+        <tr><td>3、岗位之间工作衔接配合、作业过程的安全风险分析方法和控制措施；</td><td>08月06日 14:00-18:00</td></tr>
+        <tr><td>4、车辆构造常识、车辆日常检查维护、操作装置及方法、应急安全装置及操作方法；</td><td>08月07日 8:00-12:00</td></tr>
+        <tr><td>5、运输服务要求、安全操作经验、事故案例等。</td><td>08月07日 14:00-16:00</td></tr></table>
+      <p>参培人员确认：本人已认真学习有关岗前教育三级培训内容，签名：____　2026年08月20日</p>
+      <p>培训确认：员工谭仁勇已完成岗前三级培训内容，签字：____　2026年08月20日</p>`;
+  } else {
+    el.innerHTML = `
+      <div class="title">2026年8月份安全教育培训（从业人员）学习报告</div>
+      <table>
+        <tr><td style="width:12%">姓名</td><td class="fill" style="width:20%">邓佐成</td><td style="width:12%">性别</td><td style="width:14%">男</td><td style="width:12%">车辆运输类型</td><td style="width:14%">危险品</td></tr>
+        <tr><td>身份证号</td><td></td><td>车牌号</td><td class="fill">粤E83098</td><td>从业资格证号</td><td></td></tr>
+        <tr><td>手机号码</td><td class="fill">13923174300</td><td>所属企业</td><td colspan="3">佛山市志力运输有限公司</td></tr>
+      </table>
+      <h4>学习课程</h4>
+      <table><tr><th style="width:25%">应学学时</th><th style="width:25%">已学学时</th><th>课程内容</th></tr>
+        <tr><td>92 分 59 秒</td><td>93 分 0 秒</td><td style="text-align:left">交通安全警示录、维修保养-车辆检查和维护、事故处理-危险化学品车辆发生泄漏险情了怎么办、危化品运输车事故-自救逃生、事故处理-危险品车辆道路运输事故如何应急处置、事故处理-常见危险化学品运输、行车过程中突遇地质灾害山体滑坡、危险化学品安全专项整治三年行动实施方案导读、你了解危险化学品吗、危险化学品存储安全教育培训、道路危险货物运输装卸管理人员要求及车辆条件、危险化学品安全管理教育片</td></tr></table>
+      <h4>考试详情</h4>
+      <table><tr><th>考试名称</th><th>总分</th><th>得分</th><th>是否通过</th></tr>
+        <tr><td>2026年8月份安全教育培训（从业人员）</td><td>100</td><td class="fill">85</td><td class="fill">是</td></tr></table>
+      <h4>随机采集照片</h4>
+      <div class="photo">学习照片 2026-08-19（点击上传）</div>
+      <div class="photo">学习照片 2026-08-19（点击上传）</div>
+      <div class="photo">学习照片 2026-08-19（点击上传）</div>
+      <table><tr><td>本人签名</td><td style="width:50%"></td><td>负责人签字</td><td style="width:30%"></td></tr></table>`;
+  }
+}
+function openNew(){ document.getElementById('newModal').classList.add('show'); }
+function saveTrain(){ alert('已保存培训并生成台账（模拟）'); closeModal('newModal'); }
+function closeModal(id){ document.getElementById(id).classList.remove('show'); }
+function archiveBox4(){ window.parent.gotoPage('pc/archive_flow.html?box=4'); }
+
+switchSeg(0);
+</script></body></html>

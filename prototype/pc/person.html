@@ -1,10 +1,187 @@
 <!DOCTYPE html>
-<html lang="zh-CN"><head><meta charset="UTF-8"><title>人员基础信息</title>
+<html lang="zh-CN"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>人员基础信息</title>
 <link rel="stylesheet" href="../assets/common.css"><link rel="stylesheet" href="../assets/pc.css">
-<style></style></head><body>
+<style>
+  .archive-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .a-item{display:flex;align-items:center;gap:10px;padding:12px 14px;border:1px solid var(--border);border-radius:9px;font-size:14px}
+  .a-item .code{font-weight:700;color:var(--brand-500);font-size:12px;white-space:nowrap}
+  .a-item .nm{flex:1}
+  .a-item .st{font-size:12px;white-space:nowrap;padding:2px 8px;border-radius:10px;font-weight:600}
+  .st.ok{background:#F0FDF4;color:#15803D}
+  .st.auto{background:var(--brand-100);color:var(--brand-600)}
+  .st.miss{background:#FEF2F2;color:#B91C1C}
+  .st.opt{background:#F1F5F9;color:var(--text-3)}
+  .badge-tag{font-size:12px;color:var(--text-3)}
+  /* 更新频率标签 */
+  .freq{font-size:11px;padding:2px 8px;border-radius:8px;white-space:nowrap;background:#EEF2F7;color:var(--text-2)}
+  .freq-yearly{background:#F0FDF4;color:#15803D}
+  .freq-once{background:#FFFBEB;color:#B45309}
+  .freq-monthly{background:var(--brand-100);color:var(--brand-600)}
+  .modal-mask{position:fixed;inset:0;background:rgba(20,28,43,.45);display:none;align-items:center;justify-content:center;z-index:100}
+  .modal-mask.show{display:flex}
+  .modal{background:#fff;border-radius:var(--r-lg);width:760px;max-width:94vw;max-height:88vh;overflow:auto;box-shadow:var(--shadow-md)}
+  .modal-head{display:flex;align-items:center;justify-content:space-between;padding:16px 20px;border-bottom:1px solid var(--border);font-weight:700;font-size:16px}
+  .modal-head .x{cursor:pointer;font-size:24px;color:var(--text-3);line-height:1}
+  .modal-body{padding:20px}
+  .prog{height:8px;border-radius:6px;background:#F1F5F9;overflow:hidden;margin:6px 0 4px}
+  .prog>i{display:block;height:100%;background:linear-gradient(90deg,#1a5bb0,#4a8fe0);border-radius:6px}
+  .doc-preview{border:1px solid var(--border);background:#fff;padding:28px 32px;font-family:"SimSun","宋体",serif;color:#000;font-size:14px;line-height:1.9}
+  .doc-preview .title{text-align:center;font-size:19px;letter-spacing:2px;font-weight:bold;margin-bottom:14px}
+  .doc-preview p{text-indent:2em;margin:6px 0}
+  .doc-preview p.ni{text-indent:0}
+  .fill{color:#1a4b8c;font-weight:bold}
+</style></head><body>
 <div class="pc-page">
-<div class="pc-header"><div><h1>人员基础信息</h1><div class="desc">从业人员基础档案管理</div></div><div class="actions"><button class="btn btn-primary"><span class="ico" data-icon="plus"></span> 新增人员</button><button class="btn btn-outline"><span class="ico" data-icon="download"></span> 导出</button></div></div><div class="filter-bar"><div class="f-item"><label>姓名</label><input type="text" placeholder="请输入姓名"></div><div class="f-item"><label>部门</label><select><option>全部</option><option>驾驶部</option><option>安全部</option><option>维修部</option></select></div><div class="f-item"><label>岗位</label><select><option>全部</option><option>驾驶员</option><option>安全员</option><option>押运员</option></select></div><div class="f-item"><label>政治面貌</label><select><option>全部</option><option>中共党员</option><option>群众</option></select></div><div class="f-actions"><button class="btn btn-primary btn-sm"><span class="ico" data-icon="search"></span> 查询</button><button class="btn btn-outline btn-sm">重置</button></div></div><div class="card" style="padding:0;overflow:hidden"><table class="table"><thead><tr><th>人员姓名</th><th>政治面貌</th><th>性别</th><th>部门</th><th>岗位</th><th>手机号</th><th>创建时间</th><th>操作</th></tr></thead><tbody><tr><td>张伟</td><td>中共党员</td><td>男</td><td>管理层</td><td>法人/负责人</td><td>138****0001</td><td>2024-03-01</td><td><a class="btn btn-primary btn-sm">档案</a> <a class="btn btn-outline btn-sm">编辑</a></td></tr><tr><td>李强</td><td>群众</td><td>男</td><td>安全部</td><td>安全员</td><td>138****0002</td><td>2024-03-05</td><td><a class="btn btn-primary btn-sm">档案</a> <a class="btn btn-outline btn-sm">编辑</a></td></tr><tr><td>王芳</td><td>群众</td><td>女</td><td>安全部</td><td>安全员</td><td>138****0003</td><td>2024-03-05</td><td><a class="btn btn-primary btn-sm">档案</a> <a class="btn btn-outline btn-sm">编辑</a></td></tr><tr><td>陈刚</td><td>群众</td><td>男</td><td>驾驶部</td><td>驾驶员</td><td>138****0004</td><td>2024-04-10</td><td><a class="btn btn-primary btn-sm">档案</a> <a class="btn btn-outline btn-sm">编辑</a></td></tr><tr><td>刘洋</td><td>群众</td><td>男</td><td>驾驶部</td><td>驾驶员</td><td>138****0005</td><td>2024-04-10</td><td><a class="btn btn-primary btn-sm">档案</a> <a class="btn btn-outline btn-sm">编辑</a></td></tr></tbody></table>
-<div class="table-foot"><span>共 5 条记录</span>
-<div class="pagination"><button>&lt;</button><button class="active">1</button><button>2</button><button>3</button><button>…</button><button>&gt;</button></div></div></div>
+  <div class="pc-header"><div><h1>人员基础信息</h1><div class="desc">从业人员基础档案管理 · 一人一档（以档案盒目录为骨架）</div></div><div class="actions"><button class="btn btn-primary" onclick="openPersonModal()"><span class="ico" data-icon="plus"></span> 新增人员</button><button class="btn btn-outline"><span class="ico" data-icon="download"></span> 导出</button></div>
+<div class="hint" style="font-size:12.5px;color:var(--primary);margin:-4px 0 12px">📱 录入人员即自动开通小程序账号（登录账号 = 手机号，初始密码 123456），按岗位显示不同功能。</div></div>
+
+  <div class="filter-bar"><div class="f-item"><label>姓名</label><input type="text" placeholder="请输入姓名"></div><div class="f-item"><label>部门</label><select><option>全部</option><option>驾驶部</option><option>安全部</option><option>维修部</option></select></div><div class="f-item"><label>岗位</label><select><option>全部</option><option>驾驶员</option><option>安全员</option><option>押运员</option></select></div><div class="f-item"><label>政治面貌</label><select><option>全部</option><option>中共党员</option><option>群众</option></select></div><div class="f-actions"><button class="btn btn-primary btn-sm"><span class="ico" data-icon="search"></span> 查询</button><button class="btn btn-outline btn-sm">重置</button></div></div>
+
+  <div class="card" style="padding:0;overflow:hidden"><table class="table"><thead><tr><th>人员姓名</th><th>政治面貌</th><th>性别</th><th>部门</th><th>岗位</th><th>手机号</th><th>小程序账号</th><th>一人一档</th><th>操作</th></tr></thead><tbody id="personBody">
+  <tr><td>张伟</td><td>中共党员</td><td>男</td><td>管理层</td><td>法人/负责人</td><td>138****0001</td><td><span class="st ok" style="display:inline-block">已开通</span><div class="badge-tag">手机号登录</div></td><td><span class="badge-tag">管理层档案（盒一）</span></td><td><a class="btn btn-primary btn-sm" onclick="openArchive('张伟')">档案</a> <a class="btn btn-outline btn-sm">编辑</a></td></tr>
+  <tr><td>李强</td><td>群众</td><td>男</td><td>安全部</td><td>安全员</td><td>138****0002</td><td><span class="st ok" style="display:inline-block">已开通</span><div class="badge-tag">手机号登录</div></td><td><span class="badge-tag">管理层档案（盒一）</span></td><td><a class="btn btn-primary btn-sm" onclick="openArchive('李强')">档案</a> <a class="btn btn-outline btn-sm">编辑</a></td></tr>
+  <tr><td>王芳</td><td>群众</td><td>女</td><td>安全部</td><td>安全员</td><td>138****0003</td><td><span class="st ok" style="display:inline-block">已开通</span><div class="badge-tag">手机号登录</div></td><td><span class="badge-tag">管理层档案（盒一）</span></td><td><a class="btn btn-primary btn-sm" onclick="openArchive('王芳')">档案</a> <a class="btn btn-outline btn-sm">编辑</a></td></tr>
+  <tr><td>陈刚</td><td>群众</td><td>男</td><td>驾驶部</td><td>驾驶员</td><td>138****0004</td><td><span class="st ok" style="display:inline-block">已开通</span><div class="badge-tag">手机号登录</div></td><td><span class="st ok" style="display:inline-block">11/11 完整</span></td><td><a class="btn btn-primary btn-sm" onclick="openArchive('陈刚')">档案</a> <a class="btn btn-outline btn-sm">编辑</a></td></tr>
+  <tr><td>刘洋</td><td>群众</td><td>男</td><td>驾驶部</td><td>驾驶员</td><td>138****0005</td><td><span class="st ok" style="display:inline-block">已开通</span><div class="badge-tag">手机号登录</div></td><td><span class="st miss" style="display:inline-block">9/11 缺2项</span></td><td><a class="btn btn-primary btn-sm" onclick="openArchive('刘洋')">档案</a> <a class="btn btn-outline btn-sm">编辑</a></td></tr></tbody></table>
+  <div class="table-foot"><span>共 5 条记录</span><div class="pagination"><button>&lt;</button><button class="active">1</button><button>2</button><button>3</button><button>…</button><button>&gt;</button></div></div></div>
 </div>
-<script src="../assets/icons.js"></script></body></html>
+
+<div class="modal-mask" id="personModal">
+  <div class="modal">
+    <div class="modal-head">新增人员（录入即自动开通小程序账号）<span class="x" onclick="closeModal('personModal')">×</span></div>
+    <div class="modal-body">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+        <div><label style="font-size:13px;color:var(--text-2)">姓名 *</label><input id="p_name" class="inp" style="width:100%;height:40px;border:1px solid var(--border);border-radius:8px;padding:0 12px;margin-top:4px"></div>
+        <div><label style="font-size:13px;color:var(--text-2)">手机号（小程序登录账号）*</label><input id="p_phone" class="inp" style="width:100%;height:40px;border:1px solid var(--border);border-radius:8px;padding:0 12px;margin-top:4px"></div>
+        <div><label style="font-size:13px;color:var(--text-2)">部门</label><input id="p_dept" class="inp" style="width:100%;height:40px;border:1px solid var(--border);border-radius:8px;padding:0 12px;margin-top:4px"></div>
+        <div><label style="font-size:13px;color:var(--text-2)">岗位 *</label><select id="p_role" class="inp" style="width:100%;height:40px;border:1px solid var(--border);border-radius:8px;padding:0 12px;margin-top:4px" onchange="document.getElementById('p_role_prev').textContent=this.value"><option>驾驶员</option><option>安全员</option><option>押运员</option><option>法人/负责人</option></select></div>
+      </div>
+      <div style="background:#EFF6FF;border:1px solid #BFDBFE;border-radius:10px;padding:10px 12px;font-size:13px;color:#1E40AF;margin-top:14px">✅ 保存后将自动创建小程序账号：登录账号 = 上方手机号，初始密码 <b>123456</b>，按「<span id="p_role_prev">驾驶员</span>」岗位职责显示功能。</div>
+      <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:16px">
+        <button class="btn btn-outline" onclick="closeModal('personModal')">取消</button>
+        <button class="btn btn-primary" onclick="addPerson()">保存并开通小程序账号</button>
+      </div>
+    </div>
+  </div>
+</div>
+<div class="modal-mask" id="archModal">
+  <div class="modal">
+    <div class="modal-head">一人一档 · <span id="archName" style="color:var(--brand-500)"></span> <span class="x" onclick="closeModal('archModal')">×</span></div>
+    <div class="modal-body">
+      <div style="font-size:14px;color:var(--text-2);margin-bottom:8px">归档完整度（普货 11 项，危货 +禁毒承诺书共 12 项）</div>
+      <div class="prog"><i id="archProg" style="width:100%"></i></div>
+      <div id="archCount" style="font-size:13px;color:var(--text-3);margin-bottom:16px"></div>
+      <div class="archive-grid" id="archGrid"></div>
+    </div>
+  </div>
+</div>
+
+<div class="modal-mask" id="docModal">
+  <div class="modal">
+    <div class="modal-head">范本预览 · <span id="docTitle" style="color:var(--brand-500)"></span> <span class="x" onclick="closeModal('docModal')">×</span></div>
+    <div class="modal-body"><div class="doc-preview" id="docPreview"></div></div>
+  </div>
+</div>
+
+<script src="../assets/icons.js"></script>
+<script>
+// 一人一档归档目录（档案盒标签为准，普货11项；危货多「禁毒承诺书」）
+// freq = 更新频率（一年一签 / 入职一次 / 长期 / 按证照有效期）
+const ARCH = [
+  {code:'RY-JSZ',  nm:'居民身份证',         type:'upload', scope:'all', freq:'长期（换证时更新）'},
+  {code:'RY-JSZ2', nm:'机动车驾驶证',       type:'upload', scope:'all', freq:'按证照有效期'},
+  {code:'RY-CYZGZ',nm:'从业资格证',         type:'upload', scope:'all', freq:'按证照有效期'},
+  {code:'RY-HT',   nm:'劳动合同',           type:'upload', scope:'all', freq:'按合同期限'},
+  {code:'RY-TJ',   nm:'体检报告（如有）',   type:'upload', scope:'all', optional:true, freq:'按体检周期（危货每年在岗强制）'},
+  {code:'RY-GQ',   nm:'岗前三级教育培训',   type:'auto',   scope:'all', freq:'入职一次（换岗/复工需重训）'},
+  {code:'RY-ZRS',  nm:'安全生产责任书',     type:'auto',   scope:'all', freq:'一年一签'},
+  {code:'RY-CNS',  nm:'安全生产承诺书',     type:'auto',   scope:'all', freq:'一年一签'},
+  {code:'RY-GZS',  nm:'岗位职业病危害因素告知书', type:'auto', scope:'all', freq:'入职时签（岗位变动重签）'},
+  {code:'RY-JD',   nm:'禁毒承诺书',         type:'auto',   scope:'danger', freq:'一年一签'},
+  {code:'RY-KH',   nm:'年度考核',           type:'auto',   scope:'all', freq:'每年一次'}
+];
+// 模拟：不同人员的缺失项
+const MISSING = { '刘洋':['RY-GZS','RY-TJ'] };
+
+function openArchive(name){
+  document.getElementById('archName').textContent = name;
+  const miss = MISSING[name] || [];
+  const rows = ARCH.filter(a=>a.scope==='all'||a.scope==='danger').map(a=>{
+    const isMiss = miss.includes(a.code);
+    const isOpt = a.optional;
+    let st, cls, label;
+    if(isMiss){ st='miss'; cls='st miss'; label='缺失'; }
+    else if(isOpt){ st='opt'; cls='st opt'; label='可选'; }
+    else if(a.type==='auto'){ st='auto'; cls='st auto'; label='已生成'; }
+    else { st='ok'; cls='st ok'; label='已上传'; }
+    const clickable = (a.type==='auto' && !isMiss) ? `onclick="previewDoc('${a.code}')" style="cursor:pointer"` : '';
+    const freqCls = (a.freq||'').includes('一年') ? 'freq freq-yearly' : ((a.freq||'').includes('入职')?'freq freq-once':'freq');
+    return `<div class="a-item" ${clickable}><span class="code">${a.code}</span><span class="nm">${a.nm}</span><span class="badge-tag">${a.type==='auto'?'范本生成':'上传留存'}</span><span class="${freqCls}" title="更新频率">${a.freq||''}</span><span class="${cls}">${label}</span></div>`;
+  }).join('');
+  document.getElementById('archGrid').innerHTML = rows;
+  const total = ARCH.filter(a=>a.scope==='all').length + 1; // 普货11（含禁毒视为危货12）
+  const done = total - miss.length;
+  document.getElementById('archProg').style.width = Math.round(done/total*100)+'%';
+  document.getElementById('archCount').textContent = `已完成 ${done}/${total} 项${miss.length?`，缺失：${miss.map(c=>ARCH.find(a=>a.code===c).nm).join('、')}`:'，全部齐备'}`;
+  document.getElementById('archModal').classList.add('show');
+}
+
+function previewDoc(code){
+  const a = ARCH.find(x=>x.code===code);
+  document.getElementById('docTitle').textContent = a.nm;
+  const el = document.getElementById('docPreview');
+  if(code==='RY-GZS'){
+    el.innerHTML = `<div class="title">岗位职业病危害因素告知书</div>
+      <p>根据《中华人民共和国职业病防治法》有关规定要求，我公司将工作过程中可能接触的职业病危害因素、可能产生的职业病危害及其后果、职业病防护措施和待遇等如实告知您。</p>
+      <p>现在您在我公司 <span class="fill">驾驶员</span> 岗位任职工作，在此岗位任职期间，公司将按照国家有关规定，对您发放相关安全防护用品，并向您告知该岗位存在职业病危害因素及相关职业病防护措施，具体如下：</p>
+      <p class="ni"><b>职业病危害因素：</b>长期驾驶导致的颈肩腰劳损、久坐、噪声、振动、视疲劳等。</p>
+      <p>一旦发生职业病，本单位将按照国家有关法律、法规，为您提供相应待遇。</p>
+      <p>同时，您有履行以下规定的义务：自觉遵守本岗位职业卫生操作规程和制度，正确使用职业病防护设备和个人职业病防护用品，积极参加职业卫生知识培训。</p>
+      <p class="ni" style="margin-top:24px">告知人（企业盖章）：佛山市悦通物流有限公司</p>
+      <p class="ni">被告知人（签字）：<span class="fill">____</span>&nbsp;&nbsp;&nbsp;&nbsp;日期：____年__月__日</p>`;
+  } else if(code==='RY-ZRS'){
+    el.innerHTML = `<div class="title">安全生产责任书</div>
+      <p>为贯彻"安全第一、预防为主、综合治理"方针，落实企业安全生产主体责任，明确各岗位安全生产职责，公司（甲方）与 <span class="fill">____</span>（乙方）签订本责任书。</p>
+      <p>乙方须严格遵守国家安全生产法律法规和公司各项安全管理制度，认真履行本岗位安全生产职责，杜绝违章作业。</p>
+      <p class="ni" style="margin-top:24px">甲方（盖章）：佛山市悦通物流有限公司&nbsp;&nbsp;&nbsp;&nbsp;乙方（签字）：____</p>`;
+  } else if(code==='RY-CNS'){
+    el.innerHTML = `<div class="title">安全生产承诺书</div>
+      <p>本人郑重承诺：严格遵守安全生产法律法规，认真执行公司安全管理制度，自觉接受安全教育培训，做到不违章、不冒险、不超载、不疲劳驾驶，确保行车安全。</p>
+      <p class="ni" style="margin-top:24px">承诺人（签字）：____&nbsp;&nbsp;&nbsp;&nbsp;日期：____年__月__日</p>`;
+  } else {
+    el.innerHTML = `<div class="title">${a.nm}</div><p>（范本正文由范本引擎填充企业信息与人员变量生成，此处为结构预览）</p>`;
+  }
+  document.getElementById('docModal').classList.add('show');
+}
+
+function closeModal(id){ document.getElementById(id).classList.remove('show'); }
+function esc(s){ return String(s).replace(/[&<>"]/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]; }); }
+function toast(msg){
+  let t = document.getElementById('toast');
+  if(!t){ t = document.createElement('div'); t.id='toast';
+    t.style.cssText='position:fixed;top:20px;right:20px;background:#141c2b;color:#fff;padding:12px 20px;border-radius:10px;font-size:14px;z-index:9999;opacity:0;transform:translateY(-10px);transition:.25s;box-shadow:0 4px 16px rgba(0,0,0,.2)';
+    document.body.appendChild(t); }
+  t.textContent = msg; t.style.opacity='1'; t.style.transform='translateY(0)';
+  clearTimeout(t._t); t._t = setTimeout(function(){ t.style.opacity='0'; t.style.transform='translateY(-10px)'; }, 2600);
+}
+
+function openPersonModal(){ document.getElementById('personModal').classList.add('show'); }
+function addPerson(){
+  var name = document.getElementById('p_name').value.trim();
+  var phone = document.getElementById('p_phone').value.trim();
+  var dept = document.getElementById('p_dept').value.trim() || '—';
+  var role = document.getElementById('p_role').value;
+  if(!name || !phone){ toast('请填写姓名与手机号'); return; }
+  var masked = phone.replace(/(\d{3})\d{4}(\d{4})/, '$1****$2') || phone;
+  var tr = document.createElement('tr');
+  tr.innerHTML = '<td>'+esc(name)+'</td><td>—</td><td>—</td><td>'+esc(dept)+'</td><td>'+esc(role)+'</td><td>'+esc(masked)+'</td>'
+    + '<td><span class="st ok" style="display:inline-block">已开通</span><div class="badge-tag">手机号登录</div></td>'
+    + '<td><span class="st miss" style="display:inline-block">0/11 待建</span></td>'
+    + '<td><a class="btn btn-primary btn-sm" onclick="openArchive(\''+esc(name)+'\')">档案</a> <a class="btn btn-outline btn-sm">编辑</a></td>';
+  var body = document.getElementById('personBody');
+  body.insertBefore(tr, body.firstChild);
+  closeModal('personModal');
+  toast('人员「'+name+'」已新增，小程序账号已开通（手机号登录，初始密码 123456）');
+  document.getElementById('p_name').value=''; document.getElementById('p_phone').value=''; document.getElementById('p_dept').value='';
+}
+</script></body></html>

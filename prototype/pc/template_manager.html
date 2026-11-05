@@ -1,0 +1,858 @@
+<!DOCTYPE html>
+<html lang="zh-CN"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>范本管理</title>
+<link rel="stylesheet" href="../assets/common.css"><link rel="stylesheet" href="../assets/pc.css">
+<style>
+  .pc-header .actions{display:flex;gap:8px}
+  .shell{display:flex;gap:16px;align-items:flex-start}
+  .left{width:288px;flex-shrink:0;position:sticky;top:0;align-self:flex-start;max-height:calc(100vh - 140px);overflow:auto}
+  .right{flex:1;min-width:0}
+
+  /* 服务商：范本套列表 */
+  .set-list{display:flex;flex-direction:column;gap:10px}
+  .set-card{border:1px solid var(--border);border-radius:12px;padding:12px 14px;cursor:pointer;transition:.12s;background:var(--surface);position:relative}
+  .set-card:hover{border-color:var(--brand-400)}
+  .set-card.on{border-color:var(--brand-500);background:var(--brand-50);box-shadow:0 0 0 1px var(--brand-500)}
+  .set-card .sc-top{display:flex;align-items:center;gap:8px;margin-bottom:6px}
+  .set-card .sc-name{font-weight:700;font-size:14.5px;flex:1}
+  .set-card .sc-meta{display:flex;align-items:center;gap:6px;flex-wrap:wrap;font-size:11.5px;color:var(--text-3)}
+  .set-card .sc-desc{font-size:12px;color:var(--text-3);margin-top:6px;line-height:1.6}
+  .set-card .sc-ops{display:flex;gap:6px;margin-top:10px}
+  .star{position:absolute;top:10px;right:12px;color:#EAB308;font-size:13px;display:none}
+  .set-card.on .star{display:block}
+  .tag{display:inline-block;padding:1px 8px;border-radius:8px;font-size:11px;font-weight:600;white-space:nowrap}
+  .tag-pu{background:#dbeafe;color:#1d4ed8}
+  .tag-we{background:#fee2e2;color:#b91c1c}
+  .tag-region{background:#f1f5f9;color:#475569}
+  .tag-global{background:#dcfce7;color:#15803d}
+  .tag-ph{background:#fef3c7;color:#b45309}
+
+  /* 档案盒目录树 */
+  .tree{background:var(--surface);border:1px solid var(--border);border-radius:var(--r-lg);box-shadow:var(--shadow-sm);overflow:hidden}
+  .tree .tt{font-size:15px;font-weight:700;padding:14px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between}
+  .box-item{padding:10px 16px;cursor:pointer;border-left:3px solid transparent;display:flex;align-items:center;gap:8px;transition:.12s}
+  .box-item:hover{background:var(--brand-50)}
+  .box-item.on{background:var(--brand-50);border-left-color:var(--brand-500)}
+  .box-item .bx-name{font-size:13.5px;font-weight:600;flex:1}
+  .box-item .bx-count{font-size:12px;color:var(--text-3)}
+
+  .toolbar{display:flex;align-items:center;gap:10px;margin-bottom:14px;flex-wrap:wrap}
+  .seg{display:flex;background:#F1F5F9;border-radius:10px;padding:3px;gap:2px}
+  .seg-btn{border:none;background:transparent;padding:6px 14px;font-size:13px;font-weight:600;color:var(--text-3);border-radius:8px;cursor:pointer;transition:.12s;white-space:nowrap}
+  .seg-btn.on{background:#fff;color:var(--brand-600);box-shadow:0 1px 4px rgba(0,0,0,.12)}
+
+  .tpl-card{border:1px solid var(--border);border-radius:12px;padding:14px 16px;margin-bottom:10px;cursor:pointer;transition:.12s;background:var(--surface)}
+  .tpl-card:hover{border-color:var(--brand-400)}
+  .tpl-card.on{border-color:var(--brand-500);background:var(--brand-50)}
+  .tpl-card .tpl-head{display:flex;align-items:center;gap:8px;margin-bottom:6px}
+  .tpl-card .tpl-name{font-weight:700;font-size:14.5px;flex:1}
+  .tpl-idx{display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:50%;background:var(--brand-500);color:#fff;font-size:12px;font-weight:700;flex-shrink:0}
+
+  .folder{margin-bottom:10px;border:1px solid var(--border);border-radius:12px;overflow:hidden;background:var(--surface)}
+  .folder-head{display:flex;align-items:center;gap:8px;padding:11px 14px;cursor:pointer;background:var(--brand-50);font-weight:700;font-size:14px;user-select:none;transition:.12s}
+  .folder-head:hover{background:var(--brand-100)}
+  .folder-head .folder-name{flex:1}
+  .folder-head .folder-count{font-size:12px;color:var(--text-3);font-weight:600;background:#fff;border:1px solid var(--border);border-radius:20px;padding:1px 9px}
+  .folder-head .folder-caret{color:var(--text-3);transition:.15s;font-size:12px}
+  .folder.collapsed .folder-caret{transform:rotate(-90deg)}
+  .folder.collapsed .folder-body{display:none}
+  .folder-body{padding:10px 12px}
+
+  .ver-pill{font-size:11px;padding:2px 8px;border-radius:8px;font-weight:600}
+  .ver-builtin{background:var(--brand-100);color:var(--brand-600)}
+  .ver-custom{background:#fff4e0;color:#b26a00}
+  .ver-linked{background:#dcfce7;color:#15803d}
+  .ph-flag{font-size:11px;padding:1px 7px;border-radius:7px;background:#fef3c7;color:#b45309;font-weight:600}
+
+  .panel-title{font-size:15px;font-weight:700;margin-bottom:12px;display:flex;align-items:center;justify-content:space-between}
+  .panel-title .sub{font-size:12px;color:var(--text-3);font-weight:400}
+
+  /* 企业视图：当前应用横幅 / 修订提示 */
+  .curbar{display:flex;align-items:center;gap:12px;background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:14px 16px;margin-bottom:14px;flex-wrap:wrap}
+  .curbar .cb-label{font-size:12px;color:var(--text-3)}
+  .curbar .cb-name{font-weight:700;font-size:16px}
+  .curbar .cb-meta{font-size:12px;color:var(--text-3)}
+  .curbar .spacer{flex:1}
+  .rev-banner{border:1px solid #fcd34d;background:#fffbeb;color:#92400e;border-radius:12px;padding:12px 16px;margin-bottom:14px;display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+  .rev-banner .rb-icon{font-size:20px}
+  .rev-banner .rb-text{flex:1;font-size:13.5px;line-height:1.6}
+  .rev-banner .rb-actions{display:flex;gap:8px}
+  .mysets{margin-top:18px}
+  .mysets .ms-card{display:flex;align-items:center;gap:10px;border:1px solid var(--border);border-radius:10px;padding:10px 14px;margin-bottom:8px;background:var(--surface)}
+  .mysets .ms-card .ms-name{font-weight:600;flex:1}
+  .mysets .ms-card.on{border-color:var(--brand-500);background:var(--brand-50)}
+
+  .empty{text-align:center;padding:50px;color:var(--text-3)}
+
+  /* 编辑器 / 弹窗复用原样式 */
+  .editor{border:1px solid var(--border);border-radius:12px;overflow:hidden}
+  .editor-head{display:flex;align-items:center;justify-content:space-between;padding:12px 16px;background:#f8fafd;border-bottom:1px solid var(--border)}
+  .editor-head .eh-t{font-weight:700;font-size:14px}
+  .editor-body{display:flex;min-height:420px}
+  .editor-code{flex:1;padding:16px;font-family:"SFMono-Regular",Consolas,"Liberation Mono",monospace;font-size:13px;line-height:1.7;border:none;outline:none;resize:none;background:#fff;color:#24292e;white-space:pre;overflow:auto}
+  .editor-side{width:220px;border-left:1px solid var(--border);padding:14px;background:#f8fafd;overflow:auto}
+  .editor-side .es-t{font-size:12px;font-weight:700;color:var(--text-3);margin-bottom:10px}
+  .var-chip{display:flex;align-items:center;gap:6px;background:#fff;border:1px solid var(--border);border-radius:8px;padding:6px 10px;margin-bottom:6px;cursor:pointer;font-size:12px;transition:.12s}
+  .var-chip:hover{border-color:var(--brand-400);background:var(--brand-50)}
+  .var-chip .vk{font-family:monospace;color:var(--brand-600);font-weight:600}
+  .var-chip .vd{color:var(--text-3);font-size:11px;flex:1}
+
+  .modal-mask{position:fixed;inset:0;background:rgba(20,28,43,.45);display:none;align-items:center;justify-content:center;z-index:200}
+  .modal-mask.show{display:flex}
+  .modal{background:#fff;border-radius:var(--r-lg);width:640px;max-width:94vw;max-height:90vh;overflow:auto;box-shadow:var(--shadow-md)}
+  .modal-head{display:flex;align-items:center;justify-content:space-between;padding:16px 20px;border-bottom:1px solid var(--border);font-weight:700;font-size:16px}
+  .modal-head .x{cursor:pointer;font-size:24px;color:var(--text-3);line-height:1}
+  .modal-body{padding:20px}
+  .upload-zone{border:2px dashed var(--border-strong);border-radius:12px;padding:28px;text-align:center;color:var(--text-3);cursor:pointer;transition:.12s}
+  .upload-zone:hover{border-color:var(--brand-400);background:var(--brand-50)}
+  .upload-zone .ico{font-size:30px;margin-bottom:8px}
+  .toast{position:fixed;bottom:20px;right:20px;background:#1E293B;color:#fff;padding:12px 20px;border-radius:10px;font-size:14px;z-index:300;opacity:0;transform:translateY(10px);transition:.25s;box-shadow:0 4px 16px rgba(0,0,0,.2);pointer-events:none}
+  .toast.show{opacity:1;transform:translateY(0)}
+
+  .resp-tabs{display:flex;gap:8px;margin-bottom:14px}
+  .resp-field{margin-bottom:12px}
+  .resp-field label{display:block;font-size:13px;font-weight:700;margin-bottom:6px;color:var(--text-2)}
+  .resp-field textarea{width:100%;min-height:96px;border:1px solid var(--border);border-radius:8px;padding:10px;font-size:13px;line-height:1.7;font-family:inherit;resize:vertical;outline:none}
+  .resp-field textarea:focus{border-color:var(--brand-400)}
+  .resp-note{font-size:12px;color:var(--ok-ink);background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;padding:8px 12px;margin-bottom:14px;line-height:1.6}
+
+  .pdf-mask{position:fixed;inset:0;background:rgba(20,28,43,.5);display:none;align-items:center;justify-content:center;z-index:250}
+  .pdf-mask.show{display:flex}
+  .pdf-wrap{background:#fff;width:820px;max-width:96vw;max-height:92vh;display:flex;flex-direction:column;border-radius:6px;overflow:hidden;box-shadow:0 8px 40px rgba(0,0,0,.3)}
+  .pdf-toolbar{display:flex;align-items:center;gap:10px;padding:12px 16px;background:#F1F5F9;border-bottom:1px solid var(--border)}
+  .pdf-toolbar .t{font-weight:700;font-size:14px;flex:1}
+  .pdf-body{flex:1;overflow:auto;background:#e9ecf1;padding:24px;display:flex;justify-content:center}
+  .pdf-page{background:#fff;width:700px;min-height:880px;padding:50px 56px;box-shadow:0 2px 12px rgba(0,0,0,.15);font-family:"SimSun","宋体",serif;color:#000;font-size:14px;line-height:1.8}
+  .pdf-page .ph{text-align:center;font-size:13px;color:#333;border-bottom:2px solid #000;padding-bottom:8px;margin-bottom:6px}
+  .pdf-page .ph .org{font-size:17px;font-weight:bold;letter-spacing:1px}
+  .pdf-page .ph .meta{font-size:11px;color:#555}
+  .pdf-page .ptitle{text-align:center;font-size:20px;font-weight:bold;letter-spacing:3px;margin:18px 0 4px}
+  .pdf-page .psub{text-align:center;font-size:12px;color:#333;margin-bottom:16px}
+  .pdf-page p{text-indent:2em;margin:5px 0}
+  .pdf-page p.ni{text-indent:0}
+  .pdf-page .fill{color:#1a4b8c;font-weight:bold}
+  .pdf-page .doc-no{display:block;font-family:"SimSun","宋体",serif;font-weight:bold;color:#000;background:#f3f4f6;border:1px solid #ccc;border-radius:4px;font-size:12px;padding:4px 10px;margin-bottom:12px;letter-spacing:1px}
+  .pdf-foot{border-top:1px solid #999;margin-top:24px;padding-top:10px;display:flex;align-items:center;justify-content:space-between;font-size:11px;color:#555}
+  .doc-h0{text-align:center;font-size:22px;font-weight:bold;letter-spacing:3px;margin:6px 0 14px}
+  .doc-h1{font-size:16px;font-weight:bold;margin:16px 0 6px;padding-left:10px;border-left:4px solid var(--brand-500)}
+  .doc-h2{font-size:14.5px;font-weight:bold;margin:12px 0 4px}
+  .doc-h3{font-size:13.5px;font-weight:600;margin:9px 0 3px;color:var(--brand-700)}
+  .doc-p{text-indent:2em;margin:4px 0;line-height:1.8}
+  .doc-li{margin:3px 0 3px 1.6em;text-indent:-1.2em;line-height:1.7}
+  .doc-sign{margin-top:28px;text-align:right;line-height:2.2}
+</style></head><body>
+<div class="pc-page">
+  <div class="pc-header">
+    <div>
+      <h1 id="pageTitle">范本管理</h1>
+      <div class="desc" id="pageDesc"></div>
+    </div>
+    <div class="actions" id="topActions"></div>
+  </div>
+
+  <!-- 企业侧：当前应用范本横幅 + 修订提示 -->
+  <div id="entCurBar"></div>
+  <div id="revBanner"></div>
+
+  <!-- 主体 -->
+  <div class="shell">
+    <div class="left" id="leftCol"></div>
+    <div class="right">
+      <div class="toolbar">
+        <span style="font-size:12px;color:var(--text-3)" id="viewHint"></span>
+      </div>
+      <div id="fileArea"></div>
+      <div class="mysets" id="mySetsArea"></div>
+    </div>
+  </div>
+</div>
+
+<!-- 在线编辑器弹窗 -->
+<div class="modal-mask" id="editModal">
+  <div class="modal" style="width:880px">
+    <div class="modal-head">在线修改范本 <span style="font-size:13px;color:var(--text-3);font-weight:400" id="editTitle"></span> <span class="x" onclick="closeModal('editModal')">×</span></div>
+    <div class="modal-body">
+      <div class="editor">
+        <div class="editor-head">
+          <div class="eh-t">范本 HTML 源码（含变量占位 {{变量}} 与条件段落 {% if %}）</div>
+          <div class="actions" style="gap:6px">
+            <button class="btn btn-outline btn-sm" onclick="resetEdit()">重置</button>
+            <button class="btn btn-primary btn-sm" onclick="saveThis()">保存本范本</button>
+          </div>
+        </div>
+        <div class="editor-body">
+          <textarea class="editor-code" id="editCode" spellcheck="false"></textarea>
+          <div class="editor-side">
+            <div class="es-t">可用变量（点击插入）</div>
+            <div id="varList"></div>
+            <div class="es-t" style="margin-top:16px">条件段落示例</div>
+            <div class="var-chip" onclick="insertSnippet('if')"><span class="vk">{% if post == '驾驶员' %}</span></div>
+            <div class="var-chip" onclick="insertSnippet('endif')"><span class="vk">{% endif %}</span></div>
+          </div>
+        </div>
+      </div>
+      <p style="font-size:12px;color:var(--text-3);margin:12px 0 0">「保存本范本」：将修改后的内容写回当前范本（<span id="saveScopeHint">服务商全局范本</span>）。</p>
+    </div>
+  </div>
+</div>
+
+<!-- 联动编辑弹窗（责任制 / 责任书） -->
+<div class="modal-mask" id="respModal">
+  <div class="modal" style="width:720px">
+    <div class="modal-head"><span id="respTitle">联动编辑</span> <span class="x" onclick="closeModal('respModal')">×</span></div>
+    <div class="modal-body">
+      <div class="resp-note">📎 本文件与对应岗位《安全生产责任书》/《安全生产责任制》<b>共享同一份「目标·职责·考核」数据</b>。保存后，所有关联文件将<b>自动对齐更新</b>。</div>
+      <div class="resp-field" id="respRoleWrap" style="display:none">
+        <label>编辑岗位</label>
+        <select class="form-select" id="respRoleSel" onchange="changeRespRole()"></select>
+      </div>
+      <div class="resp-field">
+        <label>安全生产目标</label>
+        <textarea id="rtTarget"></textarea>
+      </div>
+      <div class="resp-field">
+        <label>安全职责</label>
+        <textarea id="rtDuty"></textarea>
+      </div>
+      <div class="resp-field">
+        <label>考核标准</label>
+        <textarea id="rtAssess" style="min-height:64px"></textarea>
+      </div>
+      <div style="margin-top:8px;text-align:right"><button class="btn btn-primary" onclick="saveRespEdit()">保存并同步关联文件</button></div>
+    </div>
+  </div>
+</div>
+
+<!-- PDF 预览弹窗 -->
+<div class="pdf-mask" id="pdfMask">
+  <div class="pdf-wrap">
+    <div class="pdf-toolbar">
+      <span class="t" id="pdfTitle">范本 PDF 预览</span>
+      <span style="font-size:12px;color:var(--text-3)" id="pdfMeta"></span>
+      <button class="btn btn-outline btn-sm" onclick="printPdf()"><span class="ico" data-icon="printer"></span> 打印</button>
+      <button class="btn btn-primary btn-sm" onclick="downloadPdf()"><span class="ico" data-icon="download"></span> 下载 PDF</button>
+      <button class="btn btn-outline btn-sm" onclick="closePdf()">关闭</button>
+    </div>
+    <div class="pdf-body"><div class="pdf-page" id="pdfPage"></div></div>
+  </div>
+</div>
+
+<!-- 新建范本套弹窗 -->
+<div class="modal-mask" id="newSetModal">
+  <div class="modal">
+    <div class="modal-head">新建范本套 <span class="x" onclick="closeModal('newSetModal')">×</span></div>
+    <div class="modal-body">
+      <div class="form-item"><label class="form-label">范本套名称 <span class="req">*</span></label><input class="form-input" id="nsName" placeholder="例如：普货南海专版"></div>
+      <div class="form-item"><label class="form-label">运输类型</label>
+        <select class="form-select" id="nsBiz"><option value="普货">普货</option><option value="危货">危货</option></select></div>
+      <div class="form-item"><label class="form-label">区域</label><input class="form-input" id="nsRegion" value="全区域" placeholder="全区域 / 具体区域名"></div>
+      <div class="form-item"><label class="form-label">初始内容</label>
+        <select class="form-select" id="nsSeed">
+          <option value="skeleton">占位骨架（通用文件清单，内容待补）</option>
+          <option value="full">完整范本（复制普货通用范本全套文件）</option>
+        </select></div>
+      <div style="margin-top:16px;text-align:right"><button class="btn btn-primary" onclick="confirmNewSet()">创建</button></div>
+    </div>
+  </div>
+</div>
+
+<!-- 重命名范本套弹窗 -->
+<div class="modal-mask" id="renameSetModal">
+  <div class="modal">
+    <div class="modal-head">重命名范本套 <span class="x" onclick="closeModal('renameSetModal')">×</span></div>
+    <div class="modal-body">
+      <div class="form-item"><label class="form-label">范本套名称 <span class="req">*</span></label><input class="form-input" id="rsName"></div>
+      <div style="margin-top:16px;text-align:right"><button class="btn btn-primary" onclick="confirmRenameSet()">保存</button></div>
+    </div>
+  </div>
+</div>
+
+<!-- 上传文件弹窗 -->
+<div class="modal-mask" id="uploadModal">
+  <div class="modal">
+    <div class="modal-head">上传文件到当前范本 <span class="x" onclick="closeModal('uploadModal')">×</span></div>
+    <div class="modal-body">
+      <div class="form-item"><label class="form-label">文件名称 <span class="req">*</span></label><input class="form-input" id="upName" placeholder="例如：XX 专项应急预案"></div>
+      <div class="form-item"><label class="form-label">归属档案盒 <span class="req">*</span></label><select class="form-select" id="upBox"></select></div>
+      <div class="form-item"><label class="form-label">版本说明</label><input class="form-input" id="upDesc" placeholder="例如：针对 XX 客户定制"></div>
+      <div class="upload-zone" onclick="mockUploadFile()">
+        <div class="ico" data-icon="upload"></div>
+        <div>点击上传文件（.html / .docx，模拟）</div>
+        <div style="font-size:12px;margin-top:4px">支持上传 Word/HTML，系统自动结构化提取变量</div>
+      </div>
+      <div style="margin-top:16px;text-align:right"><button class="btn btn-primary" onclick="confirmUpload()">确认上传</button></div>
+    </div>
+  </div>
+</div>
+
+<!-- 选择服务商范本（企业侧） -->
+<div class="modal-mask" id="pickModal">
+  <div class="modal">
+    <div class="modal-head">选择服务商范本 · 创建企业当前应用范本 <span class="x" onclick="closeModal('pickModal')">×</span></div>
+    <div class="modal-body">
+      <p style="font-size:12px;color:var(--text-3);margin:0 0 14px">从服务商提供的整套全局范本中选择一套，系统将自动根据企业实际岗位微调，生成企业的「当前应用范本」。</p>
+      <div id="pickList"></div>
+    </div>
+  </div>
+</div>
+
+<!-- 另存为我的范本（命名） -->
+<div class="modal-mask" id="saveAsModal">
+  <div class="modal">
+    <div class="modal-head">另存为我的范本 <span class="x" onclick="closeModal('saveAsModal')">×</span></div>
+    <div class="modal-body">
+      <div class="form-item"><label class="form-label">新范本名称 <span class="req">*</span></label><input class="form-input" id="saName" placeholder="例如：普货通用范本（2026修订版）"></div>
+      <div style="margin-top:16px;text-align:right"><button class="btn btn-primary" onclick="confirmSaveAs()">另存为</button></div>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script src="../assets/archive_shared.js"></script>
+<script src="../assets/sys_docs.js"></script>
+<script src="../assets/org_data.js"></script>
+<script src="../assets/tpl_set_data.js"></script>
+<script src="../assets/icons.js"></script>
+<script>
+// ============ 全局状态 ============
+var ROLE = localStorage.getItem('userRole') || 'enterprise';
+var IS_PROVIDER = (ROLE === 'provider' || ROLE === 'admin');
+var state = {
+  curSetId: null,      // 当前操作的范本套 id（服务商：P1.. ；企业：当前应用范本 id）
+  curBox: 1,
+  editingFile: null,  // 正在编辑的文件对象（属于 activeSet.files）
+  editingId: null,
+  respFuncKey: null,  // 联动编辑的岗位职能键
+  respTpl: null
+};
+
+var VARIABLES = [
+  {k:'company_name', d:'企业名称'}, {k:'person_name', d:'人员姓名'}, {k:'post', d:'岗位'},
+  {k:'doc_no', d:'文件编号'}, {k:'start_date', d:'实施/生效日期'}, {k:'issuer', d:'签发人'},
+  {k:'license_no', d:'许可证号'}, {k:'revenue', d:'营收'}, {k:'rate', d:'计提比例'}
+];
+// 岗位「目标/职责/考核」与「责任书/责任制」的联动数据统一来自 assets/org_data.js 的 OrgData，
+// 不再使用写死的角色数组，岗位改名后制度内容实时跟随。
+
+// ============ 工具 ============
+function esc(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+function closeModal(id){ document.getElementById(id).classList.remove('show'); }
+function toast(msg){
+  var t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('show');
+  clearTimeout(t._t); t._t = setTimeout(function(){ t.classList.remove('show'); }, 2600);
+}
+function activeSet(){ return IS_PROVIDER ? TplSets.getProviderSet(state.curSetId) : TplSets.getEnterpriseCurrent(); }
+function activeFiles(){ var s = activeSet(); return s ? s.files : []; }
+function persistActive(){ if(IS_PROVIDER){ var arr=TplSets.getProviderSets(); var i=arr.findIndex(function(x){return x.id===state.curSetId;}); if(i>=0){arr[i]=activeSet(); TplSets.saveProviderSets(arr);} } else { TplSets.setEnterpriseCurrent(activeSet()); } }
+
+// ============ 初始化渲染 ============
+function init(){
+  document.getElementById('pageTitle').textContent = IS_PROVIDER ? '范本套管理（服务商）' : '企业范本管理';
+  document.getElementById('pageDesc').textContent = IS_PROVIDER
+    ? '服务商全局范本套：可增删查改多套，所有企业均可调用；应用时根据企业实际岗位微调，自动生成企业范本。'
+    : '企业当前应用范本：从服务商全局范本创建，可在基础上定制并另存为新的范本名字。';
+  renderTopActions();
+  if(IS_PROVIDER) renderProviderView(); else renderEnterpriseView();
+  if(window.__rerenderIcons) window.__rerenderIcons();
+}
+
+function renderTopActions(){
+  var el = document.getElementById('topActions');
+  if(IS_PROVIDER){
+    el.innerHTML = '<button class="btn btn-outline" onclick="openUpload()"><span class="ico" data-icon="upload"></span> 上传文件</button>'
+      + '<button class="btn btn-primary" onclick="openNewSet()"><span class="ico" data-icon="plus"></span> 新建范本套</button>';
+  } else {
+    el.innerHTML = '<button class="btn btn-primary" onclick="openPick()"><span class="ico" data-icon="copy"></span> 选择/更换服务商范本</button>'
+      + '<button class="btn btn-outline" onclick="openSaveAs()"><span class="ico" data-icon="save"></span> 另存为我的范本</button>';
+  }
+}
+
+// ============ 服务商视图 ============
+function renderBoxTree(){
+  var s = activeSet(); if(!s) return '';
+  var boxCount = {}; s.files.forEach(function(f){ boxCount[f.box] = (boxCount[f.box]||0)+1; });
+  return window.BOXES.map(function(b){
+    return '<div class="box-item '+(b.id===state.curBox?'on':'')+'" onclick="pickBox('+b.id+')">'
+      + '<span class="bx-name">'+esc(b.name)+'</span><span class="bx-count">'+(boxCount[b.id]||0)+'</span></div>';
+  }).join('');
+}
+
+function renderProviderView(){
+  document.getElementById('entCurBar').innerHTML = '';
+  document.getElementById('revBanner').innerHTML = '';
+  document.getElementById('mySetsArea').innerHTML = '';
+  // 默认选中第一套
+  var sets = TplSets.getProviderSets();
+  if(!state.curSetId && sets.length) state.curSetId = sets[0].id;
+  document.getElementById('viewHint').textContent = '服务商全局范本，所有企业均可调用 · 点套名切换，盒内文件可在线修改/上传';
+  // 左列：套列表（上）+ 档案盒目录树（下）
+  var setCards = sets.map(function(s){
+        var bizTag = s.bizType==='危货' ? '<span class="tag tag-we">危货</span>' : '<span class="tag tag-pu">普货</span>';
+        var regionTag = s.region==='全区域' ? '<span class="tag tag-global">全局</span>' : '<span class="tag tag-region">'+esc(s.region)+'</span>';
+        var phTag = s.files.some(function(f){return f.placeholder;}) ? '<span class="tag tag-ph">含占位</span>' : '';
+        return '<div class="set-card '+(s.id===state.curSetId?'on':'')+'" onclick="selectSet(\''+s.id+'\')">'
+          + '<span class="star">★ 默认</span>'
+          + '<div class="sc-top"><span class="sc-name">'+esc(s.name)+'</span></div>'
+          + '<div class="sc-meta">'+bizTag+regionTag+phTag+'<span>'+s.files.length+' 份文件</span></div>'
+          + '<div class="sc-desc">'+esc(s.desc||'')+'</div>'
+          + '<div class="sc-ops">'
+            + '<button class="btn btn-outline btn-sm" onclick="event.stopPropagation();openRenameSet(\''+s.id+'\')"><span class="ico" data-icon="edit"></span> 重命名</button>'
+            + '<button class="btn btn-outline btn-sm" onclick="event.stopPropagation();setDefault(\''+s.id+'\')"><span class="ico" data-icon="star"></span> 默认</button>'
+            + '<button class="btn btn-outline btn-sm" onclick="event.stopPropagation();delSet(\''+s.id+'\')"><span class="ico" data-icon="trash"></span> 删除</button>'
+          + '</div></div>';
+      }).join('');
+  document.getElementById('leftCol').innerHTML =
+      '<div class="tree" style="margin-bottom:12px"><div class="tt">范本套（'+sets.length+'）</div><div style="padding:10px">'+setCards+'</div></div>'
+    + '<div class="tree"><div class="tt">档案盒目录</div>'+renderBoxTree()+'</div>';
+  renderFileArea();
+}
+
+function selectSet(id){ state.curSetId = id; state.curBox = 1; renderProviderView(); }
+
+function renderFileArea(){
+  var s = activeSet();
+  if(!s){ document.getElementById('fileArea').innerHTML = '<div class="empty">暂无范本，请先创建</div>'; return; }
+  var uploadBtn = IS_PROVIDER ? '<button class="btn btn-outline btn-sm" onclick="openUpload()"><span class="ico" data-icon="upload"></span> 上传文件到本套</button>' : '';
+  document.getElementById('fileArea').innerHTML =
+    '<div class="toolbar" style="display:flex;justify-content:space-between">'
+      + '<span style="font-size:13px;font-weight:700">「'+esc(s.name)+'」· 档案盒文件</span>'
+      + uploadBtn + '</div>'
+    + '<div id="fileListWrap"></div>';
+  renderFileList();
+  if(window.__rerenderIcons) window.__rerenderIcons();
+}
+
+function pickBox(id){ state.curBox = id; renderFileList(); }
+
+function renderFileList(){
+  var s = activeSet(); if(!s) return;
+  var list = s.files.filter(function(f){ return f.box===state.curBox; });
+  var wrap = document.getElementById('fileListWrap');
+  if(!wrap) return;
+  if(list.length===0){ wrap.innerHTML = '<div class="empty">该档案盒暂无文件，可「上传文件到本套」</div>'; return; }
+  // 按 type 分组为文件夹
+  var seen = []; list.forEach(function(f){ if(seen.indexOf(f.type)<0) seen.push(f.type); });
+  wrap.innerHTML = seen.map(function(type){
+    var items = list.filter(function(f){ return f.type===type; });
+    return '<div class="folder" id="fg_'+type+'">'
+      + '<div class="folder-head" onclick="toggleFolder(\'fg_'+type+'\')">'
+        + '<span class="f-ico ico" data-icon="folder"></span><span class="folder-name">'+esc(type)+'</span>'
+        + '<span class="folder-count">'+items.length+'</span><span class="folder-caret">▾</span></div>'
+      + '<div class="folder-body">'+items.map(function(f,i){ return tplCard(f,i); }).join('')+'</div></div>';
+  }).join('');
+  if(window.__rerenderIcons) window.__rerenderIcons();
+}
+
+function tplCard(f, idx){
+  var isLinked = f.link==='resp';
+  var isPh = !!f.placeholder;
+  var editBtn = isLinked
+    ? '<button class="btn btn-outline btn-sm" onclick="event.stopPropagation();openRespEdit(\''+f.fileId+'\')"><span class="ico" data-icon="link"></span> 联动编辑</button>'
+    : '<button class="btn btn-outline btn-sm" onclick="event.stopPropagation();editTpl(\''+f.fileId+'\')">在线修改</button>';
+  var phFlag = isPh ? '<span class="ph-flag">占位待补</span>' : '';
+  var removeBtn = IS_PROVIDER ? '<button class="btn btn-outline btn-sm" onclick="event.stopPropagation();removeFile(\''+f.fileId+'\')"><span class="ico" data-icon="trash"></span> 移出</button>' : '';
+  return '<div class="tpl-card" onclick="editTpl(\''+f.fileId+'\')">'
+    + '<div class="tpl-head"><span class="tpl-idx">'+(idx+1)+'</span><span class="tpl-name">'+esc(f.name)+'</span>'
+      + (isLinked?'<span class="ver-pill ver-linked">联动</span>':'') + phFlag
+      + '<span class="ver-pill ver-builtin">'+(f.ver||'内置')+'</span></div>'
+    + '<div class="tpl-meta">'
+      + '<button class="btn btn-outline btn-sm" onclick="event.stopPropagation();previewPdf(\''+f.fileId+'\')"><span class="ico" data-icon="fileText"></span> 预览 PDF</button>'
+      + editBtn + removeBtn
+    + '</div></div>';
+}
+
+function toggleFolder(gid){ var el=document.getElementById(gid); if(el) el.classList.toggle('collapsed'); }
+
+// 服务商：删除套内文件
+function removeFile(fileId){
+  var s = activeSet(); if(!s) return;
+  s.files = s.files.filter(function(f){ return f.fileId!==fileId; });
+  persistActive(); renderProviderView(); toast('已移出该文件');
+}
+
+// ============ 企业视图 ============
+function renderEnterpriseView(){
+  var cur = TplSets.getEnterpriseCurrent();
+  if(!cur){
+    // 尚未创建当前应用范本 → 引导选择
+    document.getElementById('leftCol').innerHTML = '<div class="tree"><div class="tt">档案盒目录</div><div style="padding:10px 4px">请先创建企业当前应用范本</div></div>';
+    document.getElementById('fileArea').innerHTML = '<div class="empty">尚未创建企业范本<br><br><button class="btn btn-primary" onclick="openPick()"><span class="ico" data-icon="copy"></span> 从服务商范本创建当前应用范本</button></div>';
+    document.getElementById('entCurBar').innerHTML = '';
+    document.getElementById('revBanner').innerHTML = '';
+    document.getElementById('mySetsArea').innerHTML = '';
+    document.getElementById('viewHint').textContent = '请先选择一套服务商范本作为当前应用范本';
+    return;
+  }
+  state.curSetId = cur.id;
+  // 当前应用横幅
+  document.getElementById('entCurBar').innerHTML =
+    '<div class="curbar">'
+      + '<div><div class="cb-label">当前应用范本</div><div class="cb-name">'+esc(cur.name)+'</div></div>'
+      + '<div class="cb-meta">来源：服务商「'+esc(cur.sourceName||'—')+'」 · '+esc(cur.bizType)+' · '+(cur.customized?'已定制':'未修改')+'</div>'
+      + '<div class="spacer"></div>'
+      + '<button class="btn btn-outline btn-sm" onclick="openPick()">选择/更换</button>'
+      + '<button class="btn btn-outline btn-sm" onclick="openSaveAs()">另存为我的范本</button>'
+    + '</div>';
+  renderRevBanner();
+  document.getElementById('viewHint').textContent = '当前应用范本的档案盒文件 · 企业可在线修改定制（不影响服务商原版）';
+  // 左栏：档案盒目录树
+  document.getElementById('leftCol').innerHTML = '<div class="tree"><div class="tt">档案盒目录</div>'+renderBoxTree()+'</div>';
+  renderFileArea();
+  renderMySets();
+}
+
+function renderRevBanner(){
+  var rev = TplSets.getRevision();
+  var el = document.getElementById('revBanner');
+  if(!rev){ el.innerHTML = ''; return; }
+  el.innerHTML = '<div class="rev-banner">'
+    + '<span class="rb-icon">⚠️</span>'
+    + '<div class="rb-text"><b>检测到组织架构已调整</b>（'+esc(rev.desc)+'）。该修订涉及制度联动，是否应用到企业当前范本「'+esc((TplSets.getEnterpriseCurrent()||{}).name||'')+'」？</div>'
+    + '<div class="rb-actions">'
+      + '<button class="btn btn-primary btn-sm" onclick="applyRevisionToCurrent()">保存到当前范本</button>'
+      + '<button class="btn btn-outline btn-sm" onclick="applyRevisionAsNew()">另存为新范本</button>'
+      + '<button class="btn btn-outline btn-sm" onclick="dismissRevision()">稍后处理</button>'
+    + '</div></div>';
+}
+function applyRevisionToCurrent(){
+  var cur = TplSets.getEnterpriseCurrent(); if(!cur) return;
+  var rev = TplSets.getRevision();
+  var desc = rev ? rev.desc : '组织架构调整';
+  cur.customized = true; cur.revisedAt = new Date().toISOString().slice(0,10);
+  TplSets.setEnterpriseCurrent(cur); TplSets.clearRevision();
+  renderEnterpriseView(); toast('已将修订（'+desc+'）应用到当前范本「'+cur.name+'」');
+}
+function applyRevisionAsNew(){
+  var cur = TplSets.getEnterpriseCurrent(); if(!cur) return;
+  document.getElementById('saName').value = cur.name + '（修订版）';
+  openModal('saveAsModal');
+}
+function dismissRevision(){ closeModal('revBanner'); toast('已暂存修订提示'); }
+
+// 我的范本列表
+function renderMySets(){
+  var sets = TplSets.getEnterpriseMySets();
+  var cur = TplSets.getEnterpriseCurrent();
+  var el = document.getElementById('mySetsArea');
+  if(!sets.length){ el.innerHTML = ''; return; }
+  el.innerHTML = '<div class="panel-title">我的范本（'+sets.length+'）<span class="sub">点击可切换为当前应用范本</span></div>'
+    + sets.map(function(s){
+        var on = cur && cur.id===s.id;
+        return '<div class="ms-card '+(on?'on':'')+'">'
+          + '<div class="ms-name">'+esc(s.name)+'</div>'
+          + '<div class="cb-meta">'+esc(s.bizType)+' · 保存于 '+(s.savedAt||'—')+'</div>'
+          + '<button class="btn btn-outline btn-sm" onclick="switchToMy(\''+s.id+'\')">设为当前</button>'
+          + '<button class="btn btn-outline btn-sm" onclick="delMy(\''+s.id+'\')"><span class="ico" data-icon="trash"></span></button>'
+        + '</div>';
+      }).join('');
+}
+function switchToMy(id){ if(TplSets.setCurrentById(id)){ renderEnterpriseView(); toast('已切换当前应用范本'); } }
+function delMy(id){
+  var arr = TplSets.getEnterpriseMySets().filter(function(s){ return s.id!==id; });
+  // 直接改写 localStorage
+  try{ localStorage.setItem('rd_tpl_ent_my_v1', JSON.stringify(arr)); }catch(e){}
+  renderEnterpriseView(); toast('已删除该范本');
+}
+
+// 选择服务商范本
+function openPick(){
+  var sets = TplSets.getProviderSets();
+  document.getElementById('pickList').innerHTML = sets.map(function(s){
+    var bizTag = s.bizType==='危货' ? '<span class="tag tag-we">危货</span>' : '<span class="tag tag-pu">普货</span>';
+    var regionTag = s.region==='全区域' ? '<span class="tag tag-global">全局</span>' : '<span class="tag tag-region">'+esc(s.region)+'</span>';
+    return '<div class="set-card" style="margin-bottom:10px" onclick="doPick(\''+s.id+'\')">'
+      + '<div class="sc-top"><span class="sc-name">'+esc(s.name)+'</span></div>'
+      + '<div class="sc-meta">'+bizTag+regionTag+'<span>'+s.files.length+' 份文件</span></div>'
+      + '<div class="sc-desc">'+esc(s.desc||'')+'</div></div>';
+  }).join('');
+  openModal('pickModal');
+}
+function doPick(id){
+  var p = TplSets.getProviderSet(id);
+  var name = p ? prompt('创建企业当前应用范本，请命名：', p.name) : '';
+  if(name===null) return;
+  TplSets.applyProviderSetToEnterprise(id, name || (p&&p.name));
+  closeModal('pickModal'); renderEnterpriseView();
+  toast('已从服务商「'+(p&&p.name)+'」创建企业当前应用范本');
+}
+function openSaveAs(){ var cur=TplSets.getEnterpriseCurrent(); document.getElementById('saName').value = cur ? (cur.name+'（副本）') : ''; openModal('saveAsModal'); }
+function confirmSaveAs(){
+  var name = document.getElementById('saName').value.trim();
+  if(!name){ toast('请填写新范本名称'); return; }
+  var v = TplSets.saveCurrentAsMySet(name);
+  closeModal('saveAsModal');
+  if(v){ renderEnterpriseView(); toast('已另存为我的范本「'+name+'」，并切换为当前应用'); }
+}
+
+// ============ 服务商：套 CRUD ============
+function openNewSet(){
+  document.getElementById('nsName').value=''; document.getElementById('nsBiz').value='普货';
+  document.getElementById('nsRegion').value='全区域'; document.getElementById('nsSeed').value='skeleton';
+  openModal('newSetModal');
+}
+function confirmNewSet(){
+  var name = document.getElementById('nsName').value.trim();
+  if(!name){ toast('请填写范本套名称'); return; }
+  var biz = document.getElementById('nsBiz').value;
+  var region = document.getElementById('nsRegion').value.trim()||'全区域';
+  var seed = document.getElementById('nsSeed').value;
+  var files = seed==='full' ? TplSets.buildFullFiles() : TplSets.buildSkeletonFiles(biz);
+  var sets = TplSets.getProviderSets();
+  var ns = { id:'P'+(Date.now()), name:name, bizType:biz, region:region, isDefault:false, desc:'服务商自定义范本套', files:files };
+  sets.push(ns); TplSets.saveProviderSets(sets);
+  closeModal('newSetModal'); state.curSetId = ns.id; renderProviderView();
+  toast('已新建范本套「'+name+'」');
+}
+function openRenameSet(id){ state._renameId=id; var s=TplSets.getProviderSet(id); document.getElementById('rsName').value=s? s.name:''; openModal('renameSetModal'); }
+function confirmRenameSet(){
+  var id=state._renameId; var name=document.getElementById('rsName').value.trim();
+  if(!name){ toast('请填写名称'); return; }
+  var sets=TplSets.getProviderSets(); var i=sets.findIndex(function(x){return x.id===id;});
+  if(i>=0){ sets[i].name=name; TplSets.saveProviderSets(sets); }
+  closeModal('renameSetModal'); renderProviderView(); toast('已重命名');
+}
+function setDefault(id){
+  var sets=TplSets.getProviderSets(); sets.forEach(function(s){ s.isDefault = (s.id===id); }); TplSets.saveProviderSets(sets);
+  renderProviderView(); toast('已设为默认范本套');
+}
+function delSet(id){
+  var sets=TplSets.getProviderSets();
+  if(sets.length<=1){ toast('至少保留一套范本'); return; }
+  if(!confirm('确认删除该范本套？（企业已实例化的副本不受影响）')) return;
+  TplSets.saveProviderSets(sets.filter(function(s){ return s.id!==id; }));
+  if(state.curSetId===id) state.curSetId=null; renderProviderView(); toast('已删除范本套');
+}
+
+// ============ 内容生成（复用原逻辑，作用于 activeSet.files） ============
+function getFile(fileId){ return activeFiles().filter(function(f){ return f.fileId===fileId; })[0] || null; }
+
+function getContent(f){
+  if(f.toc) return renderToc();
+  if(f.link==='resp'){
+    if(f.role==='__ALL__' || f.funcKey==='__ALL__') return renderZhizeSystem();
+    return renderZhizeBook(f);
+  }
+  if(f.content) return f.content;
+  if(f.doc && window.SYS_DOCS && window.SYS_DOCS[f.doc]) return renderDoc(window.SYS_DOCS[f.doc]);
+  if(f.placeholder) return '<div class="doc-h0">'+esc(f.name)+'</div>'
+    + '<div class="doc-p">（占位待补充：'+esc(f.docNote||'由服务商后续提供完整制度正文')+'）</div>';
+  return sampleHtml(f.name, f.type);
+}
+function renderToc(){
+  var items = activeFiles().filter(function(f){ return f.box===2 && f.zdNo; })
+    .sort(function(a,b){ return a.zdNo.localeCompare(b.zdNo, undefined, {numeric:true}); });
+  var h = '<div class="doc-h0">安全生产管理制度目录</div>';
+  h += '<div class="doc-p">本目录所列制度编号采用「公司字母简写 + ZD + 两位序号」规则自动生成（当前简写：'+(window.COMPANY_ABBR||'YT')+'）。</div>';
+  h += '<div class="doc-h1">一、安全生产管理制度清单（共 '+items.length+' 项）</div>';
+  items.forEach(function(t){ h += '<div class="doc-li">'+esc(t.zdNo)+'　'+esc(t.name)+'</div>'; });
+  return h;
+}
+function renderDoc(paras){
+  if(typeof paras === 'string') return paras;
+  return paras.map(function(p){
+    var t = p.trim(); if(!t) return '';
+    if(/^(\d+)\.(\d+)\.\d*\s*[一-龥]/.test(t)) return '<div class="doc-h3">'+esc(t)+'</div>';
+    if(/^\d+\.\d+\s*[一-龥]/.test(t)) return '<div class="doc-h2">'+esc(t)+'</div>';
+    if(/^\d+\.\s*[一-龥]/.test(t) && !/^\d+\.\d+/.test(t)) return '<div class="doc-h1">'+esc(t)+'</div>';
+    if(/^[（(]?\d+[、）)）]/.test(t) || /^[①-⑳]/.test(t)) return '<div class="doc-li">'+esc(t)+'</div>';
+    return '<div class="doc-p">'+esc(t)+'</div>';
+  }).join('');
+}
+// —— 从组织架构实时取岗位（按 funcKey 或岗位名定位，实现「改名即联动」）——
+function findPostByFile(f){
+  var OD = window.OrgData;
+  if(!OD) return null;
+  // 优先按 funcKey 定位（岗位改名不影响）
+  if(f.funcKey && f.funcKey!=='__ALL__'){ return OD.getByFunc(f.funcKey); }
+  // 兼容旧数据：按岗位名定位
+  if(f.role){ return OD.posts().filter(function(p){ return p.name===f.role || OD.funcLabel(p)===f.role; })[0] || null; }
+  return null;
+}
+// 单个岗位的「目标/职责/考核」内容块（岗位名用实时名）
+function renderRespRoleBlock(post){
+  var name = post.name;                     // 实时岗位名（如已改名"老大"）
+  var label = window.OrgData ? window.OrgData.funcLabel(post) : '';
+  var head = name + (label && label!==name ? '（'+label+'）' : '');
+  var h = '<div class="doc-h1">'+esc(head)+' · 安全生产目标</div>';
+  h += (post.goals||'').split('\n').map(function(x){ x=x.trim(); return x?'<div class="doc-li">'+esc(x)+'</div>':''; }).join('');
+  h += '<div class="doc-h1">'+esc(head)+' · 安全职责</div>';
+  h += (post.duties||'').split('\n').map(function(x){ x=x.trim(); return x?'<div class="doc-li">'+esc(x)+'</div>':''; }).join('');
+  h += '<div class="doc-h1">'+esc(head)+' · 考核标准</div>';
+  h += '<div class="doc-p">'+esc(post.assess||'')+'</div>';
+  return h;
+}
+function renderZhizeBook(f){
+  var post = findPostByFile(f);
+  var name = post ? post.name : (f.role || f.name);   // 实时岗位名
+  var head = '<div class="doc-h0">安全生产责任书（'+esc(name)+'）</div>';
+  if(!post){
+    // 该岗位未启用/未配置：提示而不产出旧名内容
+    head += '<div class="doc-p">（该岗位当前未启用或未配置，制度中不出现其责任书内容）</div>';
+  } else {
+    head += '<div class="doc-p">为落实安全生产责任制，明确'+esc(name)+'岗位安全生产职责，特签订本责任书。</div>';
+    head += renderRespRoleBlock(post);
+    head += '<div class="doc-sign">责任人（签字）：　　　　　　　日期：　　年　月　日</div>';
+  }
+  return head;
+}
+function renderZhizeSystem(){
+  var h = '<div class="doc-h0">安全生产责任制</div>';
+  h += '<div class="doc-p">本制度各岗位「安全生产目标 / 安全职责 / 考核标准」与对应岗位《安全生产责任书》联动，修改任一处自动对齐。</div>';
+  if(!window.OrgData){ h += '<div class="doc-p">（组织架构数据未加载）</div>'; return h; }
+  var posts = window.OrgData.activeDocPosts();   // 仅启用中岗位（已自动剔除禁用/兼并）
+  if(!posts.length){ h += '<div class="doc-p">（当前无启用岗位）</div>'; return h; }
+  posts.forEach(function(post){
+    var label = window.OrgData.funcLabel(post);
+    var head = post.name + (label && label!==post.name ? '（'+label+'）' : '');
+    h += '<div class="doc-h1">'+esc(head)+'</div>' + renderRespRoleBlock(post);
+  });
+  return h;
+}
+function sampleHtml(name, type){
+  return '<div class="file-head" style="text-align:center">'
+    + '<div style="font-size:16px;font-weight:bold">{{company_name}}</div>'
+    + '<div style="font-size:13px;margin-top:4px">文件编号：{{doc_no}}</div></div>'
+    + '<hr style="border-top:1px solid #d33;width:80%">'
+    + '<div class="title" style="text-align:center;font-size:20px;font-weight:bold;letter-spacing:3px;margin:12px 0">'+esc(name)+'</div>'
+    + '<p style="text-indent:2em">兹有 {{person_name}}，担任 {{post}} 岗位。为加强安全生产管理，特制定本'+esc(type)+'。</p>'
+    + '{% if post == \'驾驶员\' %}<p style="text-indent:2em">（驾驶员专属职责条款...）</p>{% endif %}'
+    + '<p style="text-indent:2em">本'+esc(type)+'自 {{start_date}} 起实施。</p>'
+    + '<div style="margin-top:30px;text-align:right"><div>签发人：{{issuer}}</div><div>日期：{{start_date}}</div></div>';
+}
+
+// ============ 在线编辑 ============
+function editTpl(fileId){
+  var f = getFile(fileId); if(!f) return;
+  if(f.link==='resp'){ openRespEdit(fileId); return; }
+  state.editingFile = f; state.editingId = fileId;
+  document.getElementById('editTitle').textContent = f.name;
+  document.getElementById('saveScopeHint').textContent = IS_PROVIDER ? '服务商全局范本（所有企业同步）' : '当前企业范本（仅本企业）';
+  document.getElementById('editCode').value = getContent(f);
+  document.getElementById('varList').innerHTML = VARIABLES.map(function(v){
+    return '<div class="var-chip" onclick="insertVar(\''+v.k+'\')"><span class="vk">{{'+v.k+'}}</span><span class="vd">'+v.d+'</span></div>';
+  }).join('');
+  openModal('editModal');
+}
+function insertVar(k){ var ta=document.getElementById('editCode'); var p=ta.selectionStart; var v=ta.value; ta.value=v.slice(0,p)+'{{'+k+'}}'+v.slice(p); ta.focus(); }
+function insertSnippet(kind){ var ta=document.getElementById('editCode'); var p=ta.selectionStart; var v=ta.value; var s=kind==='if'?'{% if post == \'驾驶员\' %}\n':'{% endif %}\n'; ta.value=v.slice(0,p)+s+v.slice(p); ta.focus(); }
+function resetEdit(){ var f=state.editingFile; document.getElementById('editCode').value=getContent(f); }
+function saveThis(){
+  var f = state.editingFile; if(!f) return;
+  f.content = document.getElementById('editCode').value;
+  f.ver = '已修改'; f.builtin = false;
+  persistActive();
+  closeModal('editModal');
+  toast(IS_PROVIDER ? '已保存到服务商全局范本' : '已保存到当前企业范本');
+  if(IS_PROVIDER) renderProviderView(); else { renderFileList(); }
+}
+
+// ============ 联动编辑（责任制 / 责任书） ============
+function openRespEdit(fileId){
+  var f = getFile(fileId); if(!f) return;
+  state.respTpl = f; state.respFuncKey = (f.funcKey && f.funcKey!=='__ALL__') ? f.funcKey : null;
+  var isAll = (f.role==='__ALL__' || f.funcKey==='__ALL__');
+  var wrap = document.getElementById('respRoleWrap');
+  if(isAll){
+    wrap.style.display='block';
+    var posts = window.OrgData ? window.OrgData.activeDocPosts() : [];
+    document.getElementById('respRoleSel').innerHTML = posts.map(function(p){
+      return '<option value="'+p.funcKey+'">'+esc(p.name)+'</option>';
+    }).join('') || '<option value="">无启用岗位</option>';
+    state.respFuncKey = posts.length ? posts[0].funcKey : null;
+    document.getElementById('respRoleSel').value = state.respFuncKey || '';
+  } else { wrap.style.display='none'; }
+  fillRespFields();
+  var titlePost = state.respFuncKey && window.OrgData ? window.OrgData.getByFunc(state.respFuncKey) : null;
+  var titleName = titlePost ? titlePost.name : (f.role || f.name);
+  document.getElementById('respTitle').textContent = (isAll?'安全生产责任制':'安全生产责任书（'+titleName+'）') + ' · 联动编辑';
+  openModal('respModal');
+}
+function fillRespFields(){
+  var post = state.respFuncKey && window.OrgData ? window.OrgData.getByFunc(state.respFuncKey) : null;
+  document.getElementById('rtTarget').value = post ? (post.goals||'') : '';
+  document.getElementById('rtDuty').value = post ? (post.duties||'') : '';
+  document.getElementById('rtAssess').value = post ? (post.assess||'') : '';
+}
+function changeRespRole(){ state.respFuncKey = document.getElementById('respRoleSel').value; fillRespFields(); }
+function saveRespEdit(){
+  var post = state.respFuncKey && window.OrgData ? window.OrgData.getByFunc(state.respFuncKey) : null;
+  if(!post){ toast('岗位数据缺失'); return; }
+  window.OrgData.updatePost(post.id, {
+    goals: document.getElementById('rtTarget').value,
+    duties: document.getElementById('rtDuty').value,
+    assess: document.getElementById('rtAssess').value.trim()
+  });
+  closeModal('respModal');
+  toast('已更新「'+post.name+'」的目标/职责/考核，关联的责任书与责任制已自动对齐');
+}
+
+// ============ 上传文件 ============
+function openUpload(){
+  document.getElementById('upBox').innerHTML = window.BOXES.map(function(b){ return '<option value="'+b.id+'">'+b.name+'</option>'; }).join('');
+  document.getElementById('upName').value=''; document.getElementById('upDesc').value='';
+  openModal('uploadModal');
+}
+function mockUploadFile(){ toast('已选择文件（模拟上传）'); }
+function confirmUpload(){
+  var name = document.getElementById('upName').value.trim();
+  if(!name){ toast('请填写文件名称'); return; }
+  var box = parseInt(document.getElementById('upBox').value);
+  var desc = document.getElementById('upDesc').value.trim();
+  var s = activeSet(); if(!s){ toast('请先选择范本套'); return; }
+  s.files.push({ fileId:'f'+Date.now(), box:box, name:name, type:'自定义', builtin:false, ver:'v1.0 上传'+(desc?' · '+desc:''), placeholder:false });
+  persistActive(); closeModal('uploadModal');
+  state.curBox = box;
+  if(IS_PROVIDER) renderProviderView(); else { renderFileList(); }
+  toast('已上传「'+name+'」到当前范本');
+}
+
+// ============ 模态辅助 ============
+function openModal(id){ document.getElementById(id).classList.add('show'); }
+function openModalKeep(id){ document.getElementById(id).classList.add('show'); }
+
+// ============ PDF 预览 ============
+var SAMPLE_VALUES = {
+  company_name:'佛山市悦通物流有限公司', person_name:'张伟', post:'驾驶员', doc_no:'YT-2026-001',
+  start_date:'2026年1月1日', issuer:'张伟', license_no:'粤交运管许可佛字440605000123号', revenue:'12,000,000', rate:'1%'
+};
+function previewPdf(fileId){
+  var f = getFile(fileId); if(!f) return;
+  var boxName = (window.BOXES.filter(function(b){return b.id===f.box;})[0]||{}).name;
+  document.getElementById('pdfTitle').textContent = f.name;
+  document.getElementById('pdfMeta').textContent = (f.zdNo?('制度编号：'+f.zdNo+' · '):'') + (f.ver||'') + ' · ' + boxName;
+  document.getElementById('pdfPage').innerHTML = buildPdfBody(f);
+  openModal('pdfMask');
+}
+function buildPdfBody(f){
+  var html = getContent(f);
+  if(typeof html !== 'string') html = sampleHtml(f.name, f.type);
+  for(var k in SAMPLE_VALUES){ html = html.split('{{'+k+'}}').join(SAMPLE_VALUES[k]); }
+  html = html.replace(/\{%[^%]*%\}/g, '');
+  var noChip = f.zdNo ? '<div class="doc-no">制度编号：'+f.zdNo+'</div>' : '';
+  return noChip + html + '<div class="pdf-foot"><span>生成时间：2026-11-04</span><span>道路运输安全生产管理平台 · 范本管理</span></div>';
+}
+function closePdf(){ closeModal('pdfMask'); }
+function printPdf(){
+  var content = document.getElementById('pdfPage').innerHTML;
+  var w = window.open('', '_blank');
+  w.document.write('<!DOCTYPE html><html><head><meta charset="UTF-8"><title>打印范本</title><style>body{font-family:"SimSun","宋体",serif;color:#000}.pdf-page{width:700px;margin:0 auto;padding:50px 56px;font-size:14px;line-height:1.8}.pdf-page p{text-indent:2em}.pdf-foot{border-top:1px solid #999;margin-top:24px;padding-top:10px;display:flex;justify-content:space-between;font-size:11px}</style></head><body><div class="pdf-page">'+content+'</div><script>window.onload=function(){window.print();}<\/script></body></html>');
+  w.document.close();
+}
+function downloadPdf(){
+  var t = document.getElementById('pdfTitle').textContent;
+  var content = document.getElementById('pdfPage').innerHTML;
+  var html = '<!DOCTYPE html><html><head><meta charset="UTF-8"><title>'+t+'</title><style>body{font-family:"SimSun","宋体",serif;color:#000}.pdf-page{width:700px;margin:0 auto;padding:50px 56px;font-size:14px;line-height:1.8}.pdf-page p{text-indent:2em}</style></head><body><div class="pdf-page">'+content+'</div></body></html>';
+  var blob = new Blob([html], {type:'text/html;charset=utf-8'});
+  var a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = t + '.html'; a.click();
+  URL.revokeObjectURL(a.href); toast('已导出 PDF 版式（演示以 HTML 呈现，打印可另存为 PDF）');
+}
+
+// ============ 跨页联动 ============
+window.addEventListener('storage', function(e){
+  if(e.key==='rd_ent_tpl_revision_v1' && !IS_PROVIDER){ renderEnterpriseView(); }
+  if(e.key==='userRole'){ location.reload(); }
+});
+
+init();
+</script></body></html>

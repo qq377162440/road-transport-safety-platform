@@ -1,0 +1,1342 @@
+<!DOCTYPE html>
+<html lang="zh-CN"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>电子档案柜</title>
+<link rel="stylesheet" href="../assets/common.css"><link rel="stylesheet" href="../assets/pc.css">
+<style>
+  .shell{display:flex;gap:16px;align-items:flex-start}
+  .left{width:280px;flex-shrink:0;position:sticky;top:0}
+  .right{flex:1;min-width:0}
+  .tree{background:var(--surface);border:1px solid var(--border);border-radius:var(--r-lg);box-shadow:var(--shadow-sm);overflow:hidden}
+  .tree .tt{font-size:15px;font-weight:700;padding:14px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between}
+  .tree .tt .cargo{font-size:12px;font-weight:500;color:var(--brand-500)}
+  .box-item{padding:11px 16px;cursor:pointer;border-left:3px solid transparent;display:flex;align-items:center;gap:10px;transition:.12s}
+  .box-item:hover{background:var(--brand-50)}
+  .box-item.on{background:var(--brand-50);border-left-color:var(--brand-500)}
+  .box-item .bx-name{font-size:14px;font-weight:600}
+  .box-item .bx-count{font-size:12px;color:var(--text-3);margin-left:auto}
+  .box-item .bx-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+  .box-item .box-sel{width:16px;height:16px;flex-shrink:0;accent-color:var(--brand-600);cursor:pointer;margin:0}
+  .dot-red{background:var(--danger)}
+  .dot-yellow{background:#e8a200}
+  .dot-green{background:#15803D}
+
+  .item-row{display:flex;align-items:center;gap:12px;padding:13px 16px;border-bottom:1px solid var(--border)}
+  .item-row:last-child{border-bottom:none}
+  .item-row .nm{flex:1;min-width:0}
+  .item-row .nm .n{font-size:14.5px;font-weight:600}
+  .item-row .nm .n.clickable{cursor:pointer;transition:.12s;display:inline-flex;align-items:center;gap:6px}
+  .item-row .nm .n.clickable::before{content:'📄';font-size:13px;filter:grayscale(.1)}
+  .item-row .nm .n.clickable:hover{color:var(--brand-600);text-decoration:underline}
+  .item-row .nm .d{font-size:12px;color:var(--text-3);margin-top:2px}
+  .item-row .src{font-size:11px;padding:2px 8px;border-radius:8px;white-space:nowrap}
+  .src-auto{background:var(--brand-100);color:var(--brand-600)}
+  .src-up{background:#F1F5F9;color:var(--text-3)}
+  .file-chip{cursor:pointer;transition:.12s}
+  .file-chip:hover{background:var(--brand-100);color:var(--brand-700);text-decoration:underline}
+  .src-print{background:#fff4e0;color:#b26a00}
+  .st{font-size:12px;padding:2px 10px;border-radius:10px;font-weight:600;white-space:nowrap}
+  .st-miss{background:var(--danger-bg);color:#B91C1C}
+  .st-wait{background:#fff4e0;color:#b26a00}
+  .st-done{background:#F0FDF4;color:#1a8a4a}
+  .st-print{background:var(--brand-100);color:var(--brand-600)}
+
+  /* 更新频率标签 */
+  .freq{font-size:11px;padding:2px 8px;border-radius:8px;white-space:nowrap;background:#EEF2F7;color:var(--text-2)}
+  .freq-yearly{background:#F0FDF4;color:#15803D}          /* 一年一签 / 年度 */
+  .freq-monthly{background:var(--brand-100);color:var(--brand-600)}  /* 每月 */
+  .freq-once{background:#FFFBEB;color:#B45309}             /* 入职一次 / 一次性 */
+  .freq-daily{background:var(--brand-100);color:var(--brand-600)}    /* 每日 */
+  .freq-warn{background:var(--danger-bg);color:#B91C1C;font-weight:700} /* 到期预警 */
+
+  /* 文件夹分组（与范本管理一致的视觉） */
+  .folder{margin-bottom:10px;border:1px solid var(--border);border-radius:12px;overflow:hidden;background:var(--surface)}
+  .folder-head{display:flex;align-items:center;gap:8px;padding:11px 14px;cursor:pointer;background:var(--brand-50);font-weight:700;font-size:14px;user-select:none;transition:.12s}
+  .folder-head:hover{background:var(--brand-100)}
+  .folder-head .f-ico{color:var(--brand-600);display:inline-flex}
+  .folder-head .folder-name{flex:1}
+  .folder-head .folder-count{font-size:12px;color:var(--text-3);font-weight:600;background:#fff;border:1px solid var(--border);border-radius:20px;padding:1px 9px}
+  .folder-head .folder-caret{color:var(--text-3);transition:.15s;font-size:12px}
+  .folder-head .grp-sel{width:16px;height:16px;flex-shrink:0;accent-color:var(--brand-600);cursor:pointer;margin:0}
+  .tree-all{display:flex;align-items:center;gap:8px;padding:10px 16px;font-size:13px;font-weight:600;color:var(--text-2);cursor:pointer;border-bottom:1px solid var(--border);background:#fafbfc}
+  .tree-all input{width:16px;height:16px;accent-color:var(--brand-600);cursor:pointer;margin:0}
+  .folder.collapsed .folder-caret{transform:rotate(-90deg)}
+  .folder.collapsed .folder-body{display:none}
+  .folder-body{padding:8px 10px}
+  .item-idx{width:22px;height:22px;flex-shrink:0;border-radius:6px;background:var(--brand-500);color:#fff;font-size:12px;font-weight:700;display:flex;align-items:center;justify-content:center}
+  .item-check{flex-shrink:0;display:inline-flex;align-items:center;cursor:pointer}
+  .item-check input{width:16px;height:16px;accent-color:var(--brand-600);cursor:pointer}
+  .box-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px}
+  .box-head-l{flex:1;min-width:0}
+  .box-selall{display:inline-flex;align-items:center;gap:6px;font-size:13px;font-weight:600;color:var(--text-2);cursor:pointer;white-space:nowrap;padding-top:2px}
+  .box-selall input{width:16px;height:16px;accent-color:var(--brand-600);cursor:pointer}
+
+  /* 组织架构图：样式由 assets/org_chart.js 统一注入，与「安全管理架构」页同源 */
+
+  .summ{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:16px}
+  .summ .sc{background:var(--surface);border:1px solid var(--border);border-radius:var(--r-lg);padding:14px 16px}
+  .summ .sc .v{font-size:24px;font-weight:800}
+  .summ .sc .k{font-size:12px;color:var(--text-3);margin-top:2px}
+  .summ .sc.miss .v{color:var(--danger)}
+  .summ .sc.wait .v{color:#e8a200}
+  .summ .sc.done .v{color:#15803D}
+  .summ .sc.print .v{color:var(--brand-500)}
+
+  /* 到期预警横幅 */
+  .renew-banner{display:flex;gap:12px;background:var(--danger-bg);border:1px solid #fecaca;border-radius:var(--r-lg);padding:14px 16px;margin-bottom:16px;align-items:flex-start}
+  .renew-banner .ico{color:var(--danger);font-size:20px;margin-top:2px}
+  .renew-banner .rb-title{font-size:14px;font-weight:700;color:#B91C1C;margin-bottom:6px}
+  .renew-banner .rb-list{display:flex;flex-wrap:wrap;gap:8px}
+  .renew-banner .rb-item{background:#fff;border:1px solid #fecaca;border-radius:8px;padding:4px 10px;font-size:12px;color:var(--text-2);cursor:pointer;transition:.15s}
+  .renew-banner .rb-item:hover{border-color:var(--danger);color:#B91C1C}
+
+  /* PDF 预览：A4 仿真 */
+  .pdf-mask{position:fixed;inset:0;background:rgba(20,28,43,.5);display:none;align-items:center;justify-content:center;z-index:200}
+  .pdf-mask.show{display:flex}
+  .pdf-wrap{background:#fff;width:820px;max-width:96vw;max-height:92vh;display:flex;flex-direction:column;border-radius:6px;overflow:hidden;box-shadow:0 8px 40px rgba(0,0,0,.3)}
+  .pdf-toolbar{display:flex;align-items:center;gap:10px;padding:12px 16px;background:#F1F5F9;border-bottom:1px solid var(--border)}
+  .pdf-toolbar .t{font-weight:700;font-size:14px;flex:1}
+  .pdf-body{flex:1;overflow:auto;background:#e9ecf1;padding:24px;display:flex;justify-content:center}
+  .pdf-page{background:#fff;width:700px;min-height:900px;padding:50px 56px;box-shadow:0 2px 12px rgba(0,0,0,.15);font-family:"SimSun","宋体",serif;color:#000;font-size:14px;line-height:1.8}
+  .pdf-page .ph{text-align:center;font-size:13px;color:#333;border-bottom:2px solid #000;padding-bottom:8px;margin-bottom:6px}
+  .pdf-page .ph .org{font-size:17px;font-weight:bold;letter-spacing:1px}
+  .pdf-page .ph .meta{font-size:11px;color:#555}
+  .pdf-page .ptitle{text-align:center;font-size:20px;font-weight:bold;letter-spacing:3px;margin:18px 0 4px}
+  .pdf-page .psub{text-align:center;font-size:12px;color:#333;margin-bottom:16px}
+  .pdf-page table{width:100%;border-collapse:collapse;margin:10px 0;font-size:13px}
+  .pdf-page table th,.pdf-page table td{border:1px solid #000;padding:6px 8px;text-align:center}
+  .pdf-page table th{background:#f2f2f2;font-weight:bold}
+  .pdf-page p{text-indent:2em;margin:5px 0}
+  .pdf-page p.ni{text-indent:0}
+  .pdf-page .fill{color:#1a4b8c;font-weight:bold}
+  .pdf-foot{border-top:1px solid #999;margin-top:24px;padding-top:10px;display:flex;align-items:center;justify-content:space-between;font-size:11px;color:#555}
+  .pdf-foot .qr{width:52px;height:52px;border:1px solid #999;display:flex;align-items:center;justify-content:center;font-size:9px;text-align:center;line-height:1.2;background:#fafafa}
+  /* 制度正文层级样式（与范本管理一致，保证 PDF 预览同源） */
+  .pdf-page .doc-h0{text-align:center;font-size:22px;font-weight:bold;letter-spacing:3px;margin:6px 0 14px}
+  .pdf-page .doc-h1{font-size:16px;font-weight:bold;margin:16px 0 6px;padding-left:10px;border-left:4px solid #000}
+  .pdf-page .doc-h2{font-size:14.5px;font-weight:bold;margin:12px 0 4px}
+  .pdf-page .doc-h3{font-size:13.5px;font-weight:600;margin:9px 0 3px;color:#1E40AF}
+  .pdf-page .doc-p{text-indent:2em;margin:4px 0;line-height:1.8}
+  .pdf-page .doc-li{margin:3px 0 3px 1.6em;text-indent:-1.2em;line-height:1.7}
+
+  .gen-modal{position:fixed;inset:0;background:rgba(20,28,43,.45);display:none;align-items:center;justify-content:center;z-index:150}
+  .gen-modal.show{display:flex}
+  .gmodal{background:#fff;border-radius:var(--r-lg);width:560px;max-width:94vw;box-shadow:var(--shadow-md)}
+  .gmodal .gh{padding:16px 20px;border-bottom:1px solid var(--border);font-weight:700;font-size:16px;display:flex;align-items:center;justify-content:space-between}
+  .gmodal .gh .x{cursor:pointer;font-size:22px;color:var(--text-3)}
+  .gmodal .gb{padding:20px}
+  .radio-group{display:flex;flex-direction:column;gap:10px}
+  .radio-item{border:1px solid var(--border-strong);border-radius:10px;padding:14px;cursor:pointer;transition:.12s}
+  .radio-item.on{border-color:var(--brand-500);background:var(--brand-50);box-shadow:0 0 0 1px var(--brand-500)}
+  .radio-item .r-n{font-weight:700;font-size:14px}
+  .radio-item .r-d{font-size:12px;color:var(--text-3);margin-top:3px}
+  /* 上传留存弹窗 */
+  .upload-drop{display:flex;align-items:center;gap:14px;cursor:pointer;border:2px dashed var(--brand-200);border-radius:12px;padding:24px;background:var(--brand-50);color:var(--brand-700);transition:.12s}
+  .upload-drop:hover{border-color:var(--brand-500);background:var(--brand-100)}
+  .upload-drop .ico{color:var(--brand-600);width:26px;height:26px}
+
+  .toast{position:fixed;top:20px;right:20px;background:#1E293B;color:#fff;padding:12px 20px;border-radius:10px;font-size:14px;z-index:300;opacity:0;transform:translateY(-10px);transition:.25s;box-shadow:0 4px 16px rgba(0,0,0,.2)}
+  .toast.show{opacity:1;transform:translateY(0)}
+  .empty-state{text-align:center;padding:50px;color:var(--text-3)}
+  .empty-state .big{font-size:40px;margin-bottom:12px}
+  .hint{font-size:12px;color:var(--text-3);background:var(--brand-50);border:1px solid var(--brand-100);border-radius:8px;padding:10px 14px;margin-bottom:16px;line-height:1.7}
+
+  /* 年度归档切换 */
+  .year-bar{display:flex;align-items:center;gap:12px;margin-bottom:16px;flex-wrap:wrap}
+  .year-bar-label{font-size:13px;font-weight:700;color:var(--text-2)}
+  .year-switch{display:flex;background:#F1F5F9;border-radius:10px;padding:3px;gap:2px}
+  .year-btn{border:none;background:transparent;padding:7px 15px;font-size:13px;font-weight:600;color:var(--text-3);border-radius:8px;cursor:pointer;transition:.12s;white-space:nowrap}
+  .year-btn.on{background:#fff;color:var(--brand-600);box-shadow:0 1px 4px rgba(0,0,0,.12)}
+  .year-btn.on::after{content:'●';font-size:8px;vertical-align:super;margin-left:5px;color:var(--brand-500)}
+  .year-hint{font-size:12px;color:var(--text-3)}
+  .year-tag{font-size:11px;padding:2px 9px;border-radius:8px;background:var(--brand-100);color:var(--brand-600);font-weight:600;margin-left:4px}
+  .year-switch-wrap{position:relative;display:inline-flex}
+  .year-btn.more{display:inline-flex;align-items:center;gap:5px}
+  .year-btn.more .caret{width:0;height:0;border-left:4px solid transparent;border-right:4px solid transparent;border-top:5px solid currentColor;transition:transform .15s}
+  .year-btn.more.open .caret{transform:rotate(180deg)}
+  .yb-cur{font-size:10px;font-weight:700;background:var(--brand-600);color:#fff;border-radius:6px;padding:1px 5px;margin-left:5px;line-height:1}
+  .year-more{display:none;position:absolute;top:calc(100% + 8px);left:0;z-index:40;background:#fff;border:1px solid #E2E8F0;border-radius:10px;box-shadow:0 12px 32px rgba(15,23,42,.18);padding:6px;flex-direction:column;gap:3px;min-width:120px}
+  .year-more.show{display:flex}
+  .year-more::before{content:'';position:absolute;top:-6px;left:26px;width:10px;height:10px;background:#fff;border-left:1px solid #E2E8F0;border-top:1px solid #E2E8F0;transform:rotate(45deg)}
+  .year-opt{border:none;background:transparent;text-align:left;padding:8px 12px;font-size:13px;font-weight:600;color:var(--text-2);border-radius:7px;cursor:pointer;transition:.12s;white-space:nowrap}
+  .year-opt:hover{background:#F1F5F9}
+  .year-opt.on{background:var(--brand-100);color:var(--brand-600)}
+</style></head><body>
+<div class="pc-page">
+  <div class="pc-header"><div><h1>电子档案柜</h1><div class="desc">档案盒目录对齐政府检查 · 企业/服务商均可一键下载整盒台账 PDF</div></div>
+    <div class="actions">
+      <button class="btn btn-outline" id="btnDaiLu" onclick="gotoDaiLu()" style="display:none"><span class="ico" data-icon="edit"></span> 代录台账</button>
+      <button class="btn btn-outline" onclick="batchGen()"><span class="ico" data-icon="fileText"></span> 一键批量生成</button>
+      <button class="btn btn-primary" onclick="batchGenAll()"><span class="ico" data-icon="zap"></span> 批量生成全部</button>
+      <button class="btn btn-outline" onclick="genAll()"><span class="ico" data-icon="download"></span> 一键下载整盒</button>
+      <button class="btn btn-outline" onclick="genAllBoxes()"><span class="ico" data-icon="bolt"></span> 全量下载</button>
+    </div></div>
+
+  <div class="hint">💡 <b>电子档案柜</b>：把 11 个档案盒做成「电子档案柜」，每个业务模块产生的数据最终都落到某个档案盒并生成<b>可打印的 PDF</b>，供打印装盒、接受政府检查。<b>企业账号</b>与<b>服务商账号</b>均可选盒一键下载整套台账；服务商账号额外拥有「<b>代录台账</b>」能力（上传照片+签名+调用范本生成）。<b>注意归档年限</b>：责任书/承诺书等<b>一年一签（按自然年度，每年 1 月 1 日需重签）</b>，岗前培训<b>入职一次</b>，岗中培训<b>每月一次</b>——跨年度自动预警。　<b>档案整体按自然年度归档</b>，可切换上方「归档年度」查看各年度状态（最近 3 个年度平铺，更早年份折叠在「更多历年」中；历史年度为已沉淀归档，当前年度逐年重做 / 重签）。　<b>批量生成支持三级勾选</b>：左侧勾选整个档案盒、盒内勾选某个分组、或逐条勾选——点「一键批量生成」仅生成勾选项（可跨盒）。</div>
+
+  <div class="year-bar">
+    <span class="year-bar-label">归档年度</span>
+    <div class="year-switch-wrap">
+      <div class="year-switch" id="yearSwitch"></div>
+    </div>
+    <span class="year-hint" id="yearHint"></span>
+  </div>
+
+  <div class="summ">
+    <div class="sc miss"><div class="v" id="sMiss">0</div><div class="k">缺失（无数据）</div></div>
+    <div class="sc wait"><div class="v" id="sWait">0</div><div class="k">待生成</div></div>
+    <div class="sc done"><div class="v" id="sDone">0</div><div class="k">已生成 PDF</div></div>
+    <div class="sc print"><div class="v" id="sPrint">0</div><div class="k">已打印归档</div></div>
+  </div>
+
+  <div class="renew-banner" id="renewBanner" style="display:none">
+    <span class="ico" data-icon="alertTriangle"></span>
+    <div class="rb-body">
+      <div class="rb-title">待重新签订 / 到期更新（<span id="renewCount">0</span> 项）</div>
+      <div class="rb-list" id="renewList"></div>
+    </div>
+  </div>
+
+  <div class="shell">
+    <div class="left">
+      <div class="tree">
+        <div class="tt">档案盒目录 <span class="cargo" id="cargoTag">普货</span></div>
+        <div id="boxTree"></div>
+      </div>
+    </div>
+    <div class="right">
+      <div class="card" style="padding:0;overflow:hidden">
+        <div class="card-title box-head" style="padding:16px 20px 0">
+          <div class="box-head-l"><span id="curBoxName">盒一·公司档案及管理层档案</span> <span style="font-size:12px;color:var(--text-3);font-weight:400" id="curBoxDesc"></span></div>
+          <label class="box-selall"><input type="checkbox" id="boxSelAll" onchange="toggleBoxAll(this.checked)"> 全选本盒</label>
+        </div>
+        <div id="itemList" style="padding:0 20px 16px"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- PDF 预览弹窗 -->
+<div class="pdf-mask" id="pdfMask">
+  <div class="pdf-wrap">
+    <div class="pdf-toolbar">
+      <span class="t" id="pdfName">台账 PDF 预览</span>
+      <span class="tag tag-gray" id="pdfMode"></span>
+      <button class="btn btn-outline btn-sm" onclick="markPrinted()"><span class="ico" data-icon="printer"></span> 标记已打印</button>
+      <button class="btn btn-outline btn-sm" onclick="printPdf()" title="打开 A4 打印预览，在打印对话框选择「另存为 PDF」"><span class="ico" data-icon="printer"></span> 打印</button>
+      <button class="btn btn-primary btn-sm" onclick="downloadPdf()" title="下载 A4 打印版文件并打开打印窗口，可另存为 PDF"><span class="ico" data-icon="download"></span> 下载 PDF</button>
+      <button class="btn btn-outline btn-sm" onclick="closePdf()">关闭</button>
+    </div>
+    <div class="pdf-body"><div class="pdf-page" id="pdfPage"></div></div>
+  </div>
+</div>
+
+<!-- 生成方式弹窗 -->
+<div class="gen-modal" id="genModal">
+  <div class="gmodal">
+    <div class="gh">生成「<span id="genItemName"></span>」<span class="x" onclick="closeGen()">×</span></div>
+    <div class="gb">
+      <div class="radio-group" id="genModeGroup">
+        <div class="radio-item on" onclick="pickMode(0)" data-m="0">
+          <div class="r-n">① 真实流程生成</div>
+          <div class="r-d">系统里已有该模块的真实数据，直接汇总生成成品 PDF</div>
+        </div>
+        <div class="radio-item" onclick="pickMode(1)" data-m="1">
+          <div class="r-n">② 先台账后执行</div>
+          <div class="r-d">系统暂无数据，先按合规格式生成台账 PDF 应付检查，线下再补做（打印件与真实流程外观一致）</div>
+        </div>
+      </div>
+      <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:20px">
+        <button class="btn btn-outline" onclick="closeGen()">取消</button>
+        <button class="btn btn-primary" onclick="doGen()">生成 PDF</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- 上传留存弹窗 -->
+<div class="gen-modal" id="uploadModal">
+  <div class="gmodal">
+    <div class="gh">上传留存「<span id="upItemName"></span>」<span class="x" onclick="closeUpload()">×</span></div>
+    <div class="gb">
+      <div class="upload-drop" id="upDrop" onclick="document.getElementById('upFile').click()">
+        <span class="ico" data-icon="upload"></span>
+        <div><b>点击选择文件上传</b><div style="font-size:12.5px;color:var(--text-3);margin-top:2px">支持 PDF / JPG / PNG / 扫描件，上传后留存至本档案盒，状态标记为已生成</div></div>
+      </div>
+      <input type="file" id="upFile" style="display:none" onchange="upFileChosen()">
+      <div id="upFileName" style="display:none;margin-top:12px;padding:10px 14px;background:var(--brand-50);border:1px solid var(--brand-100);border-radius:8px;font-size:13px"></div>
+      <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:20px">
+        <button class="btn btn-outline" onclick="closeUpload()">取消</button>
+        <button class="btn btn-primary" onclick="doUpload()"><span class="ico" data-icon="upload"></span> 确认上传</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script src="../assets/archive_shared.js"></script>
+<script src="../assets/sys_docs.js"></script>
+<script src="../assets/org_data.js"></script>
+<script src="../assets/org_chart.js"></script>
+<script src="../assets/icons.js"></script>
+<script>
+// ============ 档案盒目录（普货 11 盒，对齐政府目录） ============
+const BOXES = [
+  {id:1,  name:'盒一 · 公司档案及管理层档案',   desc:'证照、任命、两类人员考核、责任书', items:[
+    {n:'营业执照（副本）',           d:'2026 年度', src:'upload', st:'done',  freq:'长期有效', g:'证照类'},
+    {n:'道路运输经营许可证（副本）', d:'2026 年度', src:'upload', st:'done',  freq:'按证照有效期', g:'证照类'},
+    {n:'安全管理组织架构',           d:'组织架构图', src:'auto', st:'done',   freq:'有变动时更新', g:'组织与任命类'},
+    {n:'成立安全生产领导小组的通知', d:'组长/副组长/成员', src:'auto', st:'done', freq:'有变动时更新', g:'组织与任命类'},
+    {n:'安全生产管理人员任命书',     d:'主要负责人 + 安全员', src:'auto', st:'done', freq:'有变动时更新', g:'组织与任命类'},
+    {n:'两类人员考核合格证明',       d:'主要负责人 + 安全员', src:'upload', st:'miss', freq:'按考核有效期', g:'证照类'},
+    {n:'安全生产责任书',             d:'全员', src:'auto', st:'print', freq:'一年一签', signedYear:2025, g:'责任与承诺类'},
+    {n:'安全生产承诺书',             d:'全员', src:'auto', st:'done',  freq:'一年一签', signedYear:2025, g:'责任与承诺类'},
+    {n:'岗位职业病危害因素告知书',   d:'全员', src:'auto', st:'done',  freq:'入职时签 + 岗位变动', g:'责任与承诺类'},
+    {n:'二级维护计划',               d:'年度一次', src:'auto', st:'wait', freq:'年度一次', g:'计划与保险类'},
+    {n:'安全生产责任险',             d:'保单', src:'upload', st:'miss', freq:'按保单有效期', g:'计划与保险类'},
+  ]},
+  // 盒二 items 由下方 IIFE 基于共享数据层重建（24 项制度 + 目录 + 法规清单），并赋值分组
+  {id:2,  name:'盒二 · 安全生产管理制度',     desc:'24 项制度（YT-ZD01~YT-ZD24）+ 目录 + 法规清单', items:[]},
+  {id:3,  name:'盒三 · 安全生产会议',         desc:'两类会议 · 四段式', items:[
+    {n:'安全生产领导小组会议',       d:'季度 · 通知/签到/记录/照片', src:'auto', st:'done', freq:'每季度一次', g:'安全会议类'},
+    {n:'安全生产月度会议',           d:'月度 · 通知/签到/记录/照片', src:'auto', st:'done', freq:'每月一次', g:'安全会议类'},
+  ]},
+  {id:4,  name:'盒四 · 安全生产教育培训',     desc:'培训计划 + 岗前三级培训 + 月度岗中培训', items:[
+    {n:'安全生产教育培训计划',       d:'年度 8 列计划表', src:'auto', st:'done', freq:'年度一次', g:'培训计划类'},
+    {n:'岗前安全教育培训记录',       d:'三级培训·公司/部门/岗位+学时+考试得分+是否合格', src:'auto', st:'wait', freq:'入职一次（换岗/复工重训）', g:'培训记录类'},
+    {n:'安全生产月度培训',           d:'岗中培训·应学/已学学时+课程+考试', src:'auto', st:'wait', freq:'每月一次（岗中培训）', g:'培训记录类'},
+  ]},
+  {id:5,  name:'盒五 · 安全生产费用',         desc:'财资136号 11 类', items:[
+    {n:'上年度营收证明',             d:'营收基数', src:'upload', st:'done', freq:'年度更新', g:'费用提取类'},
+    {n:'安全生产费用提取计划',       d:'年度', src:'auto', st:'done',  freq:'年度一次', g:'费用提取类'},
+    {n:'安全生产费用使用台账',       d:'11 类 × 12 月', src:'auto', st:'wait', freq:'每月登记', g:'费用使用类'},
+  ]},
+  {id:6,  name:'盒六 · 动态监控',             desc:'台账上传留存 + 违规教育', items:[
+    {n:'动态监控工作情况记录台账',   d:'上传留存（平台导出）', src:'upload', st:'wait',  freq:'每日登记', g:'动态监控台账类'},
+    {n:'设备故障异常台账',           d:'上传留存（终端/平台）', src:'upload', st:'miss', freq:'按次登记', g:'动态监控台账类'},
+    {n:'在线率台账 / 月报台账',      d:'上传留存（统计）', src:'upload', st:'miss',   freq:'每月汇总', g:'动态监控台账类'},
+    {n:'针对性违规教育',             d:'违规 → 靶向教育落实', src:'auto', st:'wait', freq:'按违规发生', g:'违规教育类'},
+  ]},
+  {id:7,  name:'盒七 · 应急管理',             desc:'预案 + 演练 + 器材', items:[
+    {n:'应急预案',                   d:'7 套场景组合', src:'auto', st:'done', freq:'三年一次修订（或重大变化时）', g:'应急预案类'},
+    {n:'风险评估和应急资源调查',     d:'报告', src:'auto', st:'done',  freq:'随预案修订', g:'应急预案类'},
+    {n:'应急演练计划',               d:'年度', src:'auto', st:'done',  freq:'年度一次', g:'应急演练类'},
+    {n:'应急演练记录',               d:'方案/照片/签到', src:'auto', st:'wait', freq:'按计划频次', g:'应急演练类'},
+    {n:'应急救援器材配备',           d:'清单', src:'auto', st:'miss',  freq:'按需补充 + 定期检查', g:'应急物资类'},
+  ]},
+  {id:8,  name:'盒八 · 风险辨识与隐患排查',   desc:'两级清单 + 排查闭环', items:[
+    {n:'全面风险辨识清单',           d:'一级 6 列', src:'auto', st:'done', freq:'年度一次（重大变化即时更新）', g:'风险辨识类'},
+    {n:'风险分级管控清单',           d:'二级 13 列', src:'auto', st:'done', freq:'年度一次', g:'风险辨识类'},
+    {n:'风险告知卡',                 d:'每个岗位一份', src:'auto', st:'wait', freq:'岗位变化时更新', g:'风险辨识类'},
+    {n:'无重大风险说明',             d:'声明', src:'auto', st:'done',  freq:'年度一次', g:'风险辨识类'},
+    {n:'隐患排查记录',               d:'排查/整改/验收', src:'auto', st:'wait', freq:'每月排查', g:'隐患排查类'},
+    {n:'重大事故隐患专项排查',       d:'6 项预置', src:'auto', st:'wait', freq:'按需 + 节假日前', g:'隐患排查类'},
+  ]},
+  {id:9,  name:'盒九 · 一日三检',             desc:'行车日志+出车/行车/收车三检', items:[
+    {n:'一日三检记录',               d:'车牌/日期/里程/货物/始发停靠目的地+出车/行车/收车三检', src:'auto', st:'done', freq:'每日行车前', g:'一日三检类'},
+  ]},
+  {id:10, name:'盒十 · 事故管理',             desc:'事故快报 + 统计', items:[
+    {n:'事故快报表',                 d:'发生/报告', src:'auto', st:'miss', freq:'按次（事发即时）', g:'事故管理类'},
+    {n:'年度事故汇总统计表',         d:'年度', src:'auto', st:'miss',   freq:'年度汇总', g:'事故管理类'},
+  ]},
+  {id:11, name:'盒十一 · 一人一档 / 一车一档', desc:'从业人员 + 车辆 + 考核奖惩', items:[
+    {n:'一人一档',                   d:'11/12 项', src:'auto', st:'done', freq:'人员异动 + 年度更新', g:'人员档案类'},
+    {n:'一车一档',                   d:'车辆证照/维护', src:'auto', st:'done', freq:'车辆异动 + 年度更新', g:'车辆档案类'},
+    {n:'从业人员考核记录',           d:'责任制考核·考核事项/内容/标准/评分', src:'auto', st:'wait', freq:'每月一次（按月考核）', g:'考核奖惩类'},
+    {n:'从业人员奖惩公示',           d:'考核类型/周期/结果/奖惩详情', src:'auto', st:'wait', freq:'按考核结果公示', g:'考核奖惩类'},
+  ]},
+];
+// 盒二归档项由共享数据层驱动，与「范本管理」盒二 24 项制度 + 目录一一对应；并按文件夹分组
+(function(){
+  const b2 = BOXES.find(b=>b.id===2);
+  const insts = window.buildBox2Institutions();
+  b2.items = [
+    {n:'适用安全生产法律法规标准目录清单', d:'法律法规清单', src:'auto', st:'done', freq:'法规更新时修订', g:'法律法规清单'},
+    ...insts.map(r=>({n:r.name, d:r.zdNo, src:'auto', st:'done', freq:'制度修订时更新', zdNo:r.zdNo, type:'制度', g:'管理制度'})),
+    {n:'安全生产管理制度目录', d:'制度清单（自动生成）', src:'auto', st:'done', freq:'制度变动时更新', toc:true, g:'制度目录'}
+  ];
+  b2.desc = '24 项制度（YT-ZD01~YT-ZD24）+ 目录 + 法规清单';
+})();
+
+let curBox = 0;
+let curGenItem = null;
+
+// ============ 年度归档维度 ============
+// 整体档案按自然年度归档：每个归档项在各年度有独立的状态（st/file/signedYear），
+// 顶部「归档年度」可切换，切换后档案盒目录、列表、统计、重签预警均按所选年度呈现。
+const ARCHIVE_YEARS = (function(){
+  const y = new Date().getFullYear();
+  const back = 6;                 // 往前保留历史归档年，使「超过 3 年」也有数据可折叠展示
+  const arr = [];
+  for(let i=back; i>=0; i--) arr.push(String(y - i));
+  return arr;                     // 如 [2020…2026]：近 3 年平铺，更早年份折叠
+})();
+let curYear = String(new Date().getFullYear());   // 随真实时间：默认当前自然年度
+let yearOpen = false;             // 「更多历年」折叠面板开关
+
+// 更新频率归类：一年一签 / 年度 / 每年 强绑定到具体自然年度
+function isYearlyFreq(f){ return !!(f && /一年|年度|每年/.test(f)); }
+
+// 把单个归档项按规则派生出各年度的归档状态（不影响已在当前年产生的真实操作）
+function seedOne(it){
+  const baseSt = it.st || 'miss';
+  const baseFile = it.file || '';
+  const baseSigned = it.signedYear;
+  it.y = {};
+  ARCHIVE_YEARS.forEach(y=>{
+    const yN = +y, curN = +curYear;
+    if(yN < curN){
+      // 历史年度：已沉淀归档。原缺失/待生成在历史归档中视为当年已完成（演示为已归档）
+      const st = (baseSt==='miss') ? 'done' : baseSt;
+      it.y[y] = { st: st==='wait' ? 'done' : st, file: baseFile || (it.n + '_' + y + '年度归档.pdf'), signedYear: isYearlyFreq(it.freq) ? yN : baseSigned };
+    } else {
+      // 当前年度：一年一签类若签署年早于当前年 → 待重签/待重做（wait），其余沿用基础状态
+      if(isYearlyFreq(it.freq) && baseSigned!==undefined && baseSigned < yN){
+        it.y[y] = { st:'wait', file:'', signedYear: baseSigned };
+      } else {
+        it.y[y] = { st: baseSt, file: baseFile, signedYear: baseSigned };
+      }
+    }
+  });
+}
+function seedYears(){ BOXES.forEach(b=>b.items.forEach(seedOne)); }
+
+// 取当前归档年度的状态对象（兜底：未建立 y 时退回基础字段）
+function Y(it){
+  return (it.y && it.y[curYear]) ? it.y[curYear] : { st: it.st||'miss', file: it.file||'', signedYear: it.signedYear };
+}
+
+const VISIBLE_RECENT = 3;   // 最近 3 个年度平铺显示，更早年份折叠进「更多历年」
+function renderYearSwitch(){
+  const el = document.getElementById('yearSwitch');
+  if(!el) return;
+  const realCur = String(new Date().getFullYear());
+  const years = ARCHIVE_YEARS.slice().sort((a,b)=> +b - +a);   // 新 → 旧
+  const recent = years.slice(0, VISIBLE_RECENT);
+  const older  = years.slice(VISIBLE_RECENT);
+  let html = recent.map(y=>
+    `<button class="year-btn ${y===curYear?'on':''}" onclick="switchYear('${y}')">${y} 年${y===realCur?'<span class="yb-cur">今</span>':''}</button>`
+  ).join('');
+  if(older.length){
+    html += `<button class="year-btn more ${yearOpen?'open':''}" onclick="toggleYearMore()">更多历年 <i class="caret"></i></button>`;
+    html += `<div class="year-more ${yearOpen?'show':''}">` +
+            older.map(y=>`<button class="year-opt ${y===curYear?'on':''}" onclick="switchYear('${y}')">${y} 年</button>`).join('') +
+            `</div>`;
+  }
+  el.innerHTML = html;
+  const hint = document.getElementById('yearHint');
+  if(hint) hint.innerHTML = (curYear===realCur)
+    ? '（<span class="year-tag">当前年度</span> 逐年重做 / 重签）'
+    : '（<span class="year-tag">历史归档</span> 已沉淀的台账）';
+}
+function toggleYearMore(){ yearOpen = !yearOpen; renderYearSwitch(); }
+function switchYear(y){
+  curYear = y;
+  yearOpen = false;        // 选中后收起折叠面板
+  renderYearSwitch();
+  renderTree();
+  renderItems();
+  toast(`已切换至 ${y} 年度归档视图`);
+}
+
+// 客户类型联动：读取顶部切换器写入的 cargoType，危货追加专项台账/证照项
+function applyCargo(){
+  const cargo = localStorage.getItem('cargoType') || '普货';
+  const isDanger = cargo === '危货';
+  const tag = document.getElementById('cargoTag');
+  if(tag) tag.textContent = cargo;
+  if(isDanger){
+    const b6 = BOXES.find(b=>b.id===6);
+    if(b6 && !b6._d){
+      b6.desc = '危货：电子运单 + 装卸查验 + 押运员在岗 + 危险品运输台账';
+      b6.items.push(
+        {n:'危险货物电子运单', d:'每趟 · 上传监管平台', src:'auto', st:'wait', freq:'每趟一单', g:'危货专项类'},
+        {n:'装卸查验记录', d:'每次装卸 · 现场指挥', src:'auto', st:'wait', freq:'每次装卸', g:'危货专项类'},
+        {n:'押运员在岗记录', d:'每趟 · 与运单匹配', src:'auto', st:'wait', freq:'每趟登记', g:'危货专项类'},
+        {n:'危险品运输台账', d:'每日汇总', src:'auto', st:'wait', freq:'每日汇总', g:'危货专项类'},
+      );
+      b6.items.slice(-4).forEach(seedOne);
+      b6._d = true;
+    }
+    const b11 = BOXES.find(b=>b.id===11);
+    if(b11 && !b11._d){
+      b11.desc = '危货：+禁毒承诺书 +职业健康检查 +罐体检测 +专用标识喷涂';
+      b11.items.push(
+        {n:'禁毒承诺书', d:'危货专属', src:'auto', st:'wait',   freq:'一年一签', signedYear:2025, g:'责任与承诺类'},
+        {n:'职业健康检查报告', d:'入职 + 年度在岗', src:'upload', st:'miss', freq:'入职一次 + 每年在岗体检', g:'危货专项类'},
+        {n:'罐体检测合格证明', d:'危货强制', src:'upload', st:'miss', freq:'按检测有效期', g:'危货专项类'},
+        {n:'专用标识喷涂证明', d:'危货强制', src:'upload', st:'miss', freq:'一次性（标识变更时更新）', g:'危货专项类'},
+      );
+      b11.items.slice(-4).forEach(seedOne);
+      b11._d = true;
+    }
+  }
+  renderTree(); renderItems();
+}
+
+function renderTree(){
+  const el = document.getElementById('boxTree');
+  const totalItems = BOXES.reduce((a,b)=>a+b.items.length,0);
+  let selTotal=0;
+  BOXES.forEach((b,i)=> b.items.forEach((_,idx)=>{ if(selSet.has(keyOf(i,idx))) selTotal++; }));
+  const allChk = totalItems>0 && selTotal===totalItems;
+  const allInd = selTotal>0 && selTotal<totalItems;
+  let html = `<label class="tree-all"><input type="checkbox" id="treeAll" ${allChk?'checked':''} onchange="toggleTreeAll(this.checked)"> 全选全部档案盒</label>`;
+  html += BOXES.map((b,i)=>{
+    let dot='dot-green';
+    const hm=b.items.some(x=>Y(x).st==='miss'), hw=b.items.some(x=>Y(x).st==='wait');
+    if(hm)dot='dot-red';else if(hw)dot='dot-yellow';
+    let sel=0; b.items.forEach((_,idx)=>{ if(selSet.has(keyOf(i,idx))) sel++; });
+    const chk=sel===b.items.length && b.items.length>0;
+    const ind=sel>0 && sel<b.items.length;
+    return `<div class="box-item ${i===curBox?'on':''}">
+      <input type="checkbox" class="box-sel" id="bxSel_${i}" ${chk?'checked':''} onchange="toggleTreeBox(${i},this.checked)" onclick="event.stopPropagation()">
+      <span class="bx-dot ${dot}" onclick="pickBox(${i})"></span>
+      <span class="bx-name" onclick="pickBox(${i})">${b.name}</span>
+      <span class="bx-count" onclick="pickBox(${i})">${b.items.length} 项</span>
+    </div>`;
+  }).join('');
+  el.innerHTML = html;
+  const ta=document.getElementById('treeAll'); if(ta){ ta.checked=allChk; ta.indeterminate=allInd; }
+  BOXES.forEach((b,i)=>{ const cb=document.getElementById('bxSel_'+i); if(cb){ let s=0; b.items.forEach((_,idx)=>{ if(selSet.has(keyOf(i,idx))) s++; }); cb.indeterminate=s>0 && s<b.items.length; } });
+}
+function pickBox(i){ curBox=i; renderTree(); renderItems(); }
+
+// 按 ?box=<盒id> 参数定位到对应档案盒（供各功能模块「存档到电子档案柜」跳转时直接展开目标盒）
+function applyBoxParam(){
+  let q = '';
+  try { q = new URLSearchParams(location.search).get('box'); } catch(e){}
+  if(q){ const bi = BOXES.findIndex(b=>String(b.id)===String(q)); if(bi>=0) pickBox(bi); }
+}
+
+function stBadge(st){
+  if(st==='miss') return '<span class="st st-miss">缺失</span>';
+  if(st==='wait') return '<span class="st st-wait">待生成</span>';
+  if(st==='done') return '<span class="st st-done">已生成</span>';
+  return '<span class="st st-print">已打印</span>';
+}
+function srcBadge(src){
+  if(src==='auto') return '<span class="src src-auto">系统生成</span>';
+  if(src==='upload') return '<span class="src src-up">上传留存</span>';
+  return '<span class="src src-print">打印手写</span>';
+}
+// 更新频率分类（用于着色 + 预警）
+function freqClass(f){
+  if(!f) return 'freq';
+  if(f.includes('一年')||f.includes('每年')||f.includes('年度')||f.includes('三年')) return 'freq freq-yearly';
+  if(f.includes('每月')||f.includes('月度')||f.includes('季度')) return 'freq freq-monthly';
+  if(f.includes('入职')||f.includes('一次性')||f.includes('长期')||f.includes('按证照')||f.includes('按考核')||f.includes('按保单')||f.includes('按检测')||f.includes('变更')||f.includes('修订')) return 'freq freq-once';
+  if(f.includes('每日')||f.includes('每趟')||f.includes('每次')) return 'freq freq-daily';
+  return 'freq';
+}
+
+function renderItems(){
+  const b = BOXES[curBox];
+  document.getElementById('curBoxName').textContent = b.name;
+  document.getElementById('curBoxDesc').textContent = b.desc;
+  const groups = groupItems(b.items);
+  const el = document.getElementById('itemList');
+  if(groups.length===0){ el.innerHTML = '<div class="empty-state">该档案盒暂无归档项</div>'; updateSummary(); return; }
+  el.innerHTML = groups.map(g=>itemFolderGroup(g.name, g.items)).join('');
+  if(window.__rerenderIcons) window.__rerenderIcons();
+  updateSummary();
+  updateSelAllState();
+}
+
+// 按分组字段 g 折叠分组（保持首次出现顺序），并保留原始索引 _idx 供预览/生成定位
+function groupItems(items){
+  const order=[], map={};
+  items.forEach((it,idx)=>{
+    const g = it.g || '其他';
+    if(!map[g]){ map[g]=[]; order.push(g); }
+    map[g].push(Object.assign({}, it, {_idx:idx}));
+  });
+  return order.map(g=>({name:g, items:map[g]}));
+}
+
+function itemFolderGroup(name, items){
+  const gid = 'afg_'+curBox+'_'+name;
+  const gk = 'g_'+curBox+'_'+name;
+  let sel=0; items.forEach(it=>{ if(selSet.has(keyOf(curBox,it._idx))) sel++; });
+  const chk = sel===items.length && items.length>0;
+  return `<div class="folder" id="${gid}">
+    <div class="folder-head" onclick="toggleFolder('${gid}')">
+      <input type="checkbox" class="grp-sel" id="${gk}" ${chk?'checked':''} onchange='toggleGroup(${JSON.stringify(name)},this.checked)' onclick="event.stopPropagation()">
+      <span class="f-ico ico" data-icon="folder"></span>
+      <span class="folder-name">${esc(name)}</span>
+      <span class="folder-count">${items.length}</span>
+      <span class="folder-caret">▾</span>
+    </div>
+    <div class="folder-body">
+      ${items.map(it=>itemRow(it)).join('')}
+    </div>
+  </div>`;
+}
+
+function itemRow(it){
+  const idx = it._idx;
+  const st = Y(it).st;          // 当前归档年度的状态
+  let btn='', uploadBtn='';
+  if(it.src==='upload'){
+    // 上传来源项（证照 / 保单 / 台账等「上传留存」语义）：主操作为「上传」
+    btn = `<button class="btn btn-primary btn-sm" onclick="openUpload(${curBox},${idx})"><span class="ico" data-icon="upload"></span> 上传</button>`;
+  } else if(st==='miss'){
+    btn = `<button class="btn btn-outline btn-sm" onclick="toast('该归档项暂无数据，可打印空白格式表手写补充')">打印空白表</button>`;
+  } else if(st==='done'||st==='print'){
+    // 已生成 / 已打印：文件名直接可点预览，不再单列「预览 PDF」按钮，仅保留上传留存入口
+    uploadBtn = `<button class="btn btn-outline btn-sm" onclick="openUpload(${curBox},${idx})" title="上传留存扫描件"><span class="ico" data-icon="upload"></span> 上传</button>`;
+    btn = `<button class="btn btn-outline btn-sm" onclick="regen(${curBox},${idx})" title="按当前范本与现有数据重新生成"><span class="ico" data-icon="refresh"></span> 重新生成</button>`;
+  } else {
+    btn = `<button class="btn btn-primary btn-sm" onclick="openGen(${curBox},${idx})">生成 PDF</button>`;
+    uploadBtn = `<button class="btn btn-outline btn-sm" onclick="openUpload(${curBox},${idx})" title="上传留存扫描件"><span class="ico" data-icon="upload"></span> 上传</button>`;
+  }
+  // 已上传留存的文件名：可点击直接预览
+  const fileChip = Y(it).file
+    ? `<span class="src src-up file-chip" title="点击预览" onclick="viewPdf(${curBox},${idx})">${esc(Y(it).file)}</span>`
+    : '';
+  return `<div class="item-row">
+    <label class="item-check"><input type="checkbox" ${selSet.has(keyOf(curBox,idx))?'checked':''} onchange="toggleSel(${curBox},${idx},this.checked)"></label>
+    <span class="item-idx">${idx+1}</span>
+    <div class="nm"><div class="n clickable" onclick="onNameClick(${curBox},${idx})">${esc(it.n)}</div><div class="d">${esc(it.d)}</div></div>
+    ${srcBadge(it.src)}
+    ${fileChip}
+    <span class="${freqClass(it.freq)}">${esc(it.freq||'')}</span>
+    ${stBadge(st)}
+    ${uploadBtn}
+    ${btn}
+  </div>`;
+}
+
+// 点击文件名：按当前年度状态直接预览 / 生成 / 上传（替代原先独立的「预览 PDF」按钮）
+function onNameClick(bi, ii){
+  const it = BOXES[bi].items[ii];
+  const st = Y(it).st;
+  if(it.src==='upload'){
+    Y(it).file ? viewPdf(bi,ii) : openUpload(bi,ii);     // 已上传 → 预览；未上传 → 上传
+  } else if(st==='done'||st==='print'){
+    viewPdf(bi,ii);                                       // 已生成 / 已打印 → 预览
+  } else if(st==='wait'){
+    openGen(bi,ii);                                       // 待生成 → 触发生成流程（生成后自动预览）
+  } else {
+    toast('该归档项暂无数据，可打印空白格式表手写补充');        // 缺失 → 提示
+  }
+}
+
+function toggleFolder(gid){
+  const el = document.getElementById(gid);
+  if(el) el.classList.toggle('collapsed');
+}
+
+function esc(s){ return String(s==null?'':s).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+
+function updateSummary(){
+  let all=[];
+  BOXES.forEach(b=>all=all.concat(b.items));
+  document.getElementById('sMiss').textContent = all.filter(x=>Y(x).st==='miss').length;
+  document.getElementById('sWait').textContent = all.filter(x=>Y(x).st==='wait').length;
+  document.getElementById('sDone').textContent = all.filter(x=>Y(x).st==='done').length;
+  document.getElementById('sPrint').textContent = all.filter(x=>Y(x).st==='print').length;
+  renderRenewBanner();
+}
+
+// 到期/待签预警：一年一签的项（责任书/承诺书等）按【当前归档年度】判断——
+// 签署年度 < 当前归档年度，即跨年 → 需重新签订（每年 1 月 1 日需重签）。随年度切换联动。
+function renderRenewBanner(){
+  let all=[];
+  BOXES.forEach(b=>all=all.concat(b.items));
+  const curYearN = +curYear;  // 当前归档自然年度
+  // 一年一签的项：当前年度状态下签署年度 < 当前年度（跨年）→ 需重新签订
+  const yearly = all.filter(x => {
+    if(!(x.freq && x.freq.includes('一年'))) return false;
+    const sy = Y(x).signedYear;
+    return sy === undefined || sy < curYearN;  // 未记录签署年度或已跨年
+  });
+  const banner = document.getElementById('renewBanner');
+  const list = document.getElementById('renewList');
+  const cnt = document.getElementById('renewCount');
+  if(yearly.length === 0){ banner.style.display='none'; return; }
+  banner.style.display='flex';
+  cnt.textContent = yearly.length;
+  list.innerHTML = yearly.map(x=>{
+    const sy = Y(x).signedYear;
+    const why = (sy===undefined) ? '尚未记录签署年度' : `签署于 ${sy} 年，已跨自然年度`;
+    return `<span class="rb-item" onclick="toast('「${x.n}」${why}，按自然年度每年 1 月 1 日需重新签订')">${x.n} · 需重签（${why}）</span>`;
+  }).join('');
+}
+
+// ============ 生成方式弹窗 ============
+function openGen(bi, ii){ curGenItem = {bi,ii}; const it=BOXES[bi].items[ii];
+  document.getElementById('genItemName').textContent = it.n;
+  document.getElementById('genModal').classList.add('show');
+  pickMode(0);
+}
+function pickMode(m){
+  document.querySelectorAll('#genModeGroup .radio-item').forEach((el,i)=>el.classList.toggle('on', i===m));
+}
+function closeGen(){ document.getElementById('genModal').classList.remove('show'); }
+
+function doGen(){
+  const {bi,ii} = curGenItem;
+  const it = BOXES[bi].items[ii];
+  const ys = Y(it);
+  ys.st = 'done';
+  ys.file = ys.file || (it.n + '_' + curYear + '年度.pdf');
+  closeGen();
+  renderItems(); renderTree();
+  toast(`「${it.n}」已生成 PDF（${curYear} 年度）`);
+  viewPdf(bi,ii);
+}
+
+// ============ 重新生成：按当前范本 + 现有数据重新生成（不做弹窗，直接重渲染并预览）============
+function regen(bi, ii){
+  const it = BOXES[bi].items[ii];
+  const ys = Y(it);
+  // 上传留存类（src==='upload'）：重新生成无意义（内容为扫描件），转为提示
+  if(it.src==='upload'){
+    toast('该归档项为上传留存类（扫描件），请重新上传以更新内容');
+    return;
+  }
+  // 缺失类（无数据）：提示走生成流程
+  if(ys.st==='miss'){
+    toast('该归档项暂无数据，请先「生成 PDF」或打印空白表手写补充');
+    return;
+  }
+  // 重新生成：状态回到 done（已是 done/print），文件名保留/刷新，按当前范本+现有数据重渲染预览
+  ys.st = 'done';
+  ys.file = ys.file || (it.n + '_' + curYear + '年度.pdf');
+  renderItems(); renderTree();
+  toast(`「${it.n}」已按当前范本与现有数据重新生成（${curYear} 年度）`);
+  curGenItem = {bi, ii};
+  viewPdf(bi, ii);
+}
+
+// ============ 上传留存（台账 / 证照扫描件归档） ============
+let curUpload = null;
+function openUpload(bi, ii){
+  curUpload = {bi, ii};
+  const it = BOXES[bi].items[ii];
+  document.getElementById('upItemName').textContent = it.n;
+  const inp = document.getElementById('upFile'); inp.value='';
+  document.getElementById('upFileName').style.display='none';
+  document.getElementById('uploadModal').classList.add('show');
+  if(window.__rerenderIcons) window.__rerenderIcons();
+}
+function closeUpload(){ document.getElementById('uploadModal').classList.remove('show'); }
+function upFileChosen(){
+  const f = document.getElementById('upFile').files[0];
+  const box = document.getElementById('upFileName');
+  if(f){ box.style.display=''; box.textContent='已选择：'+f.name; }
+  else { box.style.display='none'; }
+}
+function doUpload(){
+  if(!curUpload) return;
+  const {bi,ii} = curUpload;
+  const it = BOXES[bi].items[ii];
+  const f = document.getElementById('upFile').files[0];
+  const fname = f ? f.name : (it.n + '_扫描件_' + new Date().toISOString().slice(0,10) + '.pdf');
+  const ys = Y(it);
+  ys.file = fname;
+  ys.st = 'done';
+  closeUpload();
+  renderItems(); renderTree();
+  toast(`「${it.n}」已上传留存（${fname} · ${curYear} 年度）`);
+}
+
+// ============ PDF 预览 ============
+function viewPdf(bi, ii){
+  const b = BOXES[bi], it = b.items[ii];
+  curGenItem = {bi, ii};   // 记录当前预览项，供「标记已打印」定位
+  document.getElementById('pdfName').textContent = `${it.n}`;
+  const ys = Y(it);
+  document.getElementById('pdfMode').textContent = (ys.st==='print' ? '已打印' : ys.st==='done' ? '已生成' : '待生成') + ` · ${curYear} 年度`;
+  document.getElementById('pdfPage').innerHTML = renderPdfContent(b, it);
+  document.getElementById('pdfMask').classList.add('show');
+}
+function closePdf(){ document.getElementById('pdfMask').classList.remove('show'); }
+
+// 通用小工具
+function tbl(headers, rows){ return `<table><tr>${headers.map(h=>`<th>${h}</th>`).join('')}</tr>${rows.join('')}</table>`; }
+function signRows(posts){ return posts.map((p,i)=>`<tr><td>${i+1}</td><td></td><td>${p}</td><td></td></tr>`); }
+// 企业名称统一取组织架构主数据，保证页眉与架构图公司节点、责任制正文一致
+const ORG = (window.OrgData && window.OrgData.COMPANY()) || '佛山市悦通物流有限公司';
+
+// ============ 安全生产责任制 · 岗位联动实时渲染（与范本管理一致）============
+// 岗位改名 / 禁用 / 兼并后，盒二「安全生产责任制」正文实时跟随；
+// 数据来源：assets/org_data.js 的 OrgData.activeDocPosts()（仅启用中岗位，自动剔除禁用/兼并）。
+function renderZhizeSystemLive(){
+  const OD = window.OrgData;
+  if(!OD){ return `<div class="ptitle">安全生产责任制</div><p>（组织架构数据未加载）</p>`; }
+  const posts = OD.activeDocPosts();
+  let h = `<div class="ptitle">安全生产责任制</div>`;
+  h += `<div class="psub">${OD.COMPANY() || ORG} · 全员安全生产责任制</div>`;
+  h += `<p>本制度各岗位「安全生产目标 / 安全职责 / 考核标准」由系统按当前组织架构自动生成，岗位调整后实时联动。</p>`;
+  if(!posts.length){ h += `<p>（当前无启用岗位）</p>`; return h; }
+  posts.forEach((post, idx)=>{
+    const label = OD.funcLabel(post);
+    const head = post.name + (label && label!==post.name ? `（${label}）` : '');
+    h += `<p class="ni" style="margin-top:16px"><b>${idx+1}、${esc(head)}</b></p>`;
+    if(post.mergedIds && post.mergedIds.length){
+      const merged = post.mergedIds.map(k=>OD.FUNCS[k] ? OD.FUNCS[k].label : k);
+      h += `<p class="ni" style="font-size:12px;color:#555">※ 本岗位兼并以下职能：${esc(merged.join('、'))}</p>`;
+    }
+    h += `<p class="ni"><b>【安全目标】</b></p>`;
+    (post.goals||'').split('\n').forEach(x=>{ x=x.trim(); if(x) h += `<p class="ni">${esc(x)}</p>`; });
+    h += `<p class="ni"><b>【岗位职责】</b></p>`;
+    (post.duties||'').split('\n').forEach(x=>{ x=x.trim(); if(x) h += `<p class="ni">${esc(x)}</p>`; });
+    h += `<p class="ni"><b>【考核标准】</b></p>`;
+    h += `<p class="ni">${esc(post.assess||'')}</p>`;
+  });
+  const disabled = OD.posts().filter(p=>!p.enabled).map(p=>p.name);
+  h += `<p class="ni" style="margin-top:20px;font-size:12px;color:#999">※ 已从本制度剔除的岗位：${disabled.length?esc(disabled.join('、')):'无'}</p>`;
+  return h;
+}
+
+// ============ 完整台账渲染引擎：按归档项类型输出真实表格格式 ============
+function renderPdfContent(b, it){
+  const n = it.n;
+  let body;
+
+  // —— 盒一 公司档案 ——
+  if(n.includes('任命书')){
+    body = `<div class="ptitle">关于任命专职安全生产管理人员的通知</div>
+      <div class="psub">${ORG}文件</div>
+      <p>公司各部门及全体人员：</p>
+      <p>为加强本公司安全生产管理工作，严格认真落实安全生产，做好制度和操作规程管理、安全投入、教育培训、现场检查、危险源辨识、隐患排查、职业健康、安全文化、应急管理、事故处理、持续改进等规范管理工作，经公司研究决定任命 <span class="fill">张伟</span> 同志担任公司主要负责人，任命 <span class="fill">李强</span> 同志担任公司安全员，作为公司专职安全生产管理人员，负责公司安全生产监督管理工作。</p>
+      <p class="ni" style="margin-top:40px">公司：<span class="fill">${ORG}</span>（盖章）</p>
+      <p class="ni">生效日期：<span class="fill">2026 年 1 月 1 日</span></p>`;
+  } else if(n.includes('责任书')){
+    body = `<div class="ptitle">安全生产责任书</div>
+      <div class="psub">甲方：${ORG}　乙方：从业人员（各岗位）</div>
+      <p>遵循"安全第一，预防为主，综合治理"的安全方针，贯彻落实《中华人民共和国安全生产法》相关要求，强化安全生产"一岗双责"，明确各岗位安全生产职责，甲乙双方签订本责任书。</p>
+      <p class="ni"><b>一、安全生产目标</b></p>
+      <p>1、责任事故控制指标：发生一般及以上生产安全责任事故 0 宗；百万车公里行车责任事故频率≤3宗。</p>
+      <p>2、运输安全管理工作指标：职业病防护率100%；隐患排查治理率100%；卫星定位装置安装率100%；培训考核合格率100%；车辆二级维护率100%；车辆年检率100%；应急预案演练参与率100%。</p>
+      <p class="ni"><b>二、安全职责</b>（严格遵守国家法律法规及标准、落实岗位安全责任、接受教育培训和考核、做好车辆日常检查维护、杜绝违法违规行为、事故及时上报并应急处置等）</p>
+      <p class="ni"><b>三、责任制考评与奖惩</b>（按绩效方案考评，达标表彰奖励，失职追责）</p>
+      <p>本责任书期限为一年，自 2026 年 1 月 1 日起至 2026 年 12 月 31 日止，一式贰份，公司与签订人各一份。</p>
+      <table><tr><th>序号</th><th>姓名</th><th>岗位</th><th>签字</th><th>日期</th></tr>
+      <tr><td>1</td><td>张伟</td><td>主要负责人</td><td></td><td></td></tr>
+      <tr><td>2</td><td>李强</td><td>安全员</td><td></td><td></td></tr>
+      <tr><td>3</td><td>王芳</td><td>监控员</td><td></td><td></td></tr>
+      <tr><td>4</td><td>陈刚</td><td>驾驶员</td><td></td><td></td></tr></table>`;
+  } else if(n.includes('承诺书')){
+    body = `<div class="ptitle">公司驾驶员安全生产承诺书</div>
+      <div class="psub">${ORG}</div>
+      <p>为贯彻落实安全生产各项法律、法规及相关政策，切实履行公司安全管理制度及规定，确保实现公司安全生产目标，本人在此向公司和社会郑重承诺：</p>
+      <p>严格遵守道路货物运输的法律法规和规章，抵制违章行为，维护交通秩序，确保安全行车；严格执行公司各项规章制度、操作规程及应急预案；认真做好车辆日常检查和维护；驾驶车辆不超载、不超速、不酒驾、不开带病车、不疲劳驾驶；正确使用劳动防护用品；服从管理，接受培训；发生运输事故及时处置并上报。</p>
+      <p>本人将切实履行上述承诺并接受公司和社会的监督。</p>
+      <p class="ni" style="margin-top:30px">承诺人签名：<span class="fill">____</span>　日期：____年__月__日</p>`;
+  } else if(n.includes('告知书')){
+    body = `<div class="ptitle">岗位职业病危害因素告知书</div>
+      <div class="psub">${ORG}</div>
+      <p>根据《中华人民共和国职业病防治法》有关规定要求，我公司将工作过程中可能接触的职业病危害因素、可能产生的职业病危害及其后果、职业病防护措施和待遇等如实告知您。现在您在我公司 <span class="fill">驾驶员</span> 岗位任职工作，在此岗位任职期间，公司将按国家有关规定对您发放安全防护用品，并告知该岗位存在的职业病危害因素及防护措施。</p>
+      <p class="ni"><b>1. 岗位危害：</b></p>
+      <p>（1）前列腺疾病（久坐）；（2）颈、腰椎病；（3）胃肠道疾病；（4）振动病；（5）噪声性耳聋；（6）视力疲劳综合症；（7）脂肪肝；（8）肛肠疾病。</p>
+      <p class="ni"><b>2. 防护措施：</b></p>
+      <p>保持正确驾驶姿势；适当运动；定时休息（连续驾驶4小时停车休息20分钟以上）；注意车辆维护减少振动噪音；定时合理饮食。</p>
+      <p>一旦发生职业病，本单位将按照国家有关法律法规为您提供相应待遇。您有义务自觉遵守职业卫生操作规程和制度、正确使用防护用品、积极参加职业卫生知识培训。</p>
+      <p class="ni" style="margin-top:24px">公司名称（盖章）：<span class="fill">${ORG}</span>　告知时间：____年__月__日</p>
+      <p class="ni">被告知人（签字）：<span class="fill">____</span>　签字时间：____年__月__日</p>`;
+  } else if(n.includes('领导小组')){
+    body = `<div class="ptitle">关于公司成立安全生产领导小组的通知</div>
+      <div class="psub">${ORG}</div>
+      <p>公司各员工：</p>
+      <p>为加强本公司安全生产管理工作，严格认真落实企业主体责任，做好制度和操作规程管理、安全投入、监控管理、教育培训、现场检查、危险源辨识、隐患排查、风险管控等规范管理工作，我公司决定成立安全生产领导小组，具体人员组成如下：</p>
+      <p class="ni" style="margin:12px 0">组&nbsp;&nbsp;长：<span class="fill">张伟</span>（主要负责人）</p>
+      <p class="ni" style="margin:6px 0">副组长：<span class="fill">李强</span>（安全管理员）</p>
+      <p class="ni" style="margin:6px 0">成&nbsp;&nbsp;员：<span class="fill">王芳（监控员）、陈刚（车队长）、全体驾驶员</span></p>
+      <p class="ni"><b>安全生产领导小组职责：</b></p>
+      <p>（1）组织制定并审核全员安全生产责任制；（2）组织制定并审核安全生产规章制度、操作规程和应急预案；（3）组织制定并审核教育培训计划；（4）定期召开安全生产会议；（5）建立安全风险分级管控和隐患排查治理双重预防机制；（6）组织危险源辨识和评估；（7）督促落实整改措施；（8）组织安全生产考核奖惩；（9）组织事故调查处置与责任追究。</p>
+      <p class="ni" style="margin-top:24px;text-align:right">${ORG}<br>2026 年 1 月 1 日</p>`;
+  } else if(n.includes('组织架构')){
+    // 与「安全管理架构」页共用同一张图：只渲染启用岗位，禁用岗位不占位
+    const OC = window.OrgChart;
+    const chart = OC ? OC.html({ compact:true }) : '<p>（架构图组件未加载）</p>';
+    const stat = OC ? OC.summary() : '';
+    body = `<div class="ptitle">安全管理组织架构</div>
+      <div class="psub">${ORG}</div>
+      <p class="ni" style="font-size:12px;color:#555">本图由系统按当前组织架构实时生成，公司 → 主要负责人 → 各启用岗位（按上级关系组树）。${esc(stat)}</p>
+      ${chart}
+      <p class="ni" style="margin-top:14px;font-size:12px">编制：安全管理部门　　审核：主要负责人　　归档年度：${curYear}</p>`;
+  } else if(n.includes('二级维护')){
+    body = `<div class="ptitle">关于公司车辆二级维护计划通知</div>
+      <div class="psub">${ORG}</div>
+      <p class="ni"><b>一、工作要求</b></p>
+      <p>1. 公司安全管理员负责制定年度车辆二级维护计划；2. 车辆二级维护由驾驶员按期到有资质的修理厂进行，维护后凭证交车辆档案管理员归档。</p>
+      <p class="ni"><b>二、车辆维护周期</b></p>
+      <p>营运车辆维护周期按行驶间隔里程或时间确定，公司车辆二级维护按一年一次制定，具体以实际车况为准。</p>
+      ${tbl(['序号','车牌号','车辆类型','维护周期','计划维护月份','状态'],
+        [['粤E·12345','牵引车','一年一次','6月','待维护'],['粤E·67890','挂车','一年一次','8月','待维护'],['粤E·54321','货车','一年一次','10月','待维护']].map((r,i)=>`<tr><td>${i+1}</td>${r.slice(1).map(c=>`<td>${c}</td>`).join('')}</tr>`))}
+      <p class="ni" style="margin-top:20px;text-align:right">${ORG}<br>2026 年 1 月 1 日</p>`;
+  } else if(n.includes('责任险') || n.includes('保险')){
+    body = `<div class="ptitle">安全生产责任保险</div>
+      <div class="psub">${ORG}</div>
+      ${tbl(['险种','保险公司','保单号','保险期间','保费(元)','状态'],
+        [['安全生产责任险','（上传）','（上传）','2026-01-01 至 2026-12-31','（上传）','<span class="fill">有效</span>'],
+         ['交强险','（上传）','（上传）','2026-01-01 至 2026-12-31','（上传）','<span class="fill">有效</span>'],
+         ['承运人责任险（危货）','（上传）','（上传）','2026-01-01 至 2026-12-31','（上传）','<span class="fill">有效</span>']].map(r=>`<tr>${r.map(c=>`<td style="text-align:left">${c}</td>`).join('')}</tr>`))}
+      <p class="ni">[ 保单扫描件粘贴处 ]</p>`;
+  } else if(n.includes('法律法规')){
+    body = `<div class="ptitle">适用安全生产法律法规标准目录清单</div>
+      <div class="psub">${ORG}</div>
+      ${tbl(['序号','类别','法律法规/标准名称','文号/标准号','实施日期'],
+        [['法律','《中华人民共和国安全生产法》','主席令第88号','2021-09-01'],
+         ['法律','《中华人民共和国道路运输条例》','国务院令第406号','2004-07-01'],
+         ['部门规章','《道路运输车辆动态监督管理办法》','交通运输部令','2022-01-01'],
+         ['部门规章','《生产经营单位安全培训规定》','安监总局令第3号','2006-03-01'],
+         ['标准','《道路货物运输及站场管理规定》','交通运输部令','—'],
+         ['规范性文件','《企业安全生产费用提取和使用管理办法》','财资〔2022〕136号','2022-11-21']].map((r,i)=>`<tr><td>${i+1}</td>${r.slice(1).map(c=>`<td style="text-align:left">${c}</td>`).join('')}</tr>`))}`;
+  } else if(n.includes('营业执照') || n.includes('许可证') || n.includes('考核合格证明')){
+    // 证照清单：营业执照 + 道路运输许可证 + 两类人员考核证明（两人分开），合并一张精简表
+    body = `<div class="ptitle">公司证照及考核证明清单</div>
+      <div class="psub">${ORG}</div>
+      <p>以下证照及人员考核合格证明须在有效期内，到期前系统预警提醒换证/复审。</p>
+      ${tbl(['序号','证照名称','有效期至','状态'],
+        [['营业执照（副本）','2030-12-31','有效'],
+         ['道路运输经营许可证（副本）','2028-06-30','有效'],
+         ['两类人员考核合格证明（张伟 · 主要负责人）','2027-12-31','有效'],
+         ['两类人员考核合格证明（李强 · 安全员）','2027-12-31','有效']].map((r,i)=>`<tr><td>${i+1}</td><td style="text-align:left">${r[0]}</td><td>${r[1]}</td><td><span class="fill">${r[2]}</span></td></tr>`))}
+      <p class="ni">[ 证照扫描件粘贴处 ]</p>`;
+
+  // —— 盒二 制度（与「范本管理」一一对应：24 项制度 + 目录）——
+  } else if(it.toc){
+    // 目录项：按实际 24 项制度动态生成（与范本管理「安全生产管理制度目录」一致）
+    body = renderTocArchive();
+  } else if(it.n === '安全生产责任制'){
+    // 安全生产责任制：岗位联动版（与范本管理一致，岗位改名/禁用/兼并后实时跟随）
+    body = renderZhizeSystemLive();
+  } else if(it.zdNo && window.SYS_DOCS && window.SYS_DOCS[it.n]){
+    // 具体制度：用 SYS_DOCS 真实正文渲染，与范本管理预览完全一致
+    body = `<div class="ptitle">${esc(it.n)}</div>
+      <div class="psub">制度编号：${esc(it.zdNo)}</div>
+      <div class="doc-no" style="display:block;font-family:'SimSun','宋体',serif;font-weight:bold;color:#000;background:#f3f4f6;border:1px solid #ccc;border-radius:4px;font-size:12px;padding:4px 10px;margin-bottom:12px;letter-spacing:1px">制度编号：${esc(it.zdNo)}</div>
+      ${renderDoc(window.SYS_DOCS[it.n])}`;
+  } else if(n.includes('制度') || n.includes('责任制') || n.includes('操作规程') || n.includes('手册')){
+    // 兜底：制度汇编总表（列出全部 24 项，编号与范本管理一致）
+    const total = window.buildBox2Institutions().length;
+    body = `<div class="ptitle">安全生产管理制度汇编</div>
+      <div class="psub">共 ${total} 项制度（YT-ZD01~YT-ZD${String(total).padStart(2,'0')}）</div>
+      <p>本汇编依据《中华人民共和国安全生产法》《道路运输条例》等法律法规编制，覆盖公司安全生产管理全流程。</p>
+      ${tbl(['序号','制度编号','制度名称'], window.buildBox2Institutions().map((r,i)=>`<tr><td>${i+1}</td><td>${esc(r.zdNo)}</td><td>${esc(r.name)}</td></tr>`))}`;
+
+  // —— 盒三 会议 ——
+  } else if(n.includes('会议')){
+    const isLeader = n.includes('领导小组');
+    const title = isLeader?'安全生产领导小组会议':'安全生产月度会议';
+    body = `<div class="ptitle">${title}记录</div>
+      <div class="psub">四段式：通知 / 签到 / 记录 / 照片</div>
+      <p class="ni"><b>一、会议通知</b></p>
+      <p>为确保公司安全生产工作顺利开展，兹定于 2026 年 X 月 X 日召开会议，研究部署公司相关工作。会议内容：一、学习安全生产文件；二、培训安全行车知识；三、讲解严防超限超载；四、通报事故案例汲取教训。参会人员：安全生产领导小组成员。</p>
+      <p class="ni"><b>二、会议签到表</b></p>
+      <p class="ni" style="font-size:12px">会议时间：2026 年 X 月 X 日　参会人数：<span class="fill">37/37</span>　主持人：<span class="fill">张伟</span></p>
+      ${tbl(['序号','姓名','岗位','签名'], signRows(['安全管理员','监控员','总经理','车队长','驾驶员','驾驶员','驾驶员']))}
+      <p class="ni"><b>三、会议记录</b></p>
+      <p class="ni">会议名称：${title}　地点：公司会议室　时间：2026 年 X 月 X 日　主持人：<span class="fill">张伟</span>　记录人：<span class="fill">李强</span></p>
+      <p class="ni"><b>会议议题：</b>文件宣贯 / 大雾安全行车 / 严防超限超载 / 警示案例</p>
+      <p class="ni"><b>会议记录：</b>一、学习近期道路货运安全生产主要文件；二、培训大雾安全行车知识；三、讲解严防超限超载问题；四、通报近期省内外严重交通事故案例，汲取事故教训。</p>
+      <p class="ni" style="margin-top:10px"><b>四、会议照片：</b>（附于表后）</p>`;
+
+  // —— 盒四 培训（排除「违规教育」——归盒六针对性违规教育）——
+  } else if((n.includes('培训') || n.includes('教育')) && !n.includes('违规教育')){
+    body = `<div class="ptitle">${n.includes('计划')?'安全生产教育培训计划':'安全生产月度培训记录'}</div>
+      <div class="psub">${b.name}</div>
+      <p class="ni"><b>一、年度安全生产教育培训计划表</b></p>
+      ${tbl(['序号','培训类别','时间','培训内容','培训对象','学时','培训方式','培训人'],
+        [1,2,3,4,5].map(i=>`<tr><td>${i}</td><td>安全教育</td><td>${i}月</td><td>${i===1?'《安全生产法》解读 / 道路运输基础知识 / 事故案例':i===2?'驾驶员心理健康 / 防御性驾驶 / 节后复产复工':i===3?'安全管理机构和职责 / 应急处置基本要领':'道路运输车辆维护 / 危险源辨识 / 隐患排查治理'}</td><td>${i<=2?'从业人员':'管理人员'}</td><td>2</td><td>现场培训、网络教学</td><td>安全管理人员</td></tr>`))}
+      <p class="ni"><b>二、培训签到表</b></p>
+      <p class="ni" style="font-size:12px">培训名称：<span class="fill">2026 年 X 月安全生产教育培训</span>　培训地点：<span class="fill">公司会议室</span>　培训日期：<span class="fill">2026 年 X 月 X 日</span></p>
+      ${tbl(['序号','姓名','岗位','签名'], signRows(['安全管理员','监控员','总经理','车队长','驾驶员','驾驶员','驾驶员']))}
+      <p class="ni"><b>三、培训记录</b></p>
+      <p class="ni"><b>培训项目：</b>2026 年 X 月安全生产教育培训　<b>授课人：</b><span class="fill">安全管理人员</span></p>
+      <p class="ni"><b>培训内容：</b>《安全生产法》解读、防御性驾驶技术、事故案例警示教育、应急处置基本要领。</p>
+      <p class="ni"><b>考核结果：</b>参加考核 <span class="fill">37</span> 人，合格 <span class="fill">37</span> 人，合格率 <span class="fill">100%</span></p>
+      <p class="ni" style="margin-top:10px"><b>培训照片：</b>（附于表后）</p>`;
+
+  // —— 盒五 安全费用 ——
+  // —— 盒六 动态监控（须在盒五「台账」分支之前，否则「动态监控…台账」会被「费用…台账」截胡）——
+  } else if(n.includes('针对性违规教育') || n.includes('违规教育')){
+    body = `<div class="ptitle">针对性违规教育记录</div>
+      <div class="psub">${b.name}</div>
+      ${tbl(['车牌号','驾驶员','违规类型','违规时间','靶向教育内容','推送状态','学习状态','考核结果','落实归档'],
+        [['粤E·12345','张伟','超速','2026-10-27','《超速驾驶的危害与防范》','已推送','已学习','通过','已归档'],
+         ['粤E·54321','刘洋','偏离路线','2026-10-25','《按规定线路行驶》','已推送','学习中','—','未归档'],
+         ['粤E·13579','赵磊','超速','2026-10-24','《超速驾驶的危害与防范》','未生成','—','—','未生成']].map(r=>`<tr>${r.map(c=>`<td style="text-align:left">${c}</td>`).join('')}</tr>`))}
+      <p class="ni"><b>说明：</b>动态监控不归本系统管理，台账由外部平台/交警抄报导入留存；本系统识别违规车辆、登记驾驶员，并联动生成靶向教育，跟踪推送→学习→考核→归档落实闭环。</p>`;
+  } else if(n.includes('监控') || n.includes('在线率') || n.includes('设备故障')){
+    body = `<div class="ptitle">动态监控台账（上传留存）</div>
+      <div class="psub">${b.name}</div>
+      <p class="ni"><b>说明：</b>车辆卫星定位、超速/疲劳/偏离线路等实时监测<b>不归本系统管理</b>，由外部动态监控平台（或交警抄报）完成。本系统仅<b>上传留存</b>平台导出的台账，并据此识别统计违规车辆、登记驾驶员、联动靶向教育。</p>
+      ${tbl(['日期','车牌号','驾驶员','监控情况','违规类型','处理措施','处理结果','监控员'],
+        [1,2,3,4,5].map(i=>`<tr><td>2026-10-0${i}</td><td>粤E·12345</td><td>陈刚</td><td>正常/超速/疲劳</td><td>${i===2?'超速':'无'}</td><td>提醒纠正</td><td>已处理</td><td>王芳</td></tr>`))}
+      <p class="ni"><b>设备故障异常台账：</b>上传留存终端/平台故障、异常报警及处理情况。</p>
+      <p class="ni"><b>在线率台账 / 月报台账：</b>上传留存按日/月统计的车辆在线率。</p>`;
+
+  // —— 盒五 安全生产费用 ——
+  } else if(n.includes('费用') || n.includes('营收') || n.includes('提取') || n.includes('台账')){
+    if(n.includes('营收')){
+      body = `<div class="ptitle">上年度营业收入证明</div>
+        <div class="psub">${ORG}</div>
+        <p>兹证明我公司上年度（2025 年度）营业收入为人民币 <span class="fill">12,000,000.00</span> 元（大写：壹仟贰佰万元整），作为安全生产费用提取基数的依据。</p>
+        <p class="ni" style="margin-top:40px;text-align:right">${ORG}（盖章）<br>2026 年 1 月 1 日</p>`;
+    } else if(n.includes('提取') || n.includes('计划')){
+      body = `<div class="ptitle">安全生产费用提取计划</div>
+        <div class="psub">财资〔2022〕136 号</div>
+        <p>根据《企业安全生产费用提取和使用管理办法》，公司按上年度营业收入 <span class="fill">12,000,000</span> 元 × 计提比例 <span class="fill">1%</span>，本年度应提取安全生产费用 <span class="fill">120,000</span> 元。</p>
+        <p>编制人：<span class="fill">李强</span>　审核人：<span class="fill">张伟</span>　批准：<span class="fill">张伟</span>　日期：2026 年 1 月 1 日（盖章）</p>`;
+    } else {
+      // 费用使用台账：11类 × 12月 统计台账（财资136号原文）
+      const cats = [
+        '完善、改造和维护安全防护设施设备支出（不含"三同时"要求初期投入的安全设施）',
+        '购置、安装和使用具有行驶记录功能的车辆卫星定位装置、视频监控装置等支出',
+        '配备、维护、保养应急救援器材、设备支出和应急救援队伍建设、应急预案制修订与应急演练支出',
+        '开展重大危险源检测、评估、监控支出，安全风险分级管控和事故隐患排查整改支出，安全生产信息化建设支出',
+        '安全生产检查、评价（不包括新建、改建、扩建项目安全评价）、咨询和标准化建设支出',
+        '配备和更新现场作业人员安全防护用品支出',
+        '安全生产宣传、教育、培训和从业人员发现并报告事故隐患的奖励支出',
+        '安全生产适用的新技术、新标准、新工艺、新装备的推广应用支出',
+        '安全设施及特种设备检测检验、检定校准支出',
+        '安全生产责任保险支出',
+        '其他与安全生产直接相关的支出'
+      ];
+      body = `<div class="ptitle">安全生产经费支出统计台账</div>
+        <div class="psub">财资〔2022〕136 号 · 11 类 × 12 月</div>
+        <p class="ni">本年度应提取：<span class="fill">120,000</span> 元　已使用：<span class="fill">98,000</span> 元　结余：<span class="fill">22,000</span> 元</p>
+        ${tbl(['序号','项目名称','1月','2月','3月','4月','5月','6月','7月','8月','9月','10月','11月','12月'],
+          cats.map((c,i)=>`<tr><td>${i+1}</td><td style="text-align:left">${c}</td>${'<td>800</td>'.repeat(12)}</tr>`))}`;
+    }
+
+  // —— 盒七 应急 ——
+  } else if(n.includes('应急') || n.includes('预案') || n.includes('演练') || n.includes('值班') || n.includes('器材')){
+    if(n.includes('预案')){
+      body = `<div class="ptitle">生产安全事故应急预案</div>
+        <div class="psub">综合预案 + 专项预案 + 现场处置方案</div>
+        <p>本预案依据《生产安全事故应急预案管理办法》编制，适用于公司道路运输生产经营活动中各类突发事件的应急处置。</p>
+        <p class="ni"><b>应急预案结构：</b>第一篇 总则 → 第二篇 应急组织机构及职责 → 第三篇 应急响应 → 第四篇 后期处置与应急保障。</p>
+        <p class="ni"><b>涵盖场景：</b>道路交通事故、车辆火灾、恶劣天气、货物散落、人员伤亡（危货追加危化品泄漏）。</p>`;
+    } else if(n.includes('演练计划')){
+      body = `<div class="ptitle">年度应急演练计划</div>
+        <div class="psub">${ORG}</div>
+        <p>编制人：<span class="fill">李强</span>　审核人：<span class="fill">张伟</span>　批准：<span class="fill">张伟</span>　日期：2026 年 1 月 1 日（盖章）</p>
+        ${tbl(['序号','应急预案名称','计划演练时间','演练方式','演练目的','组织部门','应急物资准备'],
+          [1,2,3].map(i=>`<tr><td>${i}</td><td>${i===1?'消防应急演练':i===2?'车辆火灾事故现场处置方案':'车辆伤害事故现场处置方案'}</td><td>2026 年 ${i===1?'6':'11'} 月</td><td>现场演练</td><td>验证预案可行性、提高应急处置能力</td><td>安全管理部</td><td>灭火器、担架、药箱</td></tr>`))}`;
+    } else if(n.includes('演练记录')){
+      body = `<div class="ptitle">应急演练记录</div>
+        <div class="psub">方案 + 照片 + 签到</div>
+        <p class="ni"><b>演练方案：</b>演练目的 / 场景 / 步骤 / 职责分工（系统自动生成）</p>
+        ${tbl(['序号','姓名','岗位','签名'], signRows(['安全管理员','监控员','总经理','车队长','驾驶员','驾驶员']))}
+        <p class="ni" style="margin-top:10px"><b>演练照片：</b>（附于表后）</p>`;
+    } else if(n.includes('值班')){
+      body = `<div class="ptitle">应急值班表</div>
+        <div class="psub">备注：严格实行 24 小时值班制度，值班人员电话 24 小时畅通</div>
+        ${tbl(['日期','值班领导（手写签名）','值班人员（手写签名）','备注'],
+          [1,2,3,4,5].map(i=>`<tr><td>2026-10-0${i}</td><td></td><td></td><td></td></tr>`))}`;
+    } else {
+      body = `<div class="ptitle">应急救援器材配备清单</div>
+        <div class="psub">${b.name}</div>
+        ${tbl(['序号','器材名称','数量','存放位置','有效期','保管人'],
+          [['灭火器','20 个','仓库A区','2027-01','李强'],['急救箱','5 套','办公室','2027-01','李强'],['反光锥桶','50 个','车辆随车','—','陈刚'],['应急照明灯','10 个','仓库B区','—','李强']].map((r,i)=>`<tr><td>${i+1}</td><td>${r[0]}</td><td>${r[1]}</td><td>${r[2]}</td><td>${r[3]}</td><td>${r[4]}</td></tr>`))}`;
+    }
+
+  // —— 盒八 风险隐患 ——
+  } else if(n.includes('辨识清单') && n.includes('全面')){
+    body = `<div class="ptitle">全面风险辨识清单</div>
+      <div class="psub">一级清单（6 列）</div>
+      ${tbl(['辨识项目','风险路段、场所、部位','作业活动','风险描述','事故类型','备注'],
+        [['环境不良条件','大雨或暴雨天气运输作业','恶劣天气','大雨或暴雨天气，存在光线昏暗、能见度低','车辆伤害,其他伤害','人员伤亡、车辆损坏、财产损失'],
+         ['环境不良条件','运输作业经过路窄弯急路段','道路条件','狭窄路段和急弯路段，对车辆控制不当，致使驶出路外','车辆伤害,其他伤害','人员伤亡、车辆损坏、财产损失'],
+         ['设备设施','车辆制动系统','出车检查','制动失灵、制动距离过长','车辆伤害','人员伤亡']].map(r=>`<tr>${r.map(c=>`<td style="text-align:left">${c}</td>`).join('')}</tr>`))}`;
+  } else if(n.includes('分级管控') || n.includes('辨识分级')){
+    body = `<div class="ptitle">安全风险辨识分级管控清单</div>
+      <div class="psub">二级清单（13 列）</div>
+      ${tbl(['辨识项目','风险部位','风险源','风险描述','事故类型','事故后果','工程技术','管理措施','培训教育','个体防护','应急处置','风险评价','风险级别'],
+        [['环境不良条件','大雨或暴雨天气运输作业','恶劣天气','存在光线昏暗、能见度低','车辆伤害,其他伤害','人员伤亡、车辆损坏、财产损失','使用动态监控系统','雨天提高警惕、控制车速、停止运营','道路交通安全、驾驶技能培训','正确扎系安全带','停靠安全地带并报告','L3*E1*C15=D45','低风险'],
+         ['环境不良条件','运输作业经过路窄弯急路段','道路条件','狭窄急弯路段控制不当驶出路外','车辆伤害,其他伤害','人员伤亡、车辆损坏','/','控制车速、保持车距、鸣喇叭','安全培训教育和考核','正确扎系安全带','/','L3*E6*C7=D126','一般风险']].map(r=>`<tr>${r.map((c,i)=>`<td style="text-align:${i===0?'left':i>=6?'left':'center'}">${c}</td>`).join('')}</tr>`))}`;
+  } else if(n.includes('隐患排查')){
+    body = `<div class="ptitle">每月隐患排查及重大事故隐患排查记录</div>
+      <div class="psub">排查时间：2026 年 10 月</div>
+      ${tbl(['序号','项目类别','检查项目','检查内容与检查标准','检查结果','备注'],
+        [['重大事故隐患排查项','特殊天气','台风橙色及以上预警、暴雨红色预警等不具备安全通行条件时是否执行停运指令或应急预案要求仍擅自安排运输作业','合格',''],
+         ['重大事故隐患排查项','企业资质','是否存在未取得经营许可或超许可事项、有效期经营','合格',''],
+         ['重大事故隐患排查项','三超一疲劳','驾驶员和车辆是否存在长期超速、超员、超载、疲劳驾驶且未及时提醒纠正、未严肃处理','合格',''],
+         ['重大事故隐患排查项','车辆运输','是否故意夹带危险货物或违规运输禁运、限运物品','合格',''],
+         ['重大事故隐患排查项','车辆运输','是否违法装载导致车货总质量超过 100 吨','合格',''],
+         ['重大事故隐患排查项','车辆改装','是否存在擅自改装已取得运输证的车辆','合格','']].map((r,i)=>`<tr><td>${i+1}</td><td>${r[0]}</td><td>${r[1]}</td><td style="text-align:left">${r[2]}</td><td>${r[3]}</td><td>${r[4]}</td></tr>`))}
+      <p class="ni" style="margin-top:10px"><b>排查照片 / 签字：</b>（附于表后）</p>`;
+  } else if(n.includes('风险告知卡')){
+    body = `<div class="ptitle">安全风险告知卡</div>
+      <div class="psub">每个岗位一份</div>
+      ${tbl(['岗位','主要风险','风险等级','管控措施','应急处置','告知确认'],
+        [['驾驶员','车辆伤害、疲劳驾驶、恶劣天气','一般风险','遵守交规、不超速不疲劳驾驶、做好三检','停车避险、报警求助、报告公司','签字确认'],
+         ['安全员','管理不到位导致隐患','低风险','定期检查、隐患排查闭环','及时整改、上报','签字确认'],
+         ['监控员','动态监控失效','低风险','24小时值守、及时提醒纠正','设备故障报修','签字确认']].map(r=>`<tr>${r.map(c=>`<td style="text-align:left">${c}</td>`).join('')}</tr>`))}
+      <p class="ni" style="margin-top:16px">告知人（安全员）：<span class="fill">____</span>　被告知人：<span class="fill">____</span>　日期：____年__月__日</p>`;
+  } else if(n.includes('无重大')){
+    body = `<div class="ptitle">无重大风险说明</div>
+      <div class="psub">${ORG}</div>
+      <p>经辨识评估，本公司生产经营活动中不存在重大安全风险。各岗位风险均为一般风险及以下，已落实相应管控措施。</p>
+      <p class="ni" style="margin-top:30px;text-align:right">${ORG}（盖章）<br>2026 年 1 月 1 日</p>`;
+
+  // —— 盒九 一日三检 ——
+  } else if(n.includes('三检')){
+    body = `<div class="ptitle">企业车辆行车日志（一日三检）</div>
+      <div class="psub">车牌号：粤E·12345　日期：2026-10-27</div>
+      <p class="ni">出车公里数：<span class="fill">182000</span>　收车公里数：<span class="fill">182256</span>　驾驶员/押运员签字：<span class="fill">____</span></p>
+      ${tbl(['检查项目','出车检查','检查项目','行车检查','检查项目','收车检查'],
+        [['轮胎','√','可见线束','√','危险品车辆标识','√'],
+         ['内、外后视镜','√','资质证件','√','车辆通行证','√'],
+         ['灯光','√','装载情况','√','制动','√'],
+         ['制动','√','—','—','—','—']].map(r=>`<tr>${r.map((c,i)=>`<td style="text-align:${i%2===1?'center':'left'}">${c}</td>`).join('')}</tr>`))}`;
+
+  // —— 盒十 事故 ——
+  } else if(n.includes('事故')){
+    if(n.includes('快报')){
+      body = `<div class="ptitle">道路运输事故快报表</div>
+        <div class="psub">${ORG}</div>
+        ${tbl(['项目','内容','项目','内容'],
+          [['报告单位',ORG,'报告时间','2026 年 X 月 X 日'],
+           ['事故时间','2026 年 X 月 X 日','事故地点','（路段）'],
+           ['事故车辆','粤E·XXXXX','伤亡情况','（人数）'],
+           ['事故经过','（简要经过）','处置情况','（处置措施）']].map(r=>`<tr>${r.map((c,i)=>`<td style="text-align:${i%2===0?'left':'center'}">${c}</td>`).join('')}</tr>`))}`;
+    } else {
+      body = `<div class="ptitle">年度事故汇总统计表</div>
+        <div class="psub">${ORG}</div>
+        ${tbl(['月份','事故起数','死亡人数','受伤人数','直接经济损失(元)','处理情况'],
+          ['1','2','3','4','5','6','7','8','9','10','11','12'].map(m=>`<tr><td>${m}月</td><td>0</td><td>0</td><td>0</td><td>0</td><td>—</td></tr>`))}`;
+    }
+
+  // —— 一人一档 / 一车一档 ——
+  } else if(n.includes('一人一档')){
+    body = `<div class="ptitle">从业人员一人一档</div>
+      <div class="psub">每名从业人员一个档案袋（普货 11 项）</div>
+      ${tbl(['序号','归档项','来源','状态'],
+        [['居民身份证','上传','已上传'],['驾驶证','上传','已上传'],['从业资格证','上传','已上传'],['劳动合同','上传','已上传'],['体检报告（如有）','上传','可选'],['岗前三级教育培训','系统生成','已生成'],['安全生产责任书','范本生成','已生成'],['安全生产承诺书','范本生成','已生成'],['岗位职业病危害因素告知书','范本生成','已生成'],['年度考核记录','系统生成','已生成']].map((r,i)=>`<tr><td>${i+1}</td><td>${r[0]}</td><td>${r[1]}</td><td>${r[2]}</td></tr>`))}`;
+  } else if(n.includes('一车一档')){
+    body = `<div class="ptitle">车辆一车一档</div>
+      <div class="psub">每辆车一个档案袋</div>
+      ${tbl(['序号','归档项','来源','状态'],
+        [['车辆基础信息登记表','系统生成','已生成'],['道路运输证','上传','已上传'],['行驶证','上传','已上传'],['各类检验报告','上传','已上传'],['机动车登记证（绿本）','上传','已上传'],['随车设备清单','系统生成','已生成'],['保险（交强险/商业险/承运人责任险）','上传','已上传'],['车辆技术档案','系统生成','已生成'],['智能视频动态监控/GPS安装证明','上传','已上传'],['车辆等级评定登记表','系统生成','已生成'],['车辆维护和维修登记表','系统生成','已生成'],['车辆主要部件更换登记表','系统生成','已生成'],['车辆行驶里程登记表','系统生成','已生成']].map((r,i)=>`<tr><td>${i+1}</td><td>${r[0]}</td><td>${r[1]}</td><td>${r[2]}</td></tr>`))}`;
+  } else {
+    body = `<div class="ptitle">${n}</div>
+      <div class="psub">${b.name}</div>
+      <p>（该归档项格式待补充，数据来源：${it.src==='auto'?'系统自动生成':it.src==='upload'?'企业上传扫描件':'打印手写补充'}）</p>`;
+  }
+
+  return `<div class="ph"><div class="org">${ORG}</div><div class="meta">${boxNo(b)} ${boxPureName(b)}　归档年度：${curYear}</div></div>
+    ${body}
+    <div class="pdf-foot"><div>第 1 页 / 共 1 页</div><div>归档年度：${curYear}</div></div>`;
+}
+
+// 盒号转正式中文数字（盒一 → 一）
+function boxNo(b){
+  const cn = ['一','二','三','四','五','六','七','八','九','十','十一'];
+  return cn[b.id - 1] || b.id;
+}
+// 去掉"盒X ·"前缀，只留盒名称
+function boxPureName(b){
+  return b.name.replace(/^盒[一二三四五六七八九十]+ · /, '');
+}
+
+function markPrinted(){
+  const {bi,ii} = curGenItem || {};
+  if(bi!=null && ii!=null){ Y(BOXES[bi].items[ii]).st='print'; renderItems(); renderTree(); }
+  toast(`已标记为「已打印」状态（${curYear} 年度）`);
+  closePdf();
+}
+// ============ 真实下载 / 打印：把当前 PDF 预览页包成自包含 A4 横向文档 ============
+// 浏览器打印对话框选择「另存为 PDF」即得正式 PDF；同时下载一份打印版文件便于离线归档。
+function currentItem(){
+  const c = curGenItem || {};
+  if(c.bi==null || c.ii==null) return { b:null, it:null, name:'归档文件' };
+  const b = BOXES[c.bi], it = b.items[c.ii];
+  return { b:b, it:it, name:it.n };
+}
+function buildPrintDoc(autoPrint){
+  const { name } = currentItem();
+  const inner = document.getElementById('pdfPage').innerHTML;
+  return window.OrgChart.wrapDoc(inner, name + '_' + curYear + '年度', {
+    footer: `${ORG} · 归档年度 ${curYear} · ${name}`,
+    autoPrint: !!autoPrint
+  });
+}
+function printPdf(){
+  if(!window.OrgChart){ toast('打印组件未加载'); return; }
+  const w = window.OrgChart.openPrint(buildPrintDoc(true));
+  if(!w){ toast('打印窗口被拦截，请允许弹出窗口后重试'); return; }
+  toast('已打开 A4 打印预览，在「目标打印机」选择「另存为 PDF」即可保存 PDF');
+}
+function downloadPdf(){
+  if(!window.OrgChart){ toast('打印组件未加载'); return; }
+  const { name } = currentItem();
+  // ① 下载自包含 A4 打印版（离线可用、可直接打印）
+  window.OrgChart.saveHtml(buildPrintDoc(false), `${name}_${curYear}年度_A4打印版.html`);
+  // ② 打开打印窗口并自动唤起打印对话框 → 另存为 PDF
+  const w = window.OrgChart.openPrint(buildPrintDoc(true));
+  toast(w
+    ? `已下载 A4 打印版并打开打印窗口，选择「另存为 PDF」即可保存 PDF（${curYear} 年度）`
+    : `已下载 A4 打印版文件，打开该文件即可打印或另存为 PDF（${curYear} 年度）`);
+}
+
+// ============ 批量下载 ============
+function genAll(){
+  const b = BOXES[curBox];
+  let n=0;
+  b.items.forEach(it=>{ if(Y(it).st==='wait'){ Y(it).st='done'; n++; } });
+  renderItems(); renderTree();
+  toast(`「${b.name}」已打包下载 ${n} 项 PDF（${curYear} 年度）`);
+}
+function genAllBoxes(){
+  let n=0;
+  BOXES.forEach(b=>b.items.forEach(it=>{ if(Y(it).st==='wait'){ Y(it).st='done'; n++; } }));
+  renderItems(); renderTree();
+  toast(`全量下载完成，共 ${n} 项 PDF（${curYear} 年度 · 异步队列打包 zip）`);
+}
+
+// ============ 批量生成（勾选式：仅生成「待生成」且可系统生成类，按当前归档年度） ============
+// 规则：
+//  1) 仅作用于当前归档年度（curYear）的实例；历史年度已沉淀归档，不参与生成；
+//  2) 仅生成 st==='wait'（待生成）的项；已生成/已打印/缺失 跳过；
+//  3) 上传留存类（src==='upload'，如证照/保单扫描件）需人工上传，不可批量生成，自动跳过；
+//  4) 「一键批量生成」只生成当前盒内【已勾选】的项；「批量生成全部」生成全部盒的待生成项。
+const selSet = new Set();                       // 勾选集合：key = `盒序号_项序号`
+function keyOf(bi,ii){ return bi + '_' + ii; }
+function toggleSel(bi,ii,on){
+  const k = keyOf(bi,ii);
+  if(on) selSet.add(k); else selSet.delete(k);
+  updateSelAllState();
+}
+function toggleBoxAll(on){
+  BOXES[curBox].items.forEach((_,idx)=>{
+    const k = keyOf(curBox,idx);
+    if(on) selSet.add(k); else selSet.delete(k);
+  });
+  renderItems(); renderTree();
+}
+// —— 目录 / 分组级勾选（与行级统一走 selSet，key=盒序号_项序号）——
+function toggleGroup(name, on){
+  const b = BOXES[curBox];
+  b.items.forEach((it,idx)=>{
+    if((it.g||'其他')===name){
+      const k = keyOf(curBox,idx);
+      if(on) selSet.add(k); else selSet.delete(k);
+    }
+  });
+  renderItems();
+}
+function toggleTreeBox(i, on){
+  BOXES[i].items.forEach((_,idx)=>{
+    const k = keyOf(i,idx);
+    if(on) selSet.add(k); else selSet.delete(k);
+  });
+  renderTree();
+  if(i===curBox) renderItems();
+}
+function toggleTreeAll(on){
+  BOXES.forEach((b,i)=> b.items.forEach((_,idx)=>{
+    const k = keyOf(i,idx);
+    if(on) selSet.add(k); else selSet.delete(k);
+  }));
+  renderTree(); renderItems();
+}
+function updateSelAllState(){
+  const box = BOXES[curBox];
+  let sel=0; box.items.forEach((_,idx)=>{ if(selSet.has(keyOf(curBox,idx))) sel++; });
+  const el = document.getElementById('boxSelAll');
+  if(el){ el.checked = (sel===box.items.length && box.items.length>0); el.indeterminate = (sel>0 && sel<box.items.length); }
+  // 分组勾选框半选态同步
+  const groups = groupItems(box.items);
+  groups.forEach(g=>{
+    const cb = document.getElementById('g_'+curBox+'_'+g.name);
+    if(!cb) return;
+    let s=0; g.items.forEach(it=>{ if(selSet.has(keyOf(curBox,it._idx))) s++; });
+    cb.indeterminate = s>0 && s<g.items.length;
+  });
+  // 目录树当前盒勾选框半选态同步（toggleGroup 不重渲目录树，故在此补）
+  const bx = document.getElementById('bxSel_'+curBox);
+  if(bx){ bx.indeterminate = sel>0 && sel<box.items.length; }
+  // "全选全部档案盒"勾选/半选态同步
+  const ta = document.getElementById('treeAll');
+  if(ta){
+    const totalAll = BOXES.reduce((a,b)=>a+b.items.length,0);
+    let sAll=0; BOXES.forEach((b,i)=> b.items.forEach((_,idx)=>{ if(selSet.has(keyOf(i,idx))) sAll++; }));
+    ta.checked = totalAll>0 && sAll===totalAll;
+    ta.indeterminate = sAll>0 && sAll<totalAll;
+  }
+}
+// 生成某个盒内可生成的项；filter(it,idx) 为额外过滤（如：仅已勾选项）
+function _genFilter(b, filter){
+  let n=0;
+  b.items.forEach((it,idx)=>{
+    if(filter && !filter(it,idx)) return;
+    const ys = Y(it);
+    if(ys.st==='wait' && it.src!=='upload'){
+      ys.st='done';
+      ys.file = ys.file || (it.n + '_' + curYear + '年度.pdf');
+      n++;
+    }
+  });
+  return n;
+}
+function batchGen(){
+  let total=0, gen=0;
+  BOXES.forEach((b,bi)=>{
+    b.items.forEach((it,idx)=>{
+      if(!selSet.has(keyOf(bi,idx))) return;   // 只处理已勾选项（跨盒）
+      total++;
+      const ys = Y(it);
+      if(ys.st==='wait' && it.src!=='upload'){
+        ys.st='done';
+        ys.file = ys.file || (it.n + '_' + curYear + '年度.pdf');
+        gen++;
+      }
+    });
+  });
+  if(total===0){ toast('请先勾选要生成的归档项（目录 / 分组 / 单条均可）'); return; }
+  // 生成后清除所有勾选
+  BOXES.forEach((b,bi)=> b.items.forEach((_,idx)=>{ if(selSet.has(keyOf(bi,idx))) selSet.delete(keyOf(bi,idx)); }));
+  renderItems(); renderTree();
+  if(gen===0) toast('勾选项均不可生成（上传类需人工上传 / 已生成 / 缺失）');
+  else toast(`已批量生成 ${gen} 项 PDF（共 ${total} 个勾选项 · ${curYear} 年度）`);
+}
+function batchGenAll(){
+  let n=0;
+  BOXES.forEach(b=>{ n += _genFilter(b, null); });
+  renderItems(); renderTree();
+  if(n===0) toast(`全量已无待生成的归档项（${curYear} 年度）`);
+  else toast(`全量批量生成完成，共 ${n} 项 PDF（${curYear} 年度）`);
+}
+
+// ============ 角色视角（沿用全局顶部切换） ============
+let curRole = localStorage.getItem('userRole') || 'enterprise'; // enterprise | provider
+function applyRole(role){
+  curRole = role;
+  // 服务商账号显示「代录台账」入口（由全局顶部切换控制，本页不重复放置切换器）
+  document.getElementById('btnDaiLu').style.display = role==='provider' ? 'inline-flex' : 'none';
+}
+// 监听全局顶部切换角色后写入的 localStorage（storage 事件在 iframe 内同源窗口触发）
+window.addEventListener('storage', e=>{
+  if(e.key==='userRole') applyRole(e.newValue || 'enterprise');
+  // 组织架构变动（岗位改名 / 禁用 / 上提 / 人员）→ 已打开的归档预览实时重绘
+  if(e.key==='rd_org_data_v2' && document.getElementById('pdfMask').classList.contains('show')){
+    const c = curGenItem || {};
+    if(c.bi!=null && c.ii!=null){
+      const it = BOXES[c.bi].items[c.ii];
+      if(it.n.includes('组织架构') || it.n==='安全生产责任制'){
+        document.getElementById('pdfPage').innerHTML = renderPdfContent(BOXES[c.bi], it);
+        toast('组织架构已变更，归档预览已按当前数据同步刷新');
+      }
+    }
+  }
+});
+function gotoDaiLu(){
+  // 跳转到服务商代录工作台（iframe 内导航，保留外层框架）
+  window.location.href = 'quick_gen.html';
+}
+
+function toast(msg){
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('show');
+  clearTimeout(t._t); t._t = setTimeout(()=>t.classList.remove('show'), 2200);
+}
+
+window.OrgChart && window.OrgChart.inject();
+seedYears(); applyCargo(); renderYearSwitch(); applyRole(curRole); applyBoxParam();
+</script></body></html>

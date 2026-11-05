@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="zh-CN"><head><meta charset="UTF-8"><title>架构模板配置</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="stylesheet" href="../assets/common.css"><link rel="stylesheet" href="../assets/pc.css">
+<style>
+  .tpl-card{flex:1;min-width:380px}
+  .tpl-head{display:flex;align-items:center;gap:10px;padding:14px 18px;border-bottom:1px solid var(--border)}
+  .tpl-badge{font-size:12px;font-weight:700;color:#fff;border-radius:8px;padding:3px 10px}
+  .tpl-body{padding:14px 18px}
+  .func-row{display:flex;align-items:center;gap:10px;padding:9px 10px;border:1px solid var(--border);border-radius:9px;margin-bottom:8px}
+  .func-row.on{border-color:var(--blue-400);background:var(--blue-50)}
+  .func-no{width:22px;height:22px;border-radius:50%;background:var(--bg-2);color:var(--text-2);font-size:12px;font-weight:700;display:inline-flex;align-items:center;justify-content:center;flex:none}
+  .func-row.on .func-no{background:var(--blue-600);color:#fff}
+  .func-name{font-weight:600;font-size:13.5px;color:var(--text)}
+  .func-label{font-size:12px;color:var(--text-3)}
+  .req-tag{font-size:11px;color:var(--danger);background:#FEF2F2;border-radius:6px;padding:1px 7px;margin-left:auto;flex:none}
+  .tpl-foot{display:flex;justify-content:space-between;align-items:center;padding:0 18px 16px}
+  .tpl-count{font-size:12.5px;color:var(--text-3)}
+</style></head><body>
+<div class="pc-page">
+  <div class="pc-header"><div><h1>架构模板配置</h1><div class="desc">服务商侧配置企业安全管理架构模板 · 12 个系统职能（职能名称企业侧不可更改）· 按运输类型下发默认岗位</div></div></div>
+
+  <div class="hint">💡 12 个系统职能为平台统一设定（职能名称与默认目标/职责/考核标准企业侧<b>不可更改</b>，岗位名称企业可自定义）。<b>普货企业</b>默认启用岗位 1、2、4、10；<b>危货企业</b>默认启用岗位 1、2、3、4、8、9、10、11、12。强制岗位（总经理、安全员、监控员）始终包含、不可取消。企业侧可在模板基础上按实际增删岗位（禁用不需要的岗位）。</div>
+
+  <div style="display:flex;gap:16px;flex-wrap:wrap">
+    <div class="card tpl-card">
+      <div class="tpl-head"><span class="tpl-badge" style="background:#2563EB">普货模板</span><span style="font-size:12.5px;color:var(--text-3)">普通货运企业默认架构</span></div>
+      <div class="tpl-body" id="tplPutong"></div>
+      <div class="tpl-foot"><span class="tpl-count" id="cntPutong"></span><button class="btn btn-primary btn-sm" onclick="saveTpl('putong')"><span class="ico" data-icon="check"></span> 保存普货模板</button></div>
+    </div>
+    <div class="card tpl-card">
+      <div class="tpl-head"><span class="tpl-badge" style="background:#DC2626">危货模板</span><span style="font-size:12.5px;color:var(--text-3)">危险货物运输企业默认架构</span></div>
+      <div class="tpl-body" id="tplWeihuo"></div>
+      <div class="tpl-foot"><span class="tpl-count" id="cntWeihuo"></span><button class="btn btn-primary btn-sm" onclick="saveTpl('weihuo')"><span class="ico" data-icon="check"></span> 保存危货模板</button></div>
+    </div>
+  </div>
+
+  <div class="card" style="margin-top:16px">
+    <div class="sec-title">模板应用（演示）</div>
+    <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+      <span style="font-size:13.5px;color:var(--text-2)">将模板应用到企业侧（演示企业会按所选模板重置岗位启用状态）：</span>
+      <button class="btn btn-outline btn-sm" onclick="applyTo('putong')">按普货模板应用</button>
+      <button class="btn btn-outline btn-sm" onclick="applyTo('weihuo')">按危货模板应用</button>
+      <span style="font-size:12.5px;color:var(--text-3)">企业当前使用：<b id="curTpl"></b></span>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script src="../assets/icons.js"></script>
+<script src="../assets/org_data.js"></script>
+<script>
+const D = window.OrgData;
+const NAMES = { putong:'普货岗位模板', weihuo:'危货岗位模板' };
+const REQUIRED_ALWAYS = ['gm','safe','mon']; /* 强制岗位：模板中始终包含且不可取消 */
+
+function renderTpl(type, mountId, cntId){
+  const tpls = D.templates();
+  const tpl = tpls[type];
+  const keys = Object.keys(D.FUNCS).sort(function(a,b){ return D.FUNCS[a].no - D.FUNCS[b].no; });
+  document.getElementById(mountId).innerHTML = keys.map(function(k){
+    const f = D.FUNCS[k];
+    const on = tpl.indexOf(k)>=0;
+    const locked = REQUIRED_ALWAYS.indexOf(k)>=0;
+    return '<div class="func-row'+(on?' on':'')+'">'+
+      '<input type="checkbox" '+(on?'checked':'')+' '+(locked?'disabled':'')+' onchange="toggleFunc(\''+type+'\',\''+k+'\',this.checked)">'+
+      '<span class="func-no">'+f.no+'</span>'+
+      '<span><span class="func-name">'+f.name+'</span><br><span class="func-label">职能：'+f.label+'</span></span>'+
+      (locked?'<span class="req-tag">强制岗位</span>':'')+
+    '</div>';
+  }).join('');
+  document.getElementById(cntId).textContent = '已选 '+tpl.length+' / 12 个岗位（含强制岗位 3 个）';
+}
+function toggleFunc(type,k,on){
+  const tpls = D.templates();
+  const tpl = tpls[type];
+  if(on){ if(tpl.indexOf(k)<0) tpl.push(k); }
+  else {
+    if(REQUIRED_ALWAYS.indexOf(k)>=0){ renderTpl(type,'tpl'+(type==='putong'?'Putong':'Weihuo'),'cnt'+(type==='putong'?'Putong':'Weihuo')); toast('总经理、安全员、监控员为强制岗位，模板中不可取消'); return; }
+    tpls[type] = tpl.filter(function(x){ return x!==k; });
+  }
+  D.saveTemplates(tpls);
+  renderTpl(type,'tpl'+(type==='putong'?'Putong':'Weihuo'),'cnt'+(type==='putong'?'Putong':'Weihuo'));
+}
+function saveTpl(type){
+  toast(NAMES[type]+'已保存，新接入企业将按此模板初始化架构');
+}
+function applyTo(type){
+  if(!confirm('确认按「'+NAMES[type]+'」重置演示企业的岗位启用状态？（岗位名称、人员等已配置信息保留）')) return;
+  D.applyTemplate(type);
+  document.getElementById('curTpl').textContent = NAMES[type];
+  toast('已按'+NAMES[type]+'应用：企业可在「岗位信息管理」按实际增删');
+}
+function toast(msg){
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.style.opacity='1'; t.style.transform='translateY(0)';
+  clearTimeout(t._t); t._t=setTimeout(function(){t.style.opacity='0';t.style.transform='translateY(-10px)'},2600);
+}
+
+renderTpl('putong','tplPutong','cntPutong');
+renderTpl('weihuo','tplWeihuo','cntWeihuo');
+document.getElementById('curTpl').textContent = NAMES[D.TPL_TYPE()]||'—';
+if(window.__rerenderIcons) window.__rerenderIcons();
+</script>
+</body></html>

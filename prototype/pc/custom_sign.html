@@ -1,0 +1,551 @@
+<!DOCTYPE html>
+<html lang="zh-CN"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>自定义文件签署</title>
+<link rel="stylesheet" href="../assets/common.css"><link rel="stylesheet" href="../assets/pc.css">
+<style>
+  .shell{display:flex;gap:16px;align-items:flex-start}
+  .left{width:280px;flex-shrink:0;position:sticky;top:0}
+  .right{flex:1;min-width:0}
+  .tree{background:var(--surface);border:1px solid var(--border);border-radius:var(--r-lg);box-shadow:var(--shadow-sm);overflow:hidden}
+  .tree .tt{font-size:15px;font-weight:700;padding:14px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between}
+  .sf-item{padding:12px 16px;cursor:pointer;border-left:3px solid transparent;transition:.12s;border-bottom:1px solid var(--border)}
+  .sf-item:last-child{border-bottom:none}
+  .sf-item:hover{background:var(--brand-50)}
+  .sf-item.on{background:var(--brand-50);border-left-color:var(--brand-500)}
+  .sf-item .sf-name{font-size:13.5px;font-weight:600;line-height:1.4}
+  .sf-item .sf-meta{font-size:11.5px;color:var(--text-3);margin-top:4px;display:flex;gap:6px;flex-wrap:wrap}
+
+  /* 步骤指示器 */
+  .steps{display:flex;align-items:center;gap:6px;margin-bottom:16px}
+  .step{display:flex;align-items:center;gap:8px;color:var(--text-3);font-size:13px}
+  .step .dot{width:24px;height:24px;border-radius:50%;background:#F1F5F9;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:12px}
+  .step.on{color:var(--brand-600)}
+  .step.on .dot{background:var(--brand-500);color:#fff}
+  .step.done .dot{background:var(--brand-100);color:var(--brand-600)}
+  .step-line{width:28px;height:2px;background:#F1F5F9}
+
+  .card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r-lg);box-shadow:var(--shadow-sm);padding:20px;margin-bottom:16px}
+  .card-title{font-size:15px;font-weight:700;margin-bottom:14px;display:flex;align-items:center;justify-content:space-between}
+  .card-title .sub{font-size:12px;color:var(--text-3);font-weight:400}
+
+  .form-row{display:flex;gap:12px;margin-bottom:14px;flex-wrap:wrap}
+  .form-item{flex:1;min-width:180px}
+  .form-item label{display:block;font-size:12.5px;font-weight:600;color:var(--text-2);margin-bottom:6px}
+  .form-item input,.form-item select{width:100%;padding:9px 12px;border:1px solid var(--border);border-radius:8px;font-size:13.5px;outline:none;transition:.12s}
+  .form-item input:focus,.form-item select:focus{border-color:var(--brand-500);box-shadow:0 0 0 3px var(--brand-100)}
+  .form-item .hint{font-size:11.5px;color:var(--text-3);margin-top:4px}
+
+  .upload-zone{border:2px dashed var(--border-strong);border-radius:12px;padding:24px;text-align:center;color:var(--text-3);cursor:pointer;transition:.12s}
+  .upload-zone:hover{border-color:var(--brand-400);background:var(--brand-50)}
+  .upload-zone .ico{font-size:28px;margin-bottom:6px}
+  .upload-zone .fn{font-weight:600;color:var(--text-1);font-size:13.5px}
+
+  /* 纸张预览 + 锚点编辑器 */
+  .stage{display:flex;gap:16px}
+  .paper-wrap{flex:1;min-width:0}
+  .paper{position:relative;background:#fff;border:1px solid var(--border);border-radius:6px;box-shadow:var(--shadow-sm);min-height:520px;padding:48px 44px;overflow:hidden}
+  .paper .doc-title{text-align:center;font-size:17px;font-weight:700;margin-bottom:6px}
+  .paper .doc-sub{text-align:center;font-size:12px;color:var(--text-3);margin-bottom:24px}
+  .paper .doc-table{width:100%;border-collapse:collapse;font-size:12.5px}
+  .paper .doc-table th,.paper .doc-table td{border:1px solid #cbd5e1;padding:8px 10px;text-align:center}
+  .paper .doc-table th{background:#f1f5f9;font-weight:600}
+  .paper .doc-blank{height:18px}
+
+  .anchor{position:absolute;transform:translate(-50%,-50%);cursor:grab;user-select:none;display:flex;flex-direction:column;align-items:center;gap:2px;z-index:5}
+  .anchor:active{cursor:grabbing}
+  .anchor .a-body{width:52px;height:52px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:#fff}
+  .anchor .a-label{font-size:10.5px;color:var(--text-2);background:rgba(255,255,255,.9);padding:1px 6px;border-radius:6px;white-space:nowrap;box-shadow:0 1px 3px rgba(0,0,0,.1)}
+  .anchor.stamp .a-body{background:linear-gradient(135deg,#e03131,#b91c1c);border:2px solid #7f1d1d}
+  .anchor.sign .a-body{background:linear-gradient(135deg,#1971c2,#1864ab);border:2px solid #0b3d91}
+  .anchor .a-del{position:absolute;top:-8px;right:-8px;width:16px;height:16px;border-radius:50%;background:#e03131;color:#fff;font-size:11px;line-height:16px;text-align:center;cursor:pointer;display:none}
+  .anchor:hover .a-del{display:block}
+
+  .anchor-toolbar{width:150px;flex-shrink:0}
+  .at-btn{width:100%;padding:12px;border:2px dashed var(--border-strong);border-radius:10px;background:var(--surface);cursor:pointer;margin-bottom:10px;text-align:center;transition:.12s;font-size:13px;font-weight:600}
+  .at-btn:hover{border-color:var(--brand-400);background:var(--brand-50)}
+  .at-btn.stamp-btn{color:#b91c1c}
+  .at-btn.sign-btn{color:#1864ab}
+  .anchor-list{margin-top:12px}
+  .anchor-list .al-t{font-size:12px;font-weight:700;color:var(--text-3);margin-bottom:8px}
+  .al-item{display:flex;align-items:center;gap:8px;font-size:12px;padding:6px 8px;border:1px solid var(--border);border-radius:8px;margin-bottom:6px;background:#fff}
+  .al-item .al-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0}
+  .al-item .al-dot.stamp{background:#e03131}
+  .al-item .al-dot.sign{background:#1971c2}
+  .al-item .al-name{flex:1}
+  .al-item .al-x{cursor:pointer;color:var(--text-3);font-weight:700}
+
+  /* 预览 */
+  .preview-seal{position:absolute;transform:translate(-50%,-50%);width:64px;height:64px;border:2.5px solid #d32f2f;border-radius:50%;color:#d32f2f;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;font-weight:700;pointer-events:none;z-index:6}
+  .preview-seal .ps-star{font-size:13px;line-height:1}
+  .preview-seal .ps-name{font-size:9px;line-height:1.1;padding:0 6px}
+  .preview-sign{position:absolute;transform:translate(-50%,-50%);font-size:20px;font-weight:700;color:#1a365d;font-family:"Kaiti SC","STKaiti","KaiTi",serif;pointer-events:none;z-index:6;white-space:nowrap}
+
+  .modal-mask{position:fixed;inset:0;background:rgba(20,28,43,.45);display:none;align-items:center;justify-content:center;z-index:200}
+  .modal-mask.show{display:flex}
+  .modal{background:#fff;border-radius:var(--r-lg);width:560px;max-width:94vw;max-height:90vh;overflow:auto;box-shadow:var(--shadow-md)}
+  .modal-head{display:flex;align-items:center;justify-content:space-between;padding:16px 20px;border-bottom:1px solid var(--border);font-weight:700;font-size:16px}
+  .modal-head .x{cursor:pointer;font-size:24px;color:var(--text-3);line-height:1}
+  .modal-body{padding:20px}
+  .modal-foot{padding:14px 20px;border-top:1px solid var(--border);display:flex;justify-content:flex-end;gap:10px}
+
+  .toast{position:fixed;top:20px;right:20px;background:#1E293B;color:#fff;padding:12px 20px;border-radius:10px;font-size:14px;z-index:300;opacity:0;transform:translateY(-10px);transition:.25s;box-shadow:0 4px 16px rgba(0,0,0,.2);pointer-events:none}
+  .toast.show{opacity:1;transform:translateY(0)}
+  .empty{text-align:center;padding:60px 30px;color:var(--text-3)}
+  .empty .big{font-size:44px;margin-bottom:12px}
+
+  /* PDF 预览：A4 仿真 */
+  .pdf-mask{position:fixed;inset:0;background:rgba(20,28,43,.5);display:none;align-items:center;justify-content:center;z-index:250}
+  .pdf-mask.show{display:flex}
+  .pdf-wrap{background:#fff;width:820px;max-width:96vw;max-height:92vh;display:flex;flex-direction:column;border-radius:6px;overflow:hidden;box-shadow:0 8px 40px rgba(0,0,0,.3)}
+  .pdf-toolbar{display:flex;align-items:center;gap:10px;padding:12px 16px;background:#F1F5F9;border-bottom:1px solid var(--border)}
+  .pdf-toolbar .t{font-weight:700;font-size:14px;flex:1}
+  .pdf-body{flex:1;overflow:auto;background:#e9ecf1;padding:24px;display:flex;justify-content:center}
+  .pdf-page{background:#fff;width:700px;min-height:880px;padding:50px 56px;box-shadow:0 2px 12px rgba(0,0,0,.15);font-family:"SimSun","宋体",serif;color:#000;font-size:14px;line-height:1.8}
+  .pdf-page .ptitle{text-align:center;font-size:20px;font-weight:bold;letter-spacing:3px;margin:18px 0 4px}
+  .pdf-page .psub{text-align:center;font-size:12px;color:#333;margin-bottom:16px}
+  .pdf-page table{width:100%;border-collapse:collapse;margin:10px 0;font-size:13px}
+  .pdf-page table th,.pdf-page table td{border:1px solid #000;padding:7px 9px;text-align:center}
+  .pdf-page table th{background:#f2f2f2;font-weight:bold}
+  .pdf-foot{border-top:1px solid #999;margin-top:24px;padding-top:10px;display:flex;align-items:center;justify-content:space-between;font-size:11px;color:#555}
+</style></head><body>
+<div class="pc-page">
+  <div class="pc-header"><div><h1>自定义文件签署</h1><div class="desc">服务商专属 · 上传地方/区域模板 · 自定义名称 · 配置盖章与签名位置</div></div>
+    <div class="actions">
+      <button class="btn btn-outline" onclick="saveDraft()"><span class="ico" data-icon="save"></span> 保存</button>
+      <button class="btn btn-primary" onclick="openNew()"><span class="ico" data-icon="plus"></span> 新建签署文件</button>
+    </div></div>
+
+  <div class="hint" style="font-size:12px;color:var(--text-3);background:var(--brand-50);border:1px solid var(--brand-100);border-radius:8px;padding:10px 14px;margin-bottom:16px;line-height:1.7">💡 <b>地方性/区域性文件不内置</b>：不同地区对「限行区域登记、长时间停车报告、剧毒品通行证」等要求不同、模板各异，系统无法穷举。由<b>服务商上传当地模板</b>，<b>自定义名称</b>，并在模板上<b>手动放置盖章模块、签名模块</b>，生成时自动盖章+签字，归档到对应档案盒。</div>
+
+  <div class="shell">
+    <div class="left">
+      <div class="tree">
+        <div class="tt">签署文件库 <span style="font-size:11px;color:var(--text-3);font-weight:400" id="sfCount"></span></div>
+        <div id="sfList"></div>
+      </div>
+    </div>
+    <div class="right" id="rightPanel"></div>
+  </div>
+</div>
+
+<!-- 配置锚点弹窗 -->
+<div class="modal-mask" id="anchorModal">
+  <div class="modal">
+    <div class="modal-head">配置签署模块 <span class="x" onclick="closeModal('anchorModal')">&times;</span></div>
+    <div class="modal-body" id="anchorModalBody"></div>
+    <div class="modal-foot"><button class="btn btn-outline" onclick="closeModal('anchorModal')">取消</button><button class="btn btn-primary" onclick="saveAnchorCfg()">确定</button></div>
+  </div>
+</div>
+
+<!-- 生成弹窗 -->
+<div class="modal-mask" id="genModal">
+  <div class="modal">
+    <div class="modal-head">生成签署文件 <span class="x" onclick="closeModal('genModal')">&times;</span></div>
+    <div class="modal-body" id="genModalBody"></div>
+    <div class="modal-foot"><button class="btn btn-outline" onclick="closeModal('genModal')">关闭</button><button class="btn btn-primary" onclick="doGen()">生成并归档</button></div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<!-- PDF 预览弹窗 -->
+<div class="pdf-mask" id="pdfMask">
+  <div class="pdf-wrap">
+    <div class="pdf-toolbar">
+      <span class="t" id="pdfTitle">签署文件 PDF 预览</span>
+      <span style="font-size:12px;color:var(--text-3)" id="pdfMeta"></span>
+      <button class="btn btn-outline btn-sm" onclick="printPdf()"><span class="ico" data-icon="printer"></span> 打印</button>
+      <button class="btn btn-primary btn-sm" onclick="downloadPdf()"><span class="ico" data-icon="download"></span> 下载 PDF</button>
+      <button class="btn btn-outline btn-sm" onclick="closePdf()">关闭</button>
+    </div>
+    <div class="pdf-body"><div class="pdf-page" id="pdfPage"></div></div>
+  </div>
+</div>
+
+<script>
+// ============ 数据 ============
+const BOXES = [
+  {id:1, name:'盒一 · 公司档案及管理层档案'},
+  {id:2, name:'盒二 · 安全生产管理制度'},
+  {id:3, name:'盒三 · 安全生产会议'},
+  {id:4, name:'盒四 · 安全生产教育培训'},
+  {id:5, name:'盒五 · 安全生产费用'},
+  {id:6, name:'盒六 · 动态监控'},
+  {id:7, name:'盒七 · 应急管理'},
+  {id:8, name:'盒八 · 风险辨识与隐患排查'},
+  {id:9, name:'盒九 · 一日三检'},
+  {id:10, name:'盒十 · 事故管理'},
+  {id:11, name:'盒十一 · 一人一档 / 一车一档'},
+];
+const SEAL_TYPES = ['企业公章','法人章','财务专用章','安全生产专用章'];
+const SIGN_ROLES = ['主要负责人','安全管理员','驾驶员','押运员','监控员','车队长'];
+const SIGN_MODES = ['复用历史签字','线上签','打印手签'];
+const CLIENTS = ['悦通物流有限公司','安达货运部','顺捷物流有限公司','宏远运输公司'];
+
+let SIGN_FILES = [
+  {id:1, name:'限行区域、登记情况表', box:6, source:'服务商上传 · docx', updated:'2026-10-28', anchors:[
+    {id:101, type:'stamp', label:'企业公章', x:82, y:78, seal:'企业公章', signer:'', mode:'', required:true},
+    {id:102, type:'sign', label:'安全管理员', x:16, y:82, seal:'', signer:'安全管理员', mode:'复用历史签字', required:true},
+  ]},
+  {id:2, name:'剧毒化学品道路运输通行证登记', box:6, source:'服务商上传 · docx', updated:'2026-10-26', anchors:[
+    {id:201, type:'stamp', label:'企业公章', x:82, y:74, seal:'企业公章', signer:'', mode:'', required:true},
+    {id:202, type:'sign', label:'主要负责人', x:14, y:80, seal:'', signer:'主要负责人', mode:'线上签', required:true},
+    {id:203, type:'sign', label:'押运员', x:50, y:80, seal:'', signer:'押运员', mode:'复用历史签字', required:true},
+  ]},
+  {id:3, name:'长时间停车报告记录', box:6, source:'服务商上传 · pdf', updated:'2026-10-24', anchors:[
+    {id:301, type:'stamp', label:'企业公章', x:80, y:76, seal:'企业公章', signer:'', mode:'', required:true},
+    {id:302, type:'sign', label:'驾驶员', x:16, y:80, seal:'', signer:'驾驶员', mode:'打印手签', required:true},
+  ]},
+];
+
+let draft = null;      // 当前编辑草稿 {id,name,box,source,anchors}
+let curFileId = null;  // 当前选中文件
+let curStep = 0;
+let editAnchorId = null; // 正在配置的锚点
+let dragId = null;
+let anchorSeq = 400;
+
+// ============ 渲染 ============
+function renderList(){
+  document.getElementById('sfCount').textContent = `(${SIGN_FILES.length})`;
+  const el = document.getElementById('sfList');
+  if(!SIGN_FILES.length){
+    el.innerHTML = '<div class="empty" style="padding:30px 16px">暂无签署文件<br><br><button class="btn btn-primary btn-sm" onclick="openNew()">新建</button></div>';
+    return;
+  }
+  el.innerHTML = SIGN_FILES.map(f=>{
+    const nAnchor = f.anchors.length;
+    const nStamp = f.anchors.filter(a=>a.type==='stamp').length;
+    const nSign = f.anchors.filter(a=>a.type==='sign').length;
+    return `<div class="sf-item ${f.id===curFileId?'on':''}" onclick="selectFile(${f.id})">
+      <div class="sf-name">${f.name}</div>
+      <div class="sf-meta"><span>${BOXES.find(b=>b.id===f.box).name.replace(' ·','')}</span><span>·</span><span>章${nStamp} 签${nSign}</span></div>
+      <div style="margin-top:8px;display:flex;gap:6px">
+        <button class="btn btn-outline btn-sm" onclick="event.stopPropagation();previewPdf(${f.id})"><span class="ico" data-icon="fileText"></span> 预览 PDF</button>
+        <button class="btn btn-primary btn-sm" onclick="event.stopPropagation();openGen(${f.id})">生成并归档</button>
+      </div>
+    </div>`;
+  }).join('');
+  if(window.__rerenderIcons) window.__rerenderIcons();
+}
+
+function renderRight(){
+  const el = document.getElementById('rightPanel');
+  if(!draft){ el.innerHTML = renderEmpty(); return; }
+  el.innerHTML = renderEditor();
+  if(window.__rerenderIcons) window.__rerenderIcons();
+}
+
+function renderEmpty(){
+  return `<div class="card"><div class="empty"><div class="big">📄</div>
+    <div style="font-size:15px;font-weight:700;margin-bottom:6px">从左侧选择一个签署文件，或新建</div>
+    <div style="font-size:13px">上传当地模板 → 定义名称 → 放置盖章/签名模块 → 生成归档</div>
+    <br><button class="btn btn-primary" onclick="openNew()">新建签署文件</button></div></div>`;
+}
+
+function renderEditor(){
+  const steps = ['上传模板与命名','配置盖章/签名模块','预览与保存'];
+  const stepBar = steps.map((s,i)=>{
+    let cls = 'step'; if(i===curStep) cls='step on'; else if(i<curStep) cls='step done';
+    return `<div class="${cls}"><div class="dot">${i+1}</div><span>${s}</span></div>${i<2?'<div class="step-line"></div>':''}`;
+  }).join('');
+
+  let body = '';
+  if(curStep===0) body = renderStep0();
+  else if(curStep===1) body = renderStep1();
+  else body = renderStep2();
+
+  return `<div class="steps">${stepBar}</div>${body}`;
+}
+
+function renderStep0(){
+  const boxOpts = BOXES.map(b=>`<option value="${b.id}" ${draft.box===b.id?'selected':''}>${b.name}</option>`).join('');
+  const uploaded = draft.source && draft.source!=='未上传';
+  return `<div class="card">
+    <div class="card-title">上传模板 <span class="sub">支持 docx / pdf / 图片</span></div>
+    <div class="upload-zone" onclick="mockUpload()">
+      <div class="ico">${uploaded?'✅':'⬆️'}</div>
+      <div class="fn">${uploaded?draft.source:'点击上传当地模板文件'}</div>
+      <div style="font-size:12px;margin-top:4px">${uploaded?'点击可重新上传':'地方/区域管理部门下发的原始模板'}</div>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-title">定义名称与归属 <span class="sub">名称可自定义，匹配当地叫法</span></div>
+    <div class="form-row">
+      <div class="form-item" style="flex:2">
+        <label>文件名称（自定义，如「限行区域、登记情况」）</label>
+        <input id="inpName" value="${draft.name}" placeholder="输入当地文件叫法">
+      </div>
+      <div class="form-item" style="flex:1">
+        <label>归属档案盒</label>
+        <select id="inpBox">${boxOpts}</select>
+      </div>
+    </div>
+    <div class="form-item"><label>归档说明（可选）</label><input id="inpNote" placeholder="如：用于某地区专项检查" value="${draft.note||''}"></div>
+  </div>
+  <div style="display:flex;justify-content:flex-end"><button class="btn btn-primary" onclick="goStep1()">下一步：配置签署模块</button></div>`;
+}
+
+function renderStep1(){
+  const docTitle = draft.name;
+  const docRows = ['序号','车辆/人员','事项','时间','签字'].map(h=>`<th>${h}</th>`).join('');
+  const blank = Array.from({length:6},(_,i)=>`<tr><td>${i+1}</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td></tr>`).join('');
+  const anchors = draft.anchors.map(a=>{
+    const body = a.type==='stamp'?'章':'签';
+    return `<div class="anchor ${a.type}" style="left:${a.x}%;top:${a.y}%" onmousedown="startDrag(event,${a.id})" onclick="openAnchorCfg(${a.id})">
+      <span class="a-del" onclick="event.stopPropagation();delAnchor(${a.id})">×</span>
+      <div class="a-body">${body}</div>
+      <div class="a-label">${a.label}</div>
+    </div>`;
+  }).join('');
+  const alist = draft.anchors.map(a=>`
+    <div class="al-item"><span class="al-dot ${a.type}"></span><span class="al-name">${a.label}</span><span class="al-x" onclick="delAnchor(${a.id})">×</span></div>
+  `).join('');
+
+  return `<div class="card">
+    <div class="card-title">配置盖章 / 签名模块 <span class="sub">点击右侧按钮，再在模板上放置；锚点可拖拽、点击可配置</span></div>
+    <div class="stage">
+      <div class="paper-wrap">
+        <div class="paper" id="paper">
+          <div class="doc-title">${docTitle}</div>
+          <div class="doc-sub">（地方性/区域性模板 · 服务商上传）</div>
+          <table class="doc-table"><thead><tr>${docRows}</tr></thead><tbody>${blank}</tbody></table>
+          <div style="text-align:right;margin-top:20px;font-size:12px;color:var(--text-3)">填报单位（盖章）：__________　负责人（签字）：__________</div>
+          ${anchors}
+        </div>
+      </div>
+      <div class="anchor-toolbar">
+        <button class="at-btn stamp-btn" onclick="addAnchor('stamp')">＋ 添加盖章模块</button>
+        <button class="at-btn sign-btn" onclick="addAnchor('sign')">＋ 添加签名模块</button>
+        <div class="anchor-list"><div class="al-t">已配置（${draft.anchors.length}）</div>${alist||'<div style="font-size:12px;color:var(--text-3)">暂无</div>'}</div>
+      </div>
+    </div>
+  </div>
+  <div style="display:flex;justify-content:space-between">
+    <button class="btn btn-outline" onclick="curStep=0;renderRight()">上一步</button>
+    <button class="btn btn-primary" onclick="goStep2()">下一步：预览</button>
+  </div>`;
+}
+
+function renderStep2(){
+  const preview = draft.anchors.map(a=>{
+    if(a.type==='stamp'){
+      return `<div class="preview-seal" style="left:${a.x}%;top:${a.y}%"><span class="ps-star">★</span><span class="ps-name">悦通物流<br>有限公司</span></div>`;
+    }else{
+      const nm = a.signer||'签字人';
+      return `<div class="preview-sign" style="left:${a.x}%;top:${a.y}%">${nm}</div>`;
+    }
+  }).join('');
+  const boxName = BOXES.find(b=>b.id===draft.box).name;
+  const list = draft.anchors.map((a,i)=>`<tr><td>${i+1}</td><td>${a.type==='stamp'?'盖章':'签名'}</td><td>${a.type==='stamp'?a.seal:(a.signer+' · '+a.mode)}</td><td>${a.required?'必填':'可选'}</td></tr>`).join('');
+
+  return `<div class="card">
+    <div class="card-title">预览签署效果 <span class="sub">生成时自动盖章 + 复用签字库</span></div>
+    <div class="paper" style="min-height:420px">
+      <div class="doc-title">${draft.name}</div>
+      <div class="doc-sub">（地方性/区域性模板 · 服务商上传）</div>
+      <table class="doc-table"><thead><tr><th>序号</th><th>车辆/人员</th><th>事项</th><th>时间</th><th>签字</th></tr></thead><tbody>
+        <tr><td>1</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td></tr>
+        <tr><td>2</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td></tr>
+      </tbody></table>
+      <div style="text-align:right;margin-top:20px;font-size:12px;color:var(--text-3)">填报单位（盖章）：__________　负责人（签字）：__________</div>
+      ${preview}
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-title">签署模块清单</div>
+    <table style="width:100%;border-collapse:collapse;font-size:13px">
+      <thead><tr><th style="text-align:left;padding:8px;border-bottom:2px solid var(--border)">#</th><th style="text-align:left;padding:8px;border-bottom:2px solid var(--border)">类型</th><th style="text-align:left;padding:8px;border-bottom:2px solid var(--border)">配置</th><th style="text-align:left;padding:8px;border-bottom:2px solid var(--border)">必填</th></tr></thead>
+      <tbody>${list||'<tr><td colspan="4" style="padding:12px;color:var(--text-3)">暂未配置</td></tr>'}</tbody>
+    </table>
+    <div style="margin-top:14px;font-size:12.5px;color:var(--text-2);background:#f8fafd;border:1px solid var(--border);border-radius:8px;padding:10px 12px;line-height:1.7">归档至：<b>${boxName}</b>。生成后回写企业「电子档案柜」，企业账号可查看下载。</div>
+  </div>
+  <div style="display:flex;justify-content:space-between">
+    <button class="btn btn-outline" onclick="curStep=1;renderRight()">上一步</button>
+    <div style="display:flex;gap:8px">
+      <button class="btn btn-outline" onclick="previewPdfDraft()"><span class="ico" data-icon="fileText"></span> 预览 PDF 版本</button>
+      <button class="btn btn-primary" onclick="saveDraft()">保存签署文件</button>
+    </div>
+  </div>`;
+}
+
+// ============ 交互 ============
+function selectFile(id){ curFileId = id; const f = SIGN_FILES.find(x=>x.id===id); draft = JSON.parse(JSON.stringify(f)); curStep=0; renderList(); renderRight(); }
+function openNew(){ draft = {id:0, name:'', box:6, source:'', note:'', anchors:[]}; curFileId=null; curStep=0; renderList(); renderRight(); toast('已新建签署文件，请先上传模板'); }
+
+function mockUpload(){ draft.source = '服务商上传 · docx'; draft.name = draft.name || '自定义地方文件'; renderRight(); toast('已上传模板（模拟）'); }
+
+function goStep1(){
+  draft.name = document.getElementById('inpName').value.trim() || '未命名文件';
+  draft.box = parseInt(document.getElementById('inpBox').value);
+  draft.note = document.getElementById('inpNote').value.trim();
+  curStep = 1; renderRight();
+}
+function goStep2(){ curStep = 2; renderRight(); }
+
+function addAnchor(type){
+  const isStamp = type==='stamp';
+  const anchor = {id:++anchorSeq, type, label: isStamp?'企业公章':'安全管理员', x:50, y:50,
+    seal: isStamp?'企业公章':'', signer: isStamp?'':'安全管理员', mode: isStamp?'':'复用历史签字', required:true};
+  draft.anchors.push(anchor);
+  renderRight();
+  openAnchorCfg(anchor.id);
+}
+
+function openAnchorCfg(id){
+  editAnchorId = id;
+  const a = draft.anchors.find(x=>x.id===id);
+  if(!a) return;
+  const body = document.getElementById('anchorModalBody');
+  if(a.type==='stamp'){
+    const opts = SEAL_TYPES.map(s=>`<option value="${s}" ${a.seal===s?'selected':''}>${s}</option>`).join('');
+    body.innerHTML = `<div class="form-item"><label>章类型</label><select id="cfgSeal">${opts}</select></div>
+      <div class="form-item" style="margin-top:12px"><label>是否必盖</label><select id="cfgReq"><option value="1" ${a.required?'selected':''}>必盖</option><option value="0" ${!a.required?'selected':''}>可选</option></select></div>`;
+  }else{
+    const roles = SIGN_ROLES.map(s=>`<option value="${s}" ${a.signer===s?'selected':''}>${s}</option>`).join('');
+    const modes = SIGN_MODES.map(s=>`<option value="${s}" ${a.mode===s?'selected':''}>${s}</option>`).join('');
+    body.innerHTML = `<div class="form-item"><label>签署岗位</label><select id="cfgSigner">${roles}</select></div>
+      <div class="form-item" style="margin-top:12px"><label>签字方式</label><select id="cfgMode">${modes}</select></div>
+      <div class="form-item" style="margin-top:12px"><label>是否必签</label><select id="cfgReq"><option value="1" ${a.required?'selected':''}>必签</option><option value="0" ${!a.required?'selected':''}>可选</option></select></div>
+      <div style="margin-top:12px;font-size:12px;color:var(--text-3)">「复用历史签字」优先读取企业历史签字库，缺失才触发线上签。</div>`;
+  }
+  document.getElementById('anchorModal').classList.add('show');
+}
+
+function saveAnchorCfg(){
+  const a = draft.anchors.find(x=>x.id===editAnchorId);
+  if(!a) return;
+  if(a.type==='stamp'){
+    a.seal = document.getElementById('cfgSeal').value;
+    a.label = a.seal;
+  }else{
+    a.signer = document.getElementById('cfgSigner').value;
+    a.mode = document.getElementById('cfgMode').value;
+    a.label = a.signer;
+  }
+  a.required = document.getElementById('cfgReq').value==='1';
+  closeModal('anchorModal');
+  renderRight();
+}
+
+function delAnchor(id){ draft.anchors = draft.anchors.filter(a=>a.id!==id); renderRight(); }
+
+function startDrag(e, id){
+  if(e.target.closest('.a-del')) return;
+  dragId = id;
+  e.preventDefault();
+}
+document.addEventListener('mousemove', function(e){
+  if(!dragId) return;
+  const paper = document.getElementById('paper');
+  if(!paper) return;
+  const r = paper.getBoundingClientRect();
+  let x = ((e.clientX - r.left)/r.width)*100;
+  let y = ((e.clientY - r.top)/r.height)*100;
+  x = Math.max(3, Math.min(97, x));
+  y = Math.max(3, Math.min(97, y));
+  const a = draft.anchors.find(v=>v.id===dragId);
+  if(a){ a.x = Math.round(x); a.y = Math.round(y); renderRight(); }
+});
+document.addEventListener('mouseup', function(){ dragId = null; });
+
+function saveDraft(){
+  if(!draft) { toast('请先新建或选择文件'); return; }
+  if(!draft.source || draft.source==='未上传'){ toast('请先上传模板'); curStep=0; renderRight(); return; }
+  if(!draft.name){ toast('请填写文件名称'); return; }
+  if(!draft.anchors.length){ toast('请至少配置一个盖章或签名模块'); curStep=1; renderRight(); return; }
+  if(draft.id===0){
+    draft.id = Math.max(...SIGN_FILES.map(f=>f.id),0) + 1;
+    draft.updated = new Date().toISOString().slice(0,10);
+    SIGN_FILES.push(JSON.parse(JSON.stringify(draft)));
+  }else{
+    const f = SIGN_FILES.find(x=>x.id===draft.id);
+    if(f){ Object.assign(f, JSON.parse(JSON.stringify(draft))); f.updated = new Date().toISOString().slice(0,10); }
+  }
+  curFileId = draft.id;
+  renderList();
+  toast('已保存签署文件');
+}
+
+// ============ 生成 ============
+function openGen(fid){
+  curFileId = fid;
+  const f = SIGN_FILES.find(x=>x.id===fid);
+  const opts = CLIENTS.map((c,i)=>`<div class="client-card" style="border:1px solid var(--border);border-radius:10px;padding:12px 14px;margin-bottom:8px;cursor:pointer" onclick="pickGenClient(${i})">${c}</div>`).join('');
+  document.getElementById('genModalBody').innerHTML = `<div class="form-item" style="margin-bottom:14px"><label>选择生成企业</label></div><div id="genClients">${opts}</div>`;
+  document.getElementById('genModal').classList.add('show');
+}
+let genClientIdx = -1;
+function pickGenClient(i){ genClientIdx = i; document.querySelectorAll('#genClients .client-card').forEach((c,k)=>c.style.borderColor = k===i?'var(--brand-500)':'var(--border)'); }
+function doGen(){
+  if(genClientIdx<0){ toast('请选择企业'); return; }
+  const f = SIGN_FILES.find(x=>x.id===curFileId);
+  closeModal('genModal');
+  toast(`已为「${CLIENTS[genClientIdx]}」生成《${f.name}》，盖章+签字完成，已归档至${BOXES.find(b=>b.id===f.box).name}`);
+}
+
+function closeModal(id){ document.getElementById(id).classList.remove('show'); }
+function toast(msg){ const t=document.getElementById('toast'); t.textContent=msg; t.classList.add('show'); clearTimeout(t._t); t._t=setTimeout(()=>t.classList.remove('show'),2200); }
+
+// ============ PDF 预览 ============
+function previewPdf(id){
+  const f = SIGN_FILES.find(x=>x.id===id);
+  if(!f) return;
+  showSignPdf(f.name, (BOXES.find(b=>b.id===f.box)||{}).name, f.anchors, '已保存文件');
+}
+function previewPdfDraft(){
+  if(!draft){ toast('请先选择或新建文件'); return; }
+  if(!draft.anchors || !draft.anchors.length){ toast('请先配置盖章/签名模块'); return; }
+  showSignPdf(draft.name||'未命名文件', (BOXES.find(b=>b.id===draft.box)||{}).name, draft.anchors, '草稿预览');
+}
+function showSignPdf(name, boxName, anchors, tag){
+  document.getElementById('pdfTitle').textContent = name;
+  document.getElementById('pdfMeta').textContent = boxName + ' · ' + tag;
+  document.getElementById('pdfPage').innerHTML = buildSignPdfBody(name, boxName, anchors);
+  document.getElementById('pdfMask').classList.add('show');
+}
+function buildSignPdfBody(name, boxName, anchors){
+  const overlays = (anchors||[]).map(a=>{
+    if(a.type==='stamp'){
+      return `<div class="preview-seal" style="left:${a.x}%;top:${a.y}%"><span class="ps-star">★</span><span class="ps-name">悦通物流<br>有限公司</span></div>`;
+    }
+    return `<div class="preview-sign" style="left:${a.x}%;top:${a.y}%">${a.signer||'签字人'}</div>`;
+  }).join('');
+  return `<div class="ptitle">${name}</div>
+    <div class="psub">地方性/区域性模板 · 服务商上传 · 归档至 ${boxName}</div>
+    <table><thead><tr><th>序号</th><th>车辆/人员</th><th>事项</th><th>时间</th><th>签字</th></tr></thead><tbody>
+      <tr><td>1</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td></tr>
+      <tr><td>2</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td></tr>
+      <tr><td>3</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td></tr>
+    </tbody></table>
+    <div style="text-align:right;margin-top:20px;font-size:12px">填报单位（盖章）：__________　负责人（签字）：__________</div>
+    <div style="position:relative;height:230px;margin-top:6px">${overlays}</div>
+    <div class="pdf-foot"><span>生成时间：2026-11-03</span><span>道路运输安全生产管理平台 · 自定义文件签署</span></div>`;
+}
+function closePdf(){ document.getElementById('pdfMask').classList.remove('show'); }
+function printPdf(){
+  const content = document.getElementById('pdfPage').innerHTML;
+  const w = window.open('', '_blank');
+  w.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>打印签署文件</title>
+  <style>body{font-family:"SimSun","宋体",serif;color:#000}.pdf-page{width:700px;margin:0 auto;padding:50px 56px;font-size:14px;line-height:1.8}.ptitle{text-align:center;font-size:20px;font-weight:bold}.preview-seal{position:absolute;transform:translate(-50%,-50%);width:64px;height:64px;border:2.5px solid #d32f2f;border-radius:50%;color:#d32f2f;display:flex;flex-direction:column;align-items:center;justify-content:center;font-weight:700}.preview-sign{position:absolute;transform:translate(-50%,-50%);font-size:20px;font-weight:700;color:#1a365d;font-family:"Kaiti SC",serif}.pdf-foot{border-top:1px solid #999;margin-top:24px;padding-top:10px;display:flex;justify-content:space-between;font-size:11px}</style></head>
+  <body><div class="pdf-page">${content}</div><script>window.onload=function(){window.print();}<\/script></body></html>`);
+  w.document.close();
+}
+function downloadPdf(){
+  const t = document.getElementById('pdfTitle').textContent;
+  const content = document.getElementById('pdfPage').innerHTML;
+  const html = `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>${t}</title><style>body{font-family:"SimSun","宋体",serif;color:#000}.pdf-page{width:700px;margin:0 auto;padding:50px 56px;font-size:14px;line-height:1.8}</style></head><body><div class="pdf-page">${content}</div></body></html>`;
+  const blob = new Blob([html], {type:'text/html;charset=utf-8'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = t + '.html';
+  a.click();
+  URL.revokeObjectURL(a.href);
+  toast('已导出 PDF 版式（演示以 HTML 呈现，打印可另存为 PDF）');
+}
+
+// ============ 初始化 ============
+renderList();
+renderRight();
+</script>
+<script src="../assets/icons.js"></script>
+</body></html>

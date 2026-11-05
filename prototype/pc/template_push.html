@@ -1,0 +1,458 @@
+<!DOCTYPE html>
+<html lang="zh-CN"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>范本起草与推送</title>
+<link rel="stylesheet" href="../assets/common.css"><link rel="stylesheet" href="../assets/pc.css">
+<style>
+  .role-tabs{display:flex;gap:8px;margin-bottom:16px}
+  .role-tab{flex:1;padding:14px;border:1px solid var(--border);border-radius:12px;cursor:pointer;transition:.12s;text-align:center}
+  .role-tab:hover{border-color:var(--brand-400)}
+  .role-tab.on{border-color:var(--brand-500);background:var(--brand-50);box-shadow:0 0 0 1px var(--brand-500)}
+  .role-tab .rt-title{font-weight:700;font-size:15px}
+  .role-tab .rt-desc{font-size:12px;color:var(--text-3);margin-top:3px}
+
+  .steps{display:flex;align-items:center;gap:8px;margin-bottom:20px}
+  .step{display:flex;align-items:center;gap:8px}
+  .step .dot{width:28px;height:28px;border-radius:50%;background:#F1F5F9;color:var(--text-3);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:14px}
+  .step.on .dot{background:var(--brand-500);color:#fff}
+  .step.done .dot{background:#15803D;color:#fff}
+  .step .s-name{font-size:14px;font-weight:600;color:var(--text-3)}
+  .step.on .s-name{color:var(--brand-600)}
+  .step.done .s-name{color:var(--text-2)}
+  .step-line{flex:1;height:2px;background:#E2E8F0}
+  .step-line.done{background:#15803D}
+
+  .tpl-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}
+  .tpl-card{border:1px solid var(--border);border-radius:10px;padding:12px 14px;cursor:pointer;transition:.12s}
+  .tpl-card:hover{border-color:var(--brand-400)}
+  .tpl-card.on{border-color:var(--brand-500);background:var(--brand-50)}
+  .tpl-card .t-name{font-weight:600;font-size:14px}
+  .tpl-card .t-desc{font-size:12px;color:var(--text-3);margin-top:2px}
+  .tpl-card .t-freq{font-size:11px;margin-top:6px;padding:2px 8px;border-radius:8px;background:#F0FDF4;color:#15803D;display:inline-block}
+
+  .client-list{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+  .client-card{border:1px solid var(--border);border-radius:12px;padding:16px;cursor:pointer;transition:.12s}
+  .client-card:hover{border-color:var(--brand-400)}
+  .client-card.on{border-color:var(--brand-500);background:var(--brand-50);box-shadow:0 0 0 1px var(--brand-500)}
+  .client-card .c-name{font-weight:700;font-size:15px}
+  .client-card .c-info{font-size:12px;color:var(--text-3);margin-top:4px}
+
+  .task-list{border:1px solid var(--border);border-radius:12px;overflow:hidden}
+  .task-item{display:flex;align-items:center;gap:12px;padding:14px 16px;border-bottom:1px solid var(--border)}
+  .task-item:last-child{border-bottom:none}
+  .task-item .tk-name{flex:1;min-width:0}
+  .task-item .tk-name .n{font-weight:600;font-size:14px}
+  .task-item .tk-name .d{font-size:12px;color:var(--text-3);margin-top:2px}
+
+  .progress-wrap{display:flex;align-items:center;gap:16px;padding:16px;border:1px solid var(--border);border-radius:12px;background:#f8fafd}
+  .progress-bar{flex:1;height:10px;border-radius:8px;background:#F1F5F9;overflow:hidden}
+  .progress-bar>i{display:block;height:100%;background:linear-gradient(90deg,#1a5bb0,#4a8fe0);border-radius:8px;transition:.3s}
+
+  .toast{position:fixed;top:20px;right:20px;background:#1E293B;color:#fff;padding:12px 20px;border-radius:10px;font-size:14px;z-index:300;opacity:0;transform:translateY(-10px);transition:.25s;box-shadow:0 4px 16px rgba(0,0,0,.2);pointer-events:none}
+  .toast.show{opacity:1;transform:translateY(0)}
+  .modal-mask{position:fixed;inset:0;background:rgba(20,28,43,.45);display:none;align-items:center;justify-content:center;z-index:200}
+  .modal-mask.show{display:flex}
+  .modal{background:#fff;border-radius:var(--r-lg);width:700px;max-width:94vw;max-height:90vh;overflow:auto;box-shadow:var(--shadow-md)}
+  .modal-head{display:flex;align-items:center;justify-content:space-between;padding:16px 20px;border-bottom:1px solid var(--border);font-weight:700;font-size:16px}
+  .modal-head .x{cursor:pointer;font-size:24px;color:var(--text-3);line-height:1}
+  .modal-body{padding:20px}
+  .empty{text-align:center;padding:40px;color:var(--text-3)}
+  .hint{font-size:12px;color:var(--text-3);background:var(--brand-50);border:1px solid var(--brand-100);border-radius:8px;padding:10px 14px;margin-bottom:16px;line-height:1.7}
+
+  /* PDF 预览：A4 仿真 */
+  .pdf-mask{position:fixed;inset:0;background:rgba(20,28,43,.5);display:none;align-items:center;justify-content:center;z-index:250}
+  .pdf-mask.show{display:flex}
+  .pdf-wrap{background:#fff;width:820px;max-width:96vw;max-height:92vh;display:flex;flex-direction:column;border-radius:6px;overflow:hidden;box-shadow:0 8px 40px rgba(0,0,0,.3)}
+  .pdf-toolbar{display:flex;align-items:center;gap:10px;padding:12px 16px;background:#F1F5F9;border-bottom:1px solid var(--border)}
+  .pdf-toolbar .t{font-weight:700;font-size:14px;flex:1}
+  .pdf-body{flex:1;overflow:auto;background:#e9ecf1;padding:24px;display:flex;justify-content:center}
+  .pdf-page{background:#fff;width:700px;min-height:880px;padding:50px 56px;box-shadow:0 2px 12px rgba(0,0,0,.15);font-family:"SimSun","宋体",serif;color:#000;font-size:14px;line-height:1.8}
+  .pdf-page .ptitle{text-align:center;font-size:20px;font-weight:bold;letter-spacing:3px;margin:18px 0 4px}
+  .pdf-page .psub{text-align:center;font-size:12px;color:#333;margin-bottom:16px}
+  .pdf-page p{text-indent:2em;margin:5px 0}
+  .pdf-foot{border-top:1px solid #999;margin-top:24px;padding-top:10px;display:flex;align-items:center;justify-content:space-between;font-size:11px;color:#555}
+</style></head><body>
+<div class="pc-page">
+  <div class="pc-header"><div><h1>范本起草与推送</h1><div class="desc">服务商选范本起草 → 推送到企业 → 企业按清单拍照签字 → 完成台账</div></div>
+    <div class="actions"><button class="btn btn-outline" onclick="resetAll()">重新开始</button></div></div>
+
+  <!-- 双视角切换 -->
+  <div class="role-tabs">
+    <div class="role-tab on" id="rtProvider" onclick="switchRole('provider')">
+      <div class="rt-title">服务商视角 · 起草推送</div>
+      <div class="rt-desc">选范本 → 起草定制 → 推送给企业</div>
+    </div>
+    <div class="role-tab" id="rtEnterprise" onclick="switchRole('enterprise')">
+      <div class="rt-title">企业视角 · 任务清单</div>
+      <div class="rt-desc">接收清单 → 拍照签字 → 提交完成</div>
+    </div>
+  </div>
+
+  <!-- ============ 服务商视角 ============ -->
+  <div id="providerView">
+    <div class="hint">💡 服务商从<b>范本库</b>选中范本，针对特定客户<b>起草定制</b>，然后<b>推送到企业</b>。企业收到清单后只需按任务<b>拍照、签字</b>，即可完成台账，无需理解复杂的安全生产流程。</div>
+
+    <div class="steps">
+      <div class="step on" id="sp0"><div class="dot">1</div><div class="s-name">选范本</div></div>
+      <div class="step-line" id="spl0"></div>
+      <div class="step" id="sp1"><div class="dot">2</div><div class="s-name">起草定制</div></div>
+      <div class="step-line" id="spl1"></div>
+      <div class="step" id="sp2"><div class="dot">3</div><div class="s-name">选择企业推送</div></div>
+    </div>
+
+    <div id="ppanel0">
+      <div class="card">
+        <div class="card-title">选择范本 <span style="font-size:13px;color:var(--text-3);font-weight:400">来自范本库（可多选）</span></div>
+        <div class="tpl-grid" id="tplSelectGrid"></div>
+      </div>
+    </div>
+
+    <div id="ppanel1" style="display:none">
+      <div class="card">
+        <div class="card-title">起草定制 <span style="font-size:13px;color:var(--text-3);font-weight:400">针对客户调整内容，可在线修改</span></div>
+        <div id="draftList"></div>
+      </div>
+    </div>
+
+    <div id="ppanel2" style="display:none">
+      <div class="card" style="margin-bottom:16px">
+        <div class="card-title">选择目标企业 <span style="font-size:13px;color:var(--text-3);font-weight:400">可多选</span></div>
+        <div class="client-list" id="clientSelectGrid"></div>
+      </div>
+      <div class="card">
+        <div class="card-title">推送预览</div>
+        <div id="pushPreview"></div>
+      </div>
+    </div>
+
+    <div style="display:flex;justify-content:space-between;margin-top:20px">
+      <button class="btn btn-outline" id="pbtnPrev" onclick="pPrev()" style="display:none">上一步</button>
+      <button class="btn btn-primary btn-lg" id="pbtnNext" onclick="pNext()">下一步</button>
+    </div>
+  </div>
+
+  <!-- ============ 企业视角 ============ -->
+  <div id="enterpriseView" style="display:none">
+    <div class="hint">💡 企业收到服务商推送的<b>任务清单</b>后，只需按清单逐项<b>拍照、签字</b>即可。系统自动把照片、签字填入范本，生成台账，企业无需理解复杂的安全生产流程。</div>
+
+    <div class="card" style="margin-bottom:16px">
+      <div class="card-title">当前任务清单 <span style="font-size:13px;color:var(--text-3);font-weight:400" id="entName"></span></div>
+      <div class="task-list" id="taskList"></div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">任务完成进度</div>
+      <div class="progress-wrap">
+        <div style="font-weight:700;font-size:15px;white-space:nowrap" id="entProgressLabel">0%</div>
+        <div class="progress-bar"><i id="entProgressBar" style="width:0%"></i></div>
+        <div style="font-size:13px;color:var(--text-3)" id="entProgressCount">0 / 0</div>
+      </div>
+      <button class="btn btn-primary btn-lg" style="margin-top:14px;width:100%" onclick="submitAll()">提交全部任务</button>
+    </div>
+  </div>
+</div>
+
+<!-- 起草编辑弹窗 -->
+<div class="modal-mask" id="draftModal">
+  <div class="modal">
+    <div class="modal-head">起草定制 <span id="draftTitle" style="font-size:13px;color:var(--text-3);font-weight:400"></span> <span class="x" onclick="closeModal('draftModal')">×</span></div>
+    <div class="modal-body">
+      <div class="form-item"><label class="form-label">范本内容（含变量占位）</label><textarea class="form-input" id="draftCode" rows="12" style="font-family:monospace;font-size:13px;line-height:1.7"></textarea></div>
+      <div style="margin-top:16px;text-align:right"><button class="btn btn-primary" onclick="saveDraft()">保存草稿</button></div>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<!-- PDF 预览弹窗 -->
+<div class="pdf-mask" id="pdfMask">
+  <div class="pdf-wrap">
+    <div class="pdf-toolbar">
+      <span class="t" id="pdfTitle">范本 PDF 预览</span>
+      <span style="font-size:12px;color:var(--text-3)" id="pdfMeta"></span>
+      <button class="btn btn-outline btn-sm" onclick="printPdf()"><span class="ico" data-icon="printer"></span> 打印</button>
+      <button class="btn btn-primary btn-sm" onclick="downloadPdf()"><span class="ico" data-icon="download"></span> 下载 PDF</button>
+      <button class="btn btn-outline btn-sm" onclick="closePdf()">关闭</button>
+    </div>
+    <div class="pdf-body"><div class="pdf-page" id="pdfPage"></div></div>
+  </div>
+</div>
+
+<script src="../assets/icons.js"></script>
+<script>
+// ============ 数据 ============
+const TEMPLATES = [
+  {id:1, name:'安全生产责任书（主要负责人）', box:'盒一 · 公司档案', desc:'目标责任书 · 单边盖章', freq:'一年一签'},
+  {id:2, name:'安全生产责任书（安全员）', box:'盒一 · 公司档案', desc:'责任书 · 双边签字', freq:'一年一签'},
+  {id:3, name:'安全生产承诺书（全员）', box:'盒一 · 公司档案', desc:'承诺书 · 替换型', freq:'一年一签'},
+  {id:4, name:'岗位职业病危害因素告知书', box:'盒一 · 公司档案', desc:'岗位危害清单 · 增减型', freq:'入职时签'},
+  {id:5, name:'安全生产管理人员任命书', box:'盒一 · 公司档案', desc:'管理岗位 · 增减型', freq:'有变动时更新'},
+  {id:6, name:'成立安全生产领导小组的通知', box:'盒一 · 公司档案', desc:'组长/副组长/成员', freq:'有变动时更新'},
+  {id:7, name:'制度汇编（含操作规程）', box:'盒二 · 制度', desc:'ZD01~ZD22 · 21项', freq:'制度修订时更新'},
+  {id:8, name:'会议通知 / 签到表 / 记录', box:'盒三 · 会议', desc:'四段式', freq:'每月/每季'},
+  {id:9, name:'安全生产教育培训计划', box:'盒四 · 培训', desc:'年度 8 列计划表', freq:'年度一次'},
+  {id:10, name:'安全生产月度培训记录', box:'盒四 · 培训', desc:'内容/照片/签字', freq:'每月一次（岗中培训）'},
+  {id:11, name:'安全生产费用使用台账', box:'盒五 · 费用', desc:'11类 × 12月', freq:'每月登记'},
+  {id:12, name:'应急预案（7套场景）', box:'盒七 · 应急', desc:'综合/道路事故/火灾等', freq:'三年一次修订'},
+];
+
+const CLIENTS = [
+  {id:1, name:'佛山市悦通物流有限公司', cars:8, cargo:'普货'},
+  {id:2, name:'顺德区佳邦运输有限公司', cars:5, cargo:'普货'},
+  {id:3, name:'南海区安达货运部', cars:3, cargo:'普货'},
+  {id:4, name:'高明区顺捷物流', cars:12, cargo:'普货'},
+];
+
+let state = {
+  role: 'provider',
+  pStep: 0,
+  selectedTpls: [],   // 选中的范本id
+  drafts: {},         // tplId -> 定制内容
+  selectedClients: [],// 选中的企业id
+  pushed: false,      // 是否已推送
+  // 企业任务状态
+  tasks: [],          // {tplId, name, photo:false, sign:false, done:false}
+};
+
+// ============ 角色切换 ============
+function switchRole(role){
+  state.role = role;
+  document.getElementById('rtProvider').className = 'role-tab' + (role==='provider'?' on':'');
+  document.getElementById('rtEnterprise').className = 'role-tab' + (role==='enterprise'?' on':'');
+  document.getElementById('providerView').style.display = role==='provider'?'block':'none';
+  document.getElementById('enterpriseView').style.display = role==='enterprise'?'block':'none';
+  if(role==='enterprise') renderEnterprise();
+}
+
+// ============ 服务商流程 ============
+function setPStep(s){
+  state.pStep = s;
+  for(let i=0;i<3;i++){
+    document.getElementById('ppanel'+i).style.display = i===s?'block':'none';
+    const st = document.getElementById('sp'+i);
+    st.className = 'step' + (i<s?' done':i===s?' on':'');
+  }
+  for(let i=0;i<2;i++){
+    document.getElementById('spl'+i).className = 'step-line' + (i<s?' done':'');
+  }
+  document.getElementById('pbtnPrev').style.display = s>0?'inline-flex':'none';
+  const next = document.getElementById('pbtnNext');
+  if(s===2){
+    next.textContent = '确认推送';
+    next.onclick = function(){ doPush(); };
+  } else {
+    next.textContent = '下一步';
+    next.onclick = function(){ pNext(); };
+  }
+  if(s===1) renderDraftList();
+  if(s===2){ renderClientSelect(); renderPushPreview(); }
+}
+function pNext(){
+  if(state.pStep===0){
+    if(state.selectedTpls.length===0){ toast('请先选择范本'); return; }
+    setPStep(1);
+  } else if(state.pStep===1){
+    setPStep(2);
+  }
+}
+function pPrev(){ if(state.pStep>0) setPStep(state.pStep-1); }
+
+function renderTplSelect(){
+  document.getElementById('tplSelectGrid').innerHTML = TEMPLATES.map(t=>{
+    const on = state.selectedTpls.includes(t.id);
+    return `<div class="tpl-card ${on?'on':''}" onclick="toggleTpl(${t.id})">
+      <div class="t-name">${t.name}</div>
+      <div class="t-desc">${t.box} · ${t.desc}</div>
+      <div class="t-freq">${t.freq||''}</div>
+    </div>`;
+  }).join('');
+}
+function toggleTpl(id){
+  const i = state.selectedTpls.indexOf(id);
+  if(i>=0) state.selectedTpls.splice(i,1); else state.selectedTpls.push(id);
+  renderTplSelect();
+}
+
+function renderDraftList(){
+  const el = document.getElementById('draftList');
+  if(state.selectedTpls.length===0){ el.innerHTML = '<div class="empty">未选择范本</div>'; return; }
+  el.innerHTML = state.selectedTpls.map(id=>{
+    const t = TEMPLATES.find(x=>x.id===id);
+    const customized = state.drafts[id] ? '已定制' : '未定制';
+    return `<div class="tpl-card" onclick="openDraft(${id})">
+      <div class="t-name">${t.name}</div>
+      <div class="t-desc">${t.box} · <span class="tag ${state.drafts[id]?'tag-green':'tag-gray'}">${customized}</span> 点击编辑定制</div>
+      <div style="margin-top:8px;display:flex;gap:6px">
+        <button class="btn btn-outline btn-sm" onclick="event.stopPropagation();previewPdf(${id})"><span class="ico" data-icon="fileText"></span> 预览 PDF</button>
+        <button class="btn btn-outline btn-sm" onclick="event.stopPropagation();openDraft(${id})">编辑定制</button>
+      </div>
+    </div>`;
+  }).join('');
+  if(window.__rerenderIcons) window.__rerenderIcons();
+}
+function openDraft(id){
+  const t = TEMPLATES.find(x=>x.id===id);
+  document.getElementById('draftTitle').textContent = t.name;
+  document.getElementById('draftCode').value = state.drafts[id] || defaultDraft(t.name);
+  document.getElementById('draftModal').dataset.tplId = id;
+  document.getElementById('draftModal').classList.add('show');
+}
+function saveDraft(){
+  const id = parseInt(document.getElementById('draftModal').dataset.tplId);
+  state.drafts[id] = document.getElementById('draftCode').value;
+  closeModal('draftModal');
+  renderDraftList();
+  toast('草稿已保存');
+}
+
+function renderClientSelect(){
+  document.getElementById('clientSelectGrid').innerHTML = CLIENTS.map(c=>{
+    const on = state.selectedClients.includes(c.id);
+    return `<div class="client-card ${on?'on':''}" onclick="toggleClient(${c.id})">
+      <div class="c-name">${c.name}</div>
+      <div class="c-info">车辆 ${c.cars} 辆 · ${c.cargo}运输</div>
+    </div>`;
+  }).join('');
+}
+function toggleClient(id){
+  const i = state.selectedClients.indexOf(id);
+  if(i>=0) state.selectedClients.splice(i,1); else state.selectedClients.push(id);
+  renderClientSelect(); renderPushPreview();
+}
+function renderPushPreview(){
+  const el = document.getElementById('pushPreview');
+  if(state.selectedClients.length===0){ el.innerHTML = '<div class="empty">未选择企业</div>'; return; }
+  const tplNames = state.selectedTpls.map(id=>TEMPLATES.find(x=>x.id===id).name);
+  const clientNames = state.selectedClients.map(id=>CLIENTS.find(x=>x.id===id).name);
+  el.innerHTML = `
+    <p style="font-size:14px;margin-bottom:8px"><b>${clientNames.length}</b> 家企业 × <b>${tplNames.length}</b> 个范本</p>
+    <div style="font-size:13px;color:var(--text-2);line-height:1.8">
+      推送后，企业将收到任务清单：<br>
+      ${tplNames.map(n=>'· '+n).join('<br>')}<br>
+      企业只需按任务<b>拍照 + 签字</b>即可完成台账。
+    </div>`;
+}
+function doPush(){
+  if(state.selectedClients.length===0){ toast('请选择至少一家企业'); return; }
+  state.pushed = true;
+  // 生成企业任务
+  state.tasks = state.selectedTpls.map(id=>{
+    const t = TEMPLATES.find(x=>x.id===id);
+    return {tplId:id, name:t.name, photo:false, sign:false, done:false};
+  });
+  const clientNames = state.selectedClients.map(id=>CLIENTS.find(x=>x.id===id).name);
+  toast(`已推送到 ${clientNames.length} 家企业`);
+  // 自动切到企业视角查看任务
+  switchRole('enterprise');
+}
+
+// ============ 企业视角 ============
+function renderEnterprise(){
+  const clientName = state.selectedClients.length>0 ? CLIENTS.find(c=>c.id===state.selectedClients[0]).name : '佛山市悦通物流有限公司';
+  document.getElementById('entName').textContent = clientName;
+  const el = document.getElementById('taskList');
+  if(state.tasks.length===0){
+    el.innerHTML = '<div class="empty">暂无任务清单，等待服务商推送范本</div>';
+    document.getElementById('entProgressLabel').textContent = '0%';
+    document.getElementById('entProgressBar').style.width = '0%';
+    document.getElementById('entProgressCount').textContent = '0 / 0';
+    return;
+  }
+  el.innerHTML = state.tasks.map((t,i)=>`
+    <div class="task-item">
+      <div class="tk-name"><div class="n">${t.name}</div><div class="d">拍照 + 签字</div></div>
+      <button class="btn ${t.photo?'btn-success':'btn-outline'} btn-sm" onclick="doPhoto(${i})">${t.photo?'已拍照':'拍照'}</button>
+      <button class="btn ${t.sign?'btn-success':'btn-outline'} btn-sm" onclick="doSign(${i})">${t.sign?'已签字':'签字'}</button>
+      <span class="tag ${t.done?'tag-green':'tag-gray'}">${t.done?'已完成':'待完成'}</span>
+    </div>`).join('');
+  updateProgress();
+}
+function doPhoto(i){ state.tasks[i].photo = true; checkDone(i); renderEnterprise(); }
+function doSign(i){ state.tasks[i].sign = true; checkDone(i); renderEnterprise(); }
+function checkDone(i){ if(state.tasks[i].photo && state.tasks[i].sign) state.tasks[i].done = true; }
+function updateProgress(){
+  const done = state.tasks.filter(t=>t.done).length;
+  const total = state.tasks.length;
+  const pct = Math.round(done/total*100);
+  document.getElementById('entProgressLabel').textContent = pct+'%';
+  document.getElementById('entProgressBar').style.width = pct+'%';
+  document.getElementById('entProgressCount').textContent = done+' / '+total;
+}
+function submitAll(){
+  const undone = state.tasks.filter(t=>!t.done);
+  if(undone.length>0){ toast(`还有 ${undone.length} 项未完成`); return; }
+  toast('全部任务已完成，台账生成中...（照片签字已回填范本）');
+}
+
+// ============ 工具 ============
+function defaultDraft(name){
+  return `<div style="text-align:center">
+  <div style="font-size:16px;font-weight:bold">{{company_name}}</div>
+  <div style="font-size:13px;margin-top:4px">文件编号：{{doc_no}}</div>
+</div>
+<div style="text-align:center;font-size:20px;font-weight:bold;letter-spacing:3px;margin:12px 0">${name}</div>
+<p style="text-indent:2em">兹有 {{person_name}}，担任 {{post}} 岗位...</p>
+<p style="text-indent:2em">本范本自 {{start_date}} 起实施。</p>`;
+}
+function closeModal(id){ document.getElementById(id).classList.remove('show'); }
+
+// ============ PDF 预览 ============
+const PUSH_SAMPLE_VALUES = {
+  company_name:'佛山市悦通物流有限公司',
+  person_name:'张伟',
+  post:'驾驶员',
+  doc_no:'YT-2026-001',
+  start_date:'2026年1月1日',
+  issuer:'张伟'
+};
+function previewPdf(id){
+  const t = TEMPLATES.find(x=>x.id===id);
+  if(!t) return;
+  document.getElementById('pdfTitle').textContent = t.name;
+  document.getElementById('pdfMeta').textContent = state.drafts[id] ? '已定制草稿' : '默认范本 · 未定制';
+  document.getElementById('pdfPage').innerHTML = buildPushPdfBody(t, state.drafts[id] || defaultDraft(t.name));
+  document.getElementById('pdfMask').classList.add('show');
+}
+function buildPushPdfBody(t, content){
+  for(const k in PUSH_SAMPLE_VALUES){ content = content.split('{{'+k+'}}').join(PUSH_SAMPLE_VALUES[k]); }
+  content = content.replace(/\{%[^%]*%\}/g, '');
+  return `<div class="ptitle">${t.name}</div>
+    <div class="psub">${t.box} · 服务商起草定制</div>
+    ${content}
+    <div class="pdf-foot"><span>起草时间：2026-11-03</span><span>道路运输安全生产管理平台 · 范本起草与推送</span></div>`;
+}
+function closePdf(){ document.getElementById('pdfMask').classList.remove('show'); }
+function printPdf(){
+  const content = document.getElementById('pdfPage').innerHTML;
+  const w = window.open('', '_blank');
+  w.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>打印范本</title>
+  <style>body{font-family:"SimSun","宋体",serif;color:#000}.pdf-page{width:700px;margin:0 auto;padding:50px 56px;font-size:14px;line-height:1.8}.ptitle{text-align:center;font-size:20px;font-weight:bold}.pdf-page p{text-indent:2em}.pdf-foot{border-top:1px solid #999;margin-top:24px;padding-top:10px;display:flex;justify-content:space-between;font-size:11px}</style></head>
+  <body><div class="pdf-page">${content}</div><script>window.onload=function(){window.print();}<\/script></body></html>`);
+  w.document.close();
+}
+function downloadPdf(){
+  const t = document.getElementById('pdfTitle').textContent;
+  const content = document.getElementById('pdfPage').innerHTML;
+  const html = `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>${t}</title><style>body{font-family:"SimSun","宋体",serif;color:#000}.pdf-page{width:700px;margin:0 auto;padding:50px 56px;font-size:14px;line-height:1.8}</style></head><body><div class="pdf-page">${content}</div></body></html>`;
+  const blob = new Blob([html], {type:'text/html;charset=utf-8'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = t + '.html';
+  a.click();
+  URL.revokeObjectURL(a.href);
+  toast('已导出 PDF 版式（演示以 HTML 呈现，打印可另存为 PDF）');
+}
+
+function resetAll(){
+  state = {role:'provider', pStep:0, selectedTpls:[], drafts:{}, selectedClients:[], pushed:false, tasks:[]};
+  switchRole('provider'); setPStep(0); renderTplSelect();
+  toast('已重置');
+}
+function toast(msg){
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('show');
+  clearTimeout(t._t); t._t = setTimeout(()=>t.classList.remove('show'), 2200);
+}
+
+// 初始化
+renderTplSelect(); setPStep(0);
+</script></body></html>

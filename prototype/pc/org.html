@@ -1,10 +1,375 @@
 <!DOCTYPE html>
 <html lang="zh-CN"><head><meta charset="UTF-8"><title>安全管理架构</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <link rel="stylesheet" href="../assets/common.css"><link rel="stylesheet" href="../assets/pc.css">
-<style></style></head><body>
+<style>
+  /* 架构图样式由 assets/org_chart.js 的 OrgChart.inject() 统一注入，
+     与电子档案柜 PDF 预览 / A4 打印版同源，保证「所见即所归档」。 */
+  .org-wrap{overflow:auto;padding:22px 18px 30px;background:
+    radial-gradient(circle at 1px 1px, #E2E8F0 1px, transparent 0) 0 0/22px 22px, #fff}
+  .org-stat{display:flex;align-items:center;gap:10px;flex-wrap:wrap;font-size:12.5px;color:var(--text-2);padding:10px 16px;border-bottom:1px solid var(--border);background:#F8FAFC}
+  .org-stat .tag-off{background:#F1F5F9;color:#64748B;border-radius:8px;padding:2px 9px;font-size:11.5px}
+  .org-stat .tag-up{background:#FFFBEB;color:#B45309;border-radius:8px;padding:2px 9px;font-size:11.5px}
+  .org-stat a{color:var(--blue-600);font-weight:600;text-decoration:none}
+  .org-stat a:hover{text-decoration:underline}
+  /* ============ 右键菜单 ============ */
+  .ctx{position:fixed;z-index:200;background:#fff;border:1px solid #E2E8F0;border-radius:10px;box-shadow:0 12px 32px rgba(15,23,42,.18);padding:6px;min-width:200px;display:none}
+  .ctx.show{display:block}
+  .ctx .ci{display:flex;align-items:center;gap:9px;padding:9px 12px;font-size:13.5px;color:var(--text);border-radius:7px;cursor:pointer}
+  .ctx .ci:hover{background:var(--blue-50);color:var(--blue-800)}
+  .ctx .ci .ico{color:var(--blue-600)}
+  .ctx .ci.head{cursor:default;background:none;color:var(--text-3);font-size:12px;font-weight:700;padding-bottom:5px;border-bottom:1px solid #F1F5F9;border-radius:0;margin-bottom:4px}
+  /* ============ 弹窗 ============ */
+  .modal-mask{position:fixed;inset:0;background:rgba(20,28,43,.45);display:none;align-items:center;justify-content:center;z-index:100}
+  .modal-mask.show{display:flex}
+  .modal{background:#fff;border-radius:14px;width:620px;max-width:94vw;max-height:88vh;overflow:auto;box-shadow:0 20px 48px rgba(15,23,42,.25)}
+  .modal-head{display:flex;align-items:center;justify-content:space-between;padding:16px 20px;border-bottom:1px solid var(--border);font-weight:700;font-size:16px}
+  .modal-head .x{cursor:pointer;font-size:24px;color:var(--text-3);line-height:1}
+  .modal-body{padding:20px}
+  .m-lbl{font-size:13px;color:var(--text-2);font-weight:600;margin:14px 0 6px}
+  .m-lbl:first-child{margin-top:0}
+  .m-lbl .req::before{content:'*';color:var(--danger);margin-right:2px}
+  .m-inp,.m-sel,.m-ta{width:100%;box-sizing:border-box;padding:9px 12px;border:1px solid var(--border);border-radius:8px;font-size:14px;font-family:inherit;background:#fff;color:var(--text)}
+  .m-ta{min-height:68px;resize:vertical;line-height:1.6}
+  .m-inp:focus,.m-sel:focus,.m-ta:focus{outline:none;border-color:var(--blue-400);box-shadow:0 0 0 3px var(--blue-100)}
+  .m-inp[readonly],.m-inp[disabled]{background:var(--bg-2);color:var(--text-3)}
+  .m-grid{display:grid;grid-template-columns:1fr 1fr;gap:0 16px}
+  .m-grid .span2{grid-column:1/-1}
+  .m-note{font-size:12px;color:var(--text-3);margin-top:4px;line-height:1.6}
+  .m-note b{color:var(--blue-600)}
+  .doc-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px 14px}
+  .doc-grid label{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--text);cursor:pointer;padding:6px 10px;border:1px solid var(--border);border-radius:8px}
+  .doc-grid label.on{border-color:var(--blue-400);background:var(--blue-50);color:var(--blue-800)}
+  .mg-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px 14px}
+  .mg-grid label{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--text);cursor:pointer;padding:6px 10px;border:1px solid var(--border);border-radius:8px}
+  .mg-grid label.on{border-color:#F59E0B;background:#FFFBEB;color:#B45309}
+  .m-foot{display:flex;justify-content:flex-end;gap:10px;padding:0 20px 20px}
+  .m-foot .btn{min-width:86px}
+  .toast{position:fixed;top:24px;right:24px;background:#141c2b;color:#fff;padding:12px 20px;border-radius:10px;font-size:14px;z-index:9999;opacity:0;transform:translateY(-10px);transition:.25s;pointer-events:none;box-shadow:0 4px 16px rgba(0,0,0,.2)}
+  .doc-prev{border:1px solid var(--border);border-radius:10px;padding:16px 18px;max-height:46vh;overflow:auto;line-height:1.8;font-size:13.5px}
+  .doc-prev h4{margin:12px 0 4px;font-size:14px;color:var(--text)}
+  .doc-prev h4:first-child{margin-top:0}
+  .doc-prev .sec{color:var(--text-2);font-size:13px}
+  .doc-prev .mgd{font-size:12px;color:#B45309}
+  .doc-prev .ban{font-size:12px;color:var(--danger)}
+</style></head><body>
 <div class="pc-page">
-<div class="pc-header"><div><h1>安全管理架构</h1><div class="desc">安全管理组织架构与职责分工</div></div><div class="actions"><button class="btn btn-primary"><span class="ico" data-icon="plus"></span> 新增机构</button></div></div><div class="card" style="padding:0;overflow:hidden"><table class="table"><thead><tr><th>机构名称</th><th>组长</th><th>副组长</th><th>职责</th><th>操作</th></tr></thead><tbody><tr><td>安全生产领导小组</td><td>张伟（法人）</td><td>李强（安全经理）</td><td>全面领导企业安全生产工作</td><td><a class="btn btn-primary btn-sm">查看</a> <a class="btn btn-outline btn-sm">编辑</a></td></tr><tr><td>安全管理部门</td><td>李强</td><td>王芳</td><td>日常安全监督检查、隐患整改</td><td><a class="btn btn-primary btn-sm">查看</a> <a class="btn btn-outline btn-sm">编辑</a></td></tr><tr><td>驾驶员管理组</td><td>王芳</td><td>陈刚</td><td>驾驶员考核与培训管理</td><td><a class="btn btn-primary btn-sm">查看</a> <a class="btn btn-outline btn-sm">编辑</a></td></tr></tbody></table>
-<div class="table-foot"><span>共 3 条记录</span>
-<div class="pagination"><button>&lt;</button><button class="active">1</button><button>2</button><button>3</button><button>…</button><button>&gt;</button></div></div></div>
+  <div class="pc-header"><div><h1>安全管理架构</h1><div class="desc">公司 → 总经理 → 各岗位（按上级关系组树）· 与「岗位信息管理」同源联动 · 当前模板：<b id="tplName"></b></div></div>
+    <div class="actions">
+      <button class="btn btn-outline" onclick="location.href='post.html'"><span class="ico" data-icon="users"></span> 岗位信息管理</button>
+      <button class="btn btn-outline" onclick="openDocPrev()"><span class="ico" data-icon="fileText"></span> 责任制联动预览</button>
+      <button class="btn btn-primary" onclick="printChart()"><span class="ico" data-icon="download"></span> 下载 / 打印架构图</button>
+      <button class="btn btn-outline" onclick="resetOrg()"><span class="ico" data-icon="undo"></span> 重置演示数据</button>
+    </div></div>
+
+  <div class="hint">💡 <b>右键单击岗位节点</b>：① <b>更换岗位人员</b>（从系统已录入人员选取）；② <b>编辑岗位</b>（岗位名称自定义、调整上级层级关系、兼并其他岗位职能、目标/职责/考核标准——岗位职能由系统设定，企业侧不可更改）；③ <b>关联制度与责任书</b>。<b>已禁用岗位不再出现在架构图中</b>，其启用下级自动上提到最近的启用上级，保证层级不断链；制度与架构<b>双向联动</b>，禁用岗位自动从制度内容中剔除。本图与电子档案柜「安全管理组织架构」归档件同源，可一键下载 / 打印 PDF。</div>
+
+  <div class="card" style="padding:0">
+    <div class="org-stat" id="orgStat"></div>
+    <div class="org-wrap" id="orgWrap"></div>
+  </div>
 </div>
-<script src="../assets/icons.js"></script></body></html>
+
+<!-- 右键菜单 -->
+<div class="ctx" id="ctxMenu"></div>
+
+<!-- 弹窗：更换岗位人员（从系统已录入人员选取） -->
+<div class="modal-mask" id="mPerson">
+  <div class="modal" style="width:460px">
+    <div class="modal-head">更换岗位人员<span class="x" onclick="closeM('mPerson')">×</span></div>
+    <div class="modal-body">
+      <div class="m-lbl">岗位</div>
+      <div class="m-inp" id="mpPost" style="background:var(--bg-2);color:var(--text-2)"></div>
+      <div class="m-lbl req">选择人员（系统已录入人员，无需手动输入）</div>
+      <select class="m-sel" id="mpName"></select>
+      <div class="m-note" id="mpInfo"></div>
+    </div>
+    <div class="m-foot"><button class="btn btn-outline" onclick="closeM('mPerson')">取消</button><button class="btn btn-primary" onclick="savePerson()">确认更换</button></div>
+  </div>
+</div>
+
+<!-- 弹窗：编辑岗位（名称/上级/兼并/目标职责考核） -->
+<div class="modal-mask" id="mEdit">
+  <div class="modal">
+    <div class="modal-head" id="meTitle">编辑岗位<span class="x" onclick="closeM('mEdit')">×</span></div>
+    <div class="modal-body">
+      <div class="m-grid">
+        <div><div class="m-lbl req">岗位名称（可自定义）</div><input class="m-inp" id="meName"></div>
+        <div><div class="m-lbl">岗位职能（系统设定 · 企业侧不可更改）</div><input class="m-inp" id="meFunc" readonly><div class="m-note">职能关联岗位权限、安全目标、职责与考核标准模板</div></div>
+        <div class="span2"><div class="m-lbl">上级岗位（调整后即调整岗位层级关系）</div><select class="m-sel" id="meParent"></select></div>
+      </div>
+      <div id="meMergeWrap">
+        <div class="m-lbl">兼并其他岗位职能<span style="font-weight:400;color:var(--text-3)">（兼并后对应岗位停用，其职能与制度内容并入本岗位；总经理、安全员不可被兼并）</span></div>
+        <div class="mg-grid" id="meMerge"></div>
+      </div>
+      <div class="m-lbl">岗位权限</div>
+      <textarea class="m-ta" id="mePerm" style="min-height:52px"></textarea>
+      <div class="m-lbl">安全目标</div>
+      <textarea class="m-ta" id="meGoals"></textarea>
+      <div class="m-lbl">岗位职责</div>
+      <textarea class="m-ta" id="meDuties" style="min-height:80px"></textarea>
+      <div class="m-lbl">考核标准</div>
+      <textarea class="m-ta" id="meAssess"></textarea>
+      <div class="m-note">🔗 保存后与制度<b>双向联动</b>：「安全生产责任制」该岗位条目、责任书待签、考核奖惩/诚信考核岗位考核项实时更新。</div>
+    </div>
+    <div class="m-foot"><button class="btn btn-outline" onclick="closeM('mEdit')">取消</button><button class="btn btn-primary" onclick="saveEdit()">保存并联动</button></div>
+  </div>
+</div>
+
+<!-- 弹窗：关联制度与责任书 -->
+<div class="modal-mask" id="mDocs">
+  <div class="modal" style="width:540px">
+    <div class="modal-head">关联制度与责任书<span class="x" onclick="closeM('mDocs')">×</span></div>
+    <div class="modal-body">
+      <div class="m-lbl">岗位</div>
+      <div class="m-inp" id="mcPost" style="background:var(--bg-2);color:var(--text-2)"></div>
+      <div class="m-lbl">勾选该岗位需签署 / 遵循的制度与责任书</div>
+      <div class="doc-grid" id="mcDocs"></div>
+      <div class="m-note" style="margin-top:10px">被<b>禁用 / 被兼并</b>的岗位不会出现在上述制度的正文内容中。</div>
+    </div>
+    <div class="m-foot"><button class="btn btn-outline" onclick="closeM('mDocs')">取消</button><button class="btn btn-primary" onclick="saveDocs()">保存关联</button></div>
+  </div>
+</div>
+
+<!-- 弹窗：责任制联动预览 -->
+<div class="modal-mask" id="mDocPrev">
+  <div class="modal" style="width:640px">
+    <div class="modal-head">安全生产责任制 · 联动预览<span class="x" onclick="closeM('mDocPrev')">×</span></div>
+    <div class="modal-body"><div class="doc-prev" id="docPrevBody"></div>
+      <div class="m-note" style="margin-top:8px">本制度正文由<b>启用中岗位</b>动态生成；禁用/兼并岗位已自动剔除，架构调整后此处内容同步变化。</div>
+    </div>
+    <div class="m-foot"><button class="btn btn-primary" onclick="closeM('mDocPrev')">我知道了</button></div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script src="../assets/icons.js"></script>
+<script src="../assets/org_data.js"></script>
+<script src="../assets/org_chart.js"></script>
+<script>
+const D = window.OrgData;
+const OC = window.OrgChart;
+const DOC_POOL = ['安全生产责任制','主要负责人任命书','主要负责人告知书','安全管理人员任命书','年度安全生产承诺书','安全生产责任书（岗位版）','安全检查制度','隐患排查治理制度','动态监控制度','运营调度管理制度','车队安全管理制度','一日三检制度','车辆维护保养制度','停车场管理制度','装卸管理制度','安全投入管理制度','档案管理制度'];
+const TPL_NAMES = { putong:'普货岗位模板', weihuo:'危货岗位模板' };
+
+/* 架构图：与电子档案柜 PDF 预览 / A4 打印版共用同一生成器。
+   禁用岗位不再渲染，其启用下级自动上提到最近的启用上级。 */
+function render(){
+  document.getElementById('tplName').textContent = TPL_NAMES[D.TPL_TYPE()]||'—';
+  document.getElementById('orgWrap').innerHTML = OC.html({ interactive:true });
+  const t = OC.data();
+  document.getElementById('orgStat').innerHTML =
+    '<span>共 <b>'+t.nodes.length+'</b> 个启用岗位</span>'+
+    '<span class="tag-off">'+t.disabled.length+' 个已禁用岗位不显示</span>'+
+    (t.lifted ? '<span class="tag-up">'+t.lifted+' 个岗位已上提至最近的启用上级</span>' : '')+
+    '<span style="margin-left:auto">恢复禁用岗位请前往 <a href="post.html">岗位信息管理</a>；本图与电子档案柜归档 PDF 同源</span>';
+  if(window.__rerenderIcons) window.__rerenderIcons();
+}
+/* 节点右键：事件委托（只对渲染出来的启用岗位生效） */
+document.getElementById('orgWrap').addEventListener('contextmenu', function(e){
+  const node = e.target.closest ? e.target.closest('.ocg-node[data-post]') : null;
+  if(node) openCtx(e, node.getAttribute('data-post'));
+});
+/* 下载 A4 打印版 + 打开打印窗口（浏览器「另存为 PDF」） */
+function printChart(){
+  OC.printChart();
+  toast('已生成 A4 打印版并打开打印窗口，选择「另存为 PDF」即可保存 PDF');
+}
+
+/* ============ 右键菜单 ============ */
+let ctxPostId = null;
+function openCtx(e,pid){
+  e.preventDefault(); e.stopPropagation();
+  ctxPostId = pid;
+  const p = D.get(pid);
+  const menu = document.getElementById('ctxMenu');
+  menu.innerHTML =
+    '<div class="ci head">'+p.name+' · '+(p.person?p.person.name:'待配置')+'</div>'+
+    '<div class="ci" onclick="openPerson()"><span class="ico" data-icon="user"></span> 更换岗位人员</div>'+
+    '<div class="ci" onclick="openEdit()"><span class="ico" data-icon="edit"></span> 编辑岗位（层级 / 兼并 / 职责考核）</div>'+
+    '<div class="ci" onclick="openDocs()"><span class="ico" data-icon="link"></span> 关联制度与责任书</div>'+
+    (p.required ? '' : '<div class="ci" onclick="toggleFromCtx()"><span class="ico" data-icon="'+(p.enabled?'x':'checkCircle')+'"></span> '+(p.enabled?'禁用该岗位':'恢复该岗位')+'</div>');
+  if(window.__rerenderIcons) window.__rerenderIcons();
+  menu.classList.add('show');
+  const mw = menu.offsetWidth, mh = menu.offsetHeight;
+  let x = e.clientX, y = e.clientY;
+  if(x+mw > innerWidth-8)  x = innerWidth-8-mw;
+  if(y+mh > innerHeight-8) y = innerHeight-8-mh;
+  menu.style.left = x+'px'; menu.style.top = y+'px';
+}
+function hideCtx(){ document.getElementById('ctxMenu').classList.remove('show'); }
+document.addEventListener('click', hideCtx);
+document.addEventListener('scroll', hideCtx, true);
+function toggleFromCtx(){
+  const p = D.togglePost(ctxPostId);
+  if(!p){ toast('总经理、安全员、监控员为强制岗位，不可禁用'); return; }
+  hideCtx(); render();
+  toast(p.enabled ? '岗位「'+p.name+'」已恢复并回到制度内容' : '岗位「'+p.name+'」已禁用，制度内容中已剔除该岗位');
+  markTplRevision((p.enabled?'恢复':'禁用')+'岗位「'+p.name+'」，制度内容已'+(p.enabled?'纳入':'剔除'));
+}
+
+/* ============ 弹窗通用 ============ */
+function closeM(id){ document.getElementById(id).classList.remove('show'); }
+/* 岗位调整 → 标记范本待修订（供企业范本管理页进入时提示保存/另存为） */
+function markTplRevision(desc){
+  try{ localStorage.setItem('rd_ent_tpl_revision_v1', JSON.stringify({ ts:Date.now(), desc:desc||'组织架构调整' })); }catch(e){}
+}
+function toast(msg){
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.style.opacity='1'; t.style.transform='translateY(0)';
+  clearTimeout(t._t); t._t=setTimeout(function(){t.style.opacity='0';t.style.transform='translateY(-10px)'},2600);
+}
+function curPost(){ return D.get(ctxPostId); }
+
+/* —— 更换岗位人员（系统已录入人员选取） —— */
+function openPerson(){
+  hideCtx();
+  const p = curPost(); if(!p) return;
+  document.getElementById('mpPost').textContent = p.name+'（'+D.funcLabel(p)+'）';
+  const sel = document.getElementById('mpName');
+  sel.innerHTML = '<option value="">— 待配置 —</option>'+D.people().map(function(u){
+    return '<option value="'+u.id+'" '+(p.person&&p.person.id===u.id?'selected':'')+'>'+u.name+'（'+u.post+'）</option>';
+  }).join('');
+  showPersonInfo();
+  sel.onchange = showPersonInfo;
+  document.getElementById('mPerson').classList.add('show');
+}
+function showPersonInfo(){
+  const u = D.people().filter(function(x){ return x.id===document.getElementById('mpName').value; })[0];
+  document.getElementById('mpInfo').textContent = u ? ('手机号 '+u.phone+' · 小程序账号已开通 · 一人一档自动挂接本岗位') : '';
+}
+function savePerson(){
+  const p = curPost(); if(!p) return;
+  D.assignPerson(p.id, document.getElementById('mpName').value);
+  closeM('mPerson'); render();
+  const cur = D.get(p.id).person;
+  toast(cur ? '岗位「'+p.name+'」人员已设置为 '+cur.name+'，已联动一人一档 / 责任书待签' : '岗位「'+p.name+'」人员已清空（待配置）');
+  markTplRevision('调整岗位「'+(p.name)+'」人员为 '+(cur?cur.name:'待配置'));
+}
+
+/* —— 编辑岗位 —— */
+let editMerges = [];
+function openEdit(){
+  hideCtx();
+  const p = curPost(); if(!p) return;
+  document.getElementById('meTitle').textContent = '编辑岗位 · '+p.name;
+  document.getElementById('meName').value = p.name;
+  document.getElementById('meFunc').value = D.funcLabel(p);
+  /* 上级岗位：排除自身与下级（防环） */
+  const ban = [p.id].concat(D.descendants(p.id));
+  const parentSel = document.getElementById('meParent');
+  const gm = D.getByFunc('gm');
+  parentSel.innerHTML = '<option value="">— 直属公司（顶层） —</option>'+D.posts().filter(function(x){
+    return x.enabled && x.id!==p.id && ban.indexOf(x.id)<0;
+  }).map(function(x){ return '<option value="'+x.id+'" '+(p.parentId===x.id?'selected':'')+'>'+x.name+'</option>'; }).join('');
+  if(!p.parentId) parentSel.value = '';
+  /* 兼并：总经理、安全员不可兼并他人职能，也不可被兼并 */
+  const canMerge = p.funcKey!=='gm' && p.funcKey!=='safe';
+  document.getElementById('meMergeWrap').style.display = canMerge ? '' : 'none';
+  editMerges = (p.mergedIds||[]).slice();
+  document.getElementById('meMerge').innerHTML = canMerge ? D.mergeable(p.id).map(function(x){
+    const on = editMerges.indexOf(x.funcKey)>=0;
+    return '<label class="'+(on?'on':'')+'"><input type="checkbox" value="'+x.funcKey+'" '+(on?'checked':'')+' onchange="toggleMerge(this)"> '+x.name+'（'+D.funcLabel(x)+'）</label>';
+  }).join('') : '';
+  document.getElementById('mePerm').value = p.permissions||'';
+  document.getElementById('meGoals').value = p.goals||'';
+  document.getElementById('meDuties').value = p.duties||'';
+  document.getElementById('meAssess').value = p.assess||'';
+  document.getElementById('mEdit').classList.add('show');
+}
+function toggleMerge(cb){
+  const k = cb.value;
+  if(cb.checked){ if(editMerges.indexOf(k)<0) editMerges.push(k); }
+  else editMerges = editMerges.filter(function(x){ return x!==k; });
+  cb.parentNode.classList.toggle('on', cb.checked);
+}
+function saveEdit(){
+  const p = curPost(); if(!p) return;
+  const name = document.getElementById('meName').value.trim();
+  if(!name){ toast('请填写岗位名称'); return; }
+  const parentId = document.getElementById('meParent').value || null;
+  if(parentId===p.id){ toast('上级岗位不能选择自身'); return; }
+  D.updatePost(p.id,{ name:name, parentId:parentId,
+    permissions:document.getElementById('mePerm').value.trim(),
+    goals:document.getElementById('meGoals').value.trim(),
+    duties:document.getElementById('meDuties').value.trim(),
+    assess:document.getElementById('meAssess').value.trim() });
+  /* 兼并处理：总经理/安全员不可参与 */
+  if(p.funcKey!=='gm' && p.funcKey!=='safe'){
+    const before = (p.mergedIds||[]).slice();
+    editMerges.forEach(function(k){
+      if(before.indexOf(k)<0){
+        const t = D.getByFunc(k);
+        if(t) D.mergeInto(p.id, t.id);
+      }
+    });
+    /* 取消兼并：恢复被兼并岗位 */
+    before.forEach(function(k){
+      if(editMerges.indexOf(k)<0){
+        const t = D.getByFunc(k);
+        if(t){ t.mergedIds=[]; t.enabled=true; delete t.mergedInto; }
+        D.updatePost(p.id,{ mergedIds: editMerges.slice() });
+      }
+    });
+    D.updatePost(p.id,{ mergedIds: editMerges.slice() });
+  }
+  closeM('mEdit'); render();
+  toast('岗位「'+name+'」已保存，制度与责任书已双向联动');
+  markTplRevision('调整岗位「'+name+'」（层级/兼并/目标职责考核）');
+}
+
+/* —— 关联制度与责任书 —— */
+function openDocs(){
+  hideCtx();
+  const p = curPost(); if(!p) return;
+  document.getElementById('mcPost').textContent = p.name+'（'+D.funcLabel(p)+'）'+(D.inDoc(p.id)?'':'　⚠ 当前已禁用，不在制度正文中出现');
+  const cur = p.docs||[];
+  document.getElementById('mcDocs').innerHTML = DOC_POOL.map(function(d){
+    const on = cur.indexOf(d)>=0;
+    return '<label class="'+(on?'on':'')+'"><input type="checkbox" value="'+d+'" '+(on?'checked':'')+' onchange="this.parentNode.classList.toggle(\'on\',this.checked)"> '+d+'</label>';
+  }).join('');
+  document.getElementById('mDocs').classList.add('show');
+}
+function saveDocs(){
+  const p = curPost(); if(!p) return;
+  const arr = Array.from(document.querySelectorAll('#mcDocs input:checked')).map(function(i){ return i.value; });
+  D.updatePost(p.id,{ docs: arr });
+  closeM('mDocs');
+  toast('岗位「'+p.name+'」已关联 '+arr.length+' 项制度 / 责任书，未签的已生成待签任务');
+  markTplRevision('调整岗位「'+p.name+'」关联制度 / 责任书（'+arr.length+' 项）');
+}
+
+/* —— 责任制联动预览 —— */
+function openDocPrev(){
+  const rows = D.responsibilityDoc();
+  document.getElementById('docPrevBody').innerHTML =
+    '<h4>'+D.COMPANY()+' · 全员安全生产责任制（自动生成）</h4>'+
+    rows.map(function(r,i){
+      return '<h4>'+(i+1)+'、'+r.name+'（'+r.label+'）</h4>'+
+        (r.merged.length?'<div class="mgd">※ 本岗位兼并以下职能：'+r.merged.join('、')+'</div>':'')+
+        '<div class="sec">【安全目标】'+r.goals+'</div>'+
+        '<div class="sec">【岗位职责】'+r.duties+'</div>'+
+        '<div class="sec">【考核标准】'+r.assess+'</div>';
+    }).join('')+
+    '<div class="ban">※ 已从本制度剔除的岗位：'+
+      (D.posts().filter(function(p){ return !p.enabled; }).map(function(p){ return p.name; }).join('、')||'无')+'</div>';
+  document.getElementById('mDocPrev').classList.add('show');
+}
+
+/* —— 重置演示数据 —— */
+function resetOrg(){
+  if(!confirm('确认重置组织架构演示数据？（将按当前模板重新初始化）')) return;
+  localStorage.removeItem('rd_org_data_v2');
+  location.reload();
+}
+
+/* 跨页联动 */
+window.addEventListener('storage', function(e){
+  if(e.key==='rd_org_data_v2') render();
+});
+
+OC.inject();
+render();
+</script>
+</body></html>

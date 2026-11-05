@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>新企业接入引导</title>
+<link rel="stylesheet" href="../assets/common.css">
+<link rel="stylesheet" href="../assets/pc.css">
+<style>
+  body{background:#eef1f5}
+  .og-wrap{max-width:1080px;margin:0 auto}
+  /* 阶段条 */
+  .stepper{display:flex;gap:6px;overflow-x:auto;padding:4px 0 10px}
+  .step-pill{flex:1;min-width:130px;cursor:pointer;border:1px solid var(--border);background:#fff;border-radius:12px;padding:12px 14px;transition:.15s;position:relative}
+  .step-pill:hover{border-color:var(--primary);box-shadow:0 2px 10px rgba(30,64,175,.12)}
+  .step-pill .sp-no{font-size:12px;color:var(--primary);font-weight:700}
+  .step-pill .sp-t{font-size:15px;font-weight:700;margin-top:2px}
+  .step-pill .sp-d{font-size:12px;color:var(--text-3);margin-top:3px}
+  .stage{scroll-margin-top:16px;background:#fff;border:1px solid var(--border);border-radius:14px;padding:22px 24px;margin-bottom:16px;box-shadow:0 2px 10px rgba(20,28,43,.05)}
+  .stage h2{font-size:19px;display:flex;align-items:center;gap:10px;margin-bottom:4px}
+  .stage h2 .badge{background:var(--primary);color:#fff;font-size:13px;padding:3px 10px;border-radius:20px;font-weight:700}
+  .stage .lead{color:var(--text-2);font-size:14px;margin:6px 0 16px;line-height:1.7}
+  .value-note{background:#FFF7ED;border:1px solid #FED7AA;border-radius:10px;padding:12px 14px;font-size:13.5px;color:#9A3412;line-height:1.7;margin-bottom:16px}
+  .value-note b{color:#7C2D12}
+  /* 静态资料分组卡 */
+  .grp-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+  .grp{border:1px solid var(--border);border-radius:12px;padding:14px 16px;background:#FBFCFE}
+  .grp h3{font-size:15px;margin-bottom:10px;display:flex;align-items:center;gap:8px}
+  .grp h3 .dot{width:9px;height:9px;border-radius:50%;background:var(--primary)}
+  .it{display:flex;align-items:center;gap:8px;padding:7px 0;border-bottom:1px dashed #EDF1F6;font-size:13.5px}
+  .it:last-child{border-bottom:none}
+  .it .nm{flex:1}
+  .it .st{font-size:11.5px;padding:2px 8px;border-radius:8px;white-space:nowrap;font-weight:600}
+  .st.todo{background:#FEF2F2;color:#B91C1C}
+  .st.gen{background:var(--brand-100);color:var(--brand-600)}
+  .st.arch{background:#F0FDF4;color:#15803D}
+  /* 规则框 */
+  .rule{background:#EFF6FF;border:1px solid #BFDBFE;border-radius:12px;padding:16px 18px;margin-bottom:16px}
+  .rule .rt{font-weight:700;color:#1E40AF;font-size:15px;margin-bottom:8px;display:flex;align-items:center;gap:8px}
+  .rule ul{margin:0;padding-left:20px;font-size:13.5px;color:#1E3A8A;line-height:1.9}
+  .rule code{background:#DBEAFE;padding:1px 7px;border-radius:6px;font-size:12.5px;color:#1E3A8A;font-weight:700}
+  table.matrix{width:100%;border-collapse:collapse;font-size:13.5px}
+  table.matrix th,table.matrix td{border:1px solid var(--border);padding:10px 12px;text-align:left;vertical-align:top}
+  table.matrix th{background:#F1F5F9;font-weight:700;color:var(--text-2)}
+  table.matrix td .role{font-weight:700;color:#1E40AF}
+  .ops{display:flex;gap:10px;flex-wrap:wrap;margin-top:16px}
+  .chk{display:flex;align-items:center;gap:8px;font-size:13.5px;color:var(--text-2);background:#F8FAFC;border:1px solid var(--border);border-radius:8px;padding:8px 12px}
+  .recap{background:#0F172A;color:#E2E8F0;border-radius:14px;padding:18px 22px;font-size:13.5px;line-height:1.9}
+  .recap b{color:#93C5FD}
+  @media(max-width:760px){.grp-grid{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<div class="pc-page">
+  <div class="pc-header">
+    <div>
+      <h1>新企业接入引导</h1>
+      <div class="desc">一家新客户从签约到上线运营的完整路径 · 系统自动驱动，告别手工台账与资料散落</div>
+    </div>
+    <div class="actions">
+      <span class="badge-tag" style="background:#EFF6FF;color:#1E40AF;padding:6px 12px;border-radius:20px;font-weight:700">服务商 / 超级管理员 视角</span>
+    </div>
+  </div>
+
+  <div class="og-wrap">
+    <!-- 阶段条 -->
+    <div class="stepper">
+      <div class="step-pill" onclick="go('s0')"><div class="sp-no">阶段 0</div><div class="sp-t">签约与开户</div><div class="sp-d">建企业主账号</div></div>
+      <div class="step-pill" onclick="go('s1')"><div class="sp-no">阶段 1</div><div class="sp-t">资料采集</div><div class="sp-d">自助填报 / 代录</div></div>
+      <div class="step-pill" onclick="go('s2')"><div class="sp-no">阶段 2</div><div class="sp-t">静态资料整改</div><div class="sp-d">满足法规+贴合实际</div></div>
+      <div class="step-pill" onclick="go('s3')"><div class="sp-no">阶段 3</div><div class="sp-t">小程序账号</div><div class="sp-d">全员自动开通</div></div>
+      <div class="step-pill" onclick="go('s4')"><div class="sp-no">阶段 4</div><div class="sp-t">制度台账归档</div><div class="sp-d">11 盒自检</div></div>
+      <div class="step-pill" onclick="go('s5')"><div class="sp-no">阶段 5</div><div class="sp-t">日常运营</div><div class="sp-d">持续闭环</div></div>
+    </div>
+
+    <!-- 阶段0 -->
+    <div class="stage" id="s0">
+      <h2><span class="badge">阶段 0</span>签约与开户（服务商侧）</h2>
+      <div class="lead">商务签约落定后，服务商在企业管理系统一键开户，系统自动完成账号初始化。</div>
+      <div class="grp-grid">
+        <div class="grp"><h3><span class="dot"></span>开户动作</h3>
+          <div class="it"><span class="nm">商务签约（营运类型 / 套餐 / 合同期）</span></div>
+          <div class="it"><span class="nm">新增企业 → <b>自动创建企业主账号</b></span><span class="st gen">用户名=企业全称</span></div>
+          <div class="it"><span class="nm">企业主账号初始密码</span><span class="st gen">888888</span></div>
+          <div class="it"><span class="nm">默认子账号：安全员 / 驾驶员</span><span class="st gen">已预置</span></div>
+        </div>
+        <div class="grp"><h3><span class="dot"></span>信息录入与开通</h3>
+          <div class="it"><span class="nm">营业执照上传 · <b>OCR 智能识别</b>填充法人/有效期</span></div>
+          <div class="it"><span class="nm">补全联系人、运输类型、客户分组</span></div>
+          <div class="it"><span class="nm">配置合同期、功能模块开通范围</span></div>
+        </div>
+      </div>
+      <div class="ops"><button class="btn btn-primary" onclick="window.parent.gotoPage('pc/provider_enterprise.html')"><span class="ico" data-icon="building"></span> 去企业管理开户</button></div>
+    </div>
+
+    <!-- 阶段1 -->
+    <div class="stage" id="s1">
+      <h2><span class="badge">阶段 1</span>资料采集（自助填报 + 代录）</h2>
+      <div class="lead">两类方式并行：懂系统的客户用小程序三步自助填报；不会用的客户由服务商代录（上传照片 + 复用历史签字直接生成）。采集完成前，小程序仅显示接入引导，业务功能锁定。</div>
+      <div class="value-note">📋 <b>诊断前置：</b>采集第三步「安全管理现状」通过选择题快速判断客户底子（制度/人员/台账/三检/培训/隐患）。<b>客户往往正是因为原有资料不规范、不齐全，才产生与我们签约的意愿</b>——诊断结果直接驱动下一阶段「静态资料全面整改」。</div>
+      <div class="grp-grid">
+        <div class="grp"><h3><span class="dot"></span>小程序三步自助填报</h3>
+          <div class="it"><span class="nm">① 企业基础资料（营业执照拍照）</span><span class="st gen">进度①</span></div>
+          <div class="it"><span class="nm">② 人档 + 车档（姓名/手机号/岗位/车牌）</span><span class="st gen">进度②</span></div>
+          <div class="it"><span class="nm">③ 安全管理现状（选择题 + 自由描述）</span><span class="st todo">待提交</span></div>
+        </div>
+        <div class="grp"><h3><span class="dot"></span>服务商代录（不会用的客户）</h3>
+          <div class="it"><span class="nm">服务商代填企业/人车资料</span></div>
+          <div class="it"><span class="nm">复用企业历史签字，打印手签兜底</span></div>
+          <div class="it"><span class="nm">提交后 PC 端实时查看三块资料</span></div>
+        </div>
+      </div>
+      <div class="ops"><button class="btn btn-outline" onclick="toast('接入初始化引导详见《详细设计/04》三步填报流程')"><span class="ico" data-icon="list"></span> 查看接入初始化引导</button></div>
+    </div>
+
+    <!-- 阶段2 -->
+    <div class="stage" id="s2">
+      <h2><span class="badge">阶段 2</span>静态资料全面整改（核心价值）</h2>
+      <div class="lead">依据监管要求，结合该企业<b>实际的安全管理架构</b>，由服务商全面整改 / 新建以下静态资料——既要满足法规检查，也要贴合企业真实运行情况（而非千篇一律的模板套话）。</div>
+      <div class="value-note">🛠️ <b>为什么是这一步？</b>客户签约的核心诉求就是「把原来不规范、不齐全、应付不了检查的资料，整改成合规且可用的体系」。以下六类资料，构成企业安全生产管理的静态骨架，缺一类都会被监管检查或事故溯源追责。</div>
+
+      <div class="grp-grid">
+        <div class="grp"><h3><span class="dot"></span>① 安全管理架构</h3>
+          <div class="it"><span class="nm">安全管理组织架构图</span><span class="st arch">已归档</span></div>
+          <div class="it"><span class="nm">成立安全生产领导小组的通知</span><span class="st arch">已归档</span></div>
+          <div class="it"><span class="nm">安全生产管理人员任命书</span><span class="st arch">已归档</span></div>
+        </div>
+        <div class="grp"><h3><span class="dot"></span>② 安全生产制度（24 项）</h3>
+          <div class="it"><span class="nm">24 项制度 YT-ZD01 ~ YT-ZD24 + 目录</span><span class="st gen">范本生成</span></div>
+          <div class="it"><span class="nm">安全生产责任制（与责任书联动）</span><span class="st gen">联动</span></div>
+          <div class="it"><span class="nm">安全生产操作规程 / 风险评价手册</span><span class="st gen">范本生成</span></div>
+        </div>
+        <div class="grp"><h3><span class="dot"></span>③ 应急预案体系</h3>
+          <div class="it"><span class="nm">综合应急预案</span><span class="st arch">已归档</span></div>
+          <div class="it"><span class="nm">专项应急预案 / 现场处置方案</span><span class="st arch">已归档</span></div>
+          <div class="it"><span class="nm">风险评估报告 / 应急资源调查</span><span class="st arch">已归档</span></div>
+          <div class="it"><span class="nm">应急演练计划</span><span class="st gen">范本生成</span></div>
+        </div>
+        <div class="grp"><h3><span class="dot"></span>④ 各类计划</h3>
+          <div class="it"><span class="nm">安全生产教育培训计划</span><span class="st gen">范本生成</span></div>
+          <div class="it"><span class="nm">安全生产费用提取和使用计划</span><span class="st gen">范本生成</span></div>
+          <div class="it"><span class="nm">隐患排查计划 / 安全会议计划</span><span class="st gen">范本生成</span></div>
+        </div>
+        <div class="grp"><h3><span class="dot"></span>⑤ 人员「三书」</h3>
+          <div class="it"><span class="nm">安全生产责任书（按岗位 · 联动责任制）</span><span class="st gen">联动</span></div>
+          <div class="it"><span class="nm">安全生产承诺书</span><span class="st gen">范本生成</span></div>
+          <div class="it"><span class="nm">岗位职业病危害因素告知书</span><span class="st gen">范本生成</span></div>
+          <div class="it"><span class="nm">自然年度（每年 1 月 1 日）重签</span><span class="st todo">到期预警</span></div>
+        </div>
+        <div class="grp"><h3><span class="dot"></span>⑥ 岗前培训</h3>
+          <div class="it"><span class="nm">新员工三级安全教育</span><span class="st arch">已归档</span></div>
+          <div class="it"><span class="nm">岗前安全培训记录</span><span class="st arch">已归档</span></div>
+          <div class="it"><span class="nm">岗前培训考核（合格方可上岗）</span><span class="st arch">已归档</span></div>
+        </div>
+      </div>
+      <div class="ops"><button class="btn btn-primary" onclick="window.parent.gotoPage('pc/template_manager.html')"><span class="ico" data-icon="fileText"></span> 去范本管理生成制度/三书</button></div>
+    </div>
+
+    <!-- 阶段3 -->
+    <div class="stage" id="s3">
+      <h2><span class="badge">阶段 3</span>小程序全员账号开通（自动化）</h2>
+      <div class="lead">人员录入即开通，无需单独建号。不同岗位按自身职责，在小程序端看到不同的功能。</div>
+      <div class="rule">
+        <div class="rt"><span class="ico" data-icon="smartphone"></span> 开通规则（自动执行）</div>
+        <ul>
+          <li>录入人员信息（姓名 / <b>手机号</b> / 岗位）时，<b>所有岗位自动开通</b>小程序端账号；</li>
+          <li>小程序登录账号 = <b>人员手机号</b>，初始密码 = <code>123456</code>；</li>
+          <li>不同岗位根据其<b>职责</b>显示不同功能（见下表），权限与 PC 端组织权限同源；</li>
+          <li>人员离职 / 停用 → 小程序账号<b>同步停用</b>，人档车档保留 ≥ 3 年；启用后账号恢复。</li>
+        </ul>
+      </div>
+      <table class="matrix">
+        <thead><tr><th style="width:160px">岗位（职责）</th><th>小程序端可见功能</th></tr></thead>
+        <tbody>
+          <tr><td><span class="role">驾驶员 / 押运员</span></td><td>一日三检、行车日志、报修车、报隐患、签文件（责任书/承诺书）、查考核、学习中心（视频+答题）</td></tr>
+          <tr><td><span class="role">安全员 / 安全管理人员</span></td><td>督办隐患、证件到期提醒、三检统计、下发任务、安全数据看板、会议管理、人员管理</td></tr>
+          <tr><td><span class="role">企业管理员</span></td><td>全部管理功能 + 企业安全管理驾驶舱（数据总览 / 预警 / 待办）</td></tr>
+        </tbody>
+      </table>
+      <div class="ops"><button class="btn btn-primary" onclick="window.parent.gotoPage('pc/person.html')"><span class="ico" data-icon="users"></span> 去人员基础信息（看自动开通）</button><button class="btn btn-outline" onclick="window.parent.gotoPage('mini/login.html')"><span class="ico" data-icon="phone"></span> 体验小程序登录</button></div>
+    </div>
+
+    <!-- 阶段4 -->
+    <div class="stage" id="s4">
+      <h2><span class="badge">阶段 4</span>制度台账归档就位</h2>
+      <div class="lead">范本管理定制 / 推送至企业 → 企业按清单签署 → 电子档案柜 11 盒归档，盒内按文件夹分组，缺项红黄绿一目了然，可一键下载整套台账 PDF。</div>
+      <div class="ops"><button class="btn btn-primary" onclick="window.parent.gotoPage('pc/archive_flow.html')"><span class="ico" data-icon="archive"></span> 去电子档案柜自检</button></div>
+    </div>
+
+    <!-- 阶段5 -->
+    <div class="stage" id="s5">
+      <h2><span class="badge">阶段 5</span>日常运营（持续闭环）</h2>
+      <div class="lead">资料就位后进入常态化运营，各模块持续产生数据并闭环：</div>
+      <div class="grp-grid">
+        <div class="grp"><h3><span class="dot"></span>日常业务</h3>
+          <div class="it"><span class="nm">一日三检（司机每日出车前后）</span></div>
+          <div class="it"><span class="nm">安全会议（季度/月度四段式留痕）</span></div>
+          <div class="it"><span class="nm">培训教育（课程库选课→看视频+答题）</span></div>
+          <div class="it"><span class="nm">隐患排查治理（上报-整改-验收）</span></div>
+        </div>
+        <div class="grp"><h3><span class="dot"></span>合规与年审</h3>
+          <div class="it"><span class="nm">动态监控合规闭环（台账留存→违规→靶向教育）</span></div>
+          <div class="it"><span class="nm">应急管理（预案+演练+器材）</span></div>
+          <div class="it"><span class="nm">事故管理（快报+统计）</span></div>
+          <div class="it"><span class="nm">自然年度重签 + 年审续费</span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 关键规则回顾 -->
+    <div class="recap">
+      <b>一句话回顾新企业接入：</b>签约开户（自动建企业主账号 888888）→ 资料采集（小程序自助 / 服务商代录，先诊断后整改）→ <b>静态资料全面整改</b>（架构 / 24 项制度 / 预案 / 各类计划 / 三书 / 岗前培训，既合规又贴合实际）→ <b>小程序全员自动开通</b>（手机号登录、初始密码 123456、按岗位显功能）→ 制度台账 11 盒归档自检 → 进入日常运营闭环。
+    </div>
+    <div style="height:24px"></div>
+  </div>
+</div>
+
+<script src="../assets/icons.js"></script>
+<script>
+function go(id){ const el=document.getElementById(id); if(el) el.scrollIntoView({behavior:'smooth',block:'start'}); }
+function toast(m){ if(window.parent&&window.parent.toast) window.parent.toast(m); else alert(m); }
+</script>
+</body>
+</html>

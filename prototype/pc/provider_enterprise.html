@@ -1,0 +1,698 @@
+<!DOCTYPE html>
+<html lang="zh-CN"><head><meta charset="UTF-8"><title>服务商 · 企业管理</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="stylesheet" href="../assets/common.css"><link rel="stylesheet" href="../assets/pc.css">
+<style>
+  body{background:var(--bg)}
+  /* 顶部工具栏（服务商选择 + 全局操作） */
+  .topbar{display:flex;align-items:center;gap:12px;background:#fff;border-bottom:1px solid var(--border);padding:12px 20px;flex-wrap:wrap}
+  .topbar .lbl{font-size:13px;color:var(--text-2);font-weight:600;white-space:nowrap}
+  .topbar select{min-height:38px;padding:7px 12px;border:1px solid var(--border-strong);border-radius:var(--r-sm);font-size:14px;background:#fff;min-width:220px}
+  .topbar .sel-meta{font-size:13px;color:var(--text-3);display:flex;gap:14px;flex-wrap:wrap}
+  .topbar .sel-meta b{color:var(--text);font-weight:700}
+  .topbar .spacer{flex:1}
+  .workspace{display:flex;height:calc(100vh - 62px);overflow:hidden}
+  /* 左侧企业列表 */
+  .ent-list{width:320px;flex-shrink:0;background:#fff;border-right:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden}
+  .ent-list .search{padding:12px;border-bottom:1px solid var(--border)}
+  .ent-list .search input{width:100%;min-height:38px;padding:8px 12px;border:1px solid var(--border-strong);border-radius:var(--r-sm);font-size:14px}
+  .ent-list .filter{display:grid;grid-template-columns:1fr 1fr;gap:8px;padding:10px 12px;border-bottom:1px solid var(--border)}
+  .ent-list .filter select{min-height:34px;padding:6px 10px;border:1px solid var(--border-strong);border-radius:var(--r-sm);font-size:13px;width:100%}
+  .ent-list .scroll{flex:1;overflow-y:auto}
+  .ent-item{display:flex;align-items:center;gap:10px;padding:12px 16px;border-bottom:1px solid var(--border);cursor:pointer;transition:.12s;border-left:3px solid transparent}
+  .ent-item:hover{background:#f8fafc}
+  .ent-item.on{background:#e8f1fc;border-left-color:var(--blue-800)}
+  .ent-item .ei-main{flex:1;min-width:0}
+  .ent-item .ei-name{font-weight:600;font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .ent-item .ei-sub{font-size:12px;color:var(--text-3);margin-top:3px;display:flex;gap:10px;align-items:center}
+  .ent-list .list-foot{padding:10px 12px;border-top:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;font-size:12.5px;color:var(--text-3)}
+  .ent-list .list-foot button{min-width:30px;min-height:30px;border:1px solid var(--border-strong);border-radius:6px;background:#fff;cursor:pointer}
+  .ent-list .list-foot button:disabled{opacity:.4;cursor:not-allowed}
+  .ent-list .list-foot button.on{background:var(--blue-800);color:#fff;border-color:var(--blue-800)}
+  /* 右侧详情 */
+  .detail{flex:1;overflow-y:auto}
+  .detail-head{display:flex;align-items:center;gap:14px;background:#fff;border-bottom:1px solid var(--border);padding:14px 22px;flex-wrap:wrap}
+  .detail-head .dh-name{font-size:18px;font-weight:700;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+  .detail-head .dh-acts{margin-left:auto;display:flex;gap:8px;flex-wrap:wrap}
+  .tabs{display:flex;gap:4px;border-bottom:1px solid var(--border);background:#fff;padding:0 18px;overflow-x:auto}
+  .tab{padding:12px 16px;font-size:14px;color:var(--text-2);cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-1px;white-space:nowrap;font-weight:500;display:flex;align-items:center;gap:7px}
+  .tab:hover{color:var(--blue-800)}
+  .tab.active{color:var(--blue-800);border-bottom-color:var(--blue-800);font-weight:600}
+  .tab .badge{margin-left:2px;font-size:11px;padding:1px 8px;border-radius:10px;background:var(--blue-100);color:var(--blue-900);font-weight:700}
+  .tab .badge.warn{background:#fee2e2;color:var(--danger-ink)}
+  .panel-wrap{padding:20px 22px}
+  .panel{display:none}
+  .panel.active{display:block}
+  .role-hint{font-size:13px;border-radius:10px;padding:12px 16px;margin-bottom:16px;line-height:1.6}
+  .role-hint.provider{background:var(--blue-50);border:1px solid var(--blue-100);color:var(--blue-900)}
+  .role-hint.enterprise{background:#f0fdf4;border:1px solid #bbf7d0;color:#15803d}
+  .role-hint.warn{background:#fffbeb;border:1px solid #fde68a;color:#b45309}
+  /* 信息卡 */
+  .info-card{display:grid;grid-template-columns:1fr 1fr;gap:0;border:1px solid var(--border);border-radius:var(--r-lg);overflow:hidden;background:#fff;margin-bottom:18px}
+  .info-card .ic-l{padding:22px 24px;border-right:1px solid var(--border)}
+  .info-card .ic-r{padding:22px 24px;background:var(--bg)}
+  .kv{display:flex;justify-content:space-between;padding:9px 0;border-bottom:1px dashed var(--border);font-size:14px}
+  .kv:last-child{border-bottom:none}
+  .kv .k{color:var(--text-2)}
+  .kv .v{font-weight:600;color:var(--text)}
+  .mini-h{font-size:15px;font-weight:700;margin:0 0 12px;display:flex;align-items:center;gap:8px}
+  .mini-h .ico{color:var(--blue-800)}
+  .mod-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:12px}
+  .mod-card{display:flex;align-items:center;gap:12px;background:#fff;border:1px solid var(--border);border-radius:var(--r-lg);padding:14px 16px}
+  .mod-card .mc-ic{width:40px;height:40px;border-radius:10px;background:var(--blue-50);color:var(--blue-800);display:flex;align-items:center;justify-content:center;font-size:19px;flex-shrink:0}
+  .mod-card .mc-name{font-weight:600;font-size:14px}
+  .mod-card .mc-sub{font-size:12px;color:var(--text-3);margin-top:2px}
+  .switch{position:relative;width:46px;height:26px;flex-shrink:0;cursor:pointer}
+  .switch input{opacity:0;width:0;height:0}
+  .switch .sl{position:absolute;inset:0;background:#cbd5e1;border-radius:20px;transition:.2s}
+  .switch .sl:before{content:"";position:absolute;width:20px;height:20px;left:3px;top:3px;background:#fff;border-radius:50%;transition:.2s;box-shadow:0 1px 3px rgba(0,0,0,.2)}
+  .switch input:checked + .sl{background:var(--blue-800)}
+  .switch input:checked + .sl:before{transform:translateX(20px)}
+  /* 人车 */
+  .split-2{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+  .table tbody tr.retained{background:#f8fafc;color:var(--text-3)}
+  .table tbody tr.retained td:first-child{box-shadow:inset 3px 0 0 var(--border-strong)}
+  /* 待办 */
+  .todo-item{display:flex;align-items:center;gap:12px;padding:12px 16px;background:#fff;border:1px solid var(--border);border-radius:var(--r-lg);margin-bottom:10px}
+  .todo-item.done{opacity:.6}
+  .todo-item.done .t-text{text-decoration:line-through}
+  .todo-item .t-check{width:22px;height:22px;flex-shrink:0;cursor:pointer;color:var(--text-3)}
+  .todo-item.done .t-check{color:var(--ok-ink)}
+  .todo-item .t-text{flex:1;font-size:14.5px}
+  .todo-item .t-text .t-meta{font-size:12px;color:var(--text-3);margin-top:3px;display:flex;gap:12px;flex-wrap:wrap}
+  /* 卷子 */
+  .paper-card{border:1px solid var(--border);border-radius:var(--r-lg);padding:14px 16px;margin-bottom:12px;background:#fff}
+  .paper-card .pc-head{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
+  .paper-card .pc-name{font-weight:700;font-size:15px;display:flex;align-items:center;gap:8px}
+  .paper-card .pc-acts{display:flex;gap:6px}
+  .bind-tag{display:inline-flex;align-items:center;gap:4px;padding:3px 10px;border-radius:6px;background:var(--blue-100);color:var(--blue-900);font-size:12.5px;font-weight:600}
+  /* 弹窗 */
+  .modal{position:fixed;inset:0;background:rgba(15,23,42,.45);display:none;align-items:center;justify-content:center;z-index:200;padding:20px}
+  .modal.show{display:flex}
+  .modal-box{background:#fff;border-radius:var(--r-xl);width:min(560px,100%);max-height:90vh;overflow-y:auto;box-shadow:var(--shadow-lg)}
+  .modal-head{display:flex;align-items:center;justify-content:space-between;padding:18px 22px;border-bottom:1px solid var(--border);font-size:17px;font-weight:700}
+  .modal-head .x{cursor:pointer;color:var(--text-3);font-size:22px;line-height:1}
+  .modal-body{padding:20px 22px}
+  .modal-foot{padding:14px 22px;border-top:1px solid var(--border);display:flex;justify-content:flex-end;gap:10px}
+  .empty{padding:30px;text-align:center;color:var(--text-3);font-size:14px}
+  @media(max-width:900px){.info-card,.split-2{grid-template-columns:1fr}.ent-list{width:260px}}
+</style></head><body>
+
+<div class="topbar">
+  <span class="lbl" id="topbarLabel">当前服务商</span>
+  <select id="providerSel" onchange="switchProvider(this.value)"></select>
+  <div class="sel-meta" id="selMeta"></div>
+  <div class="spacer"></div>
+  <button class="btn btn-outline btn-sm" onclick="resetDemoData()"><span class="ico" data-icon="rotateCcw"></span> 重置演示数据</button>
+  <button class="btn btn-primary btn-sm" onclick="openEntModal()"><span class="ico" data-icon="plus"></span> 新增企业</button>
+</div>
+
+<div class="workspace">
+  <!-- 左侧企业列表 -->
+  <aside class="ent-list">
+    <div class="search"><input type="text" id="entSearch" placeholder="搜索企业名称 / 信用代码" oninput="renderEntList()"></div>
+    <div class="filter">
+      <select id="regionFilter" onchange="renderEntList()"></select>
+      <select id="cargoFilter" onchange="renderEntList()"></select>
+      <select id="groupFilter" onchange="renderEntList()"></select>
+      <select id="statusFilter" onchange="renderEntList()">
+        <option value="">全部状态</option><option value="正常">正常</option><option value="禁用">禁用</option>
+      </select>
+    </div>
+    <div class="scroll" id="entList"></div>
+    <div class="list-foot">
+      <span id="listInfo">共 0 家</span>
+      <div style="display:flex;gap:4px">
+        <button onclick="prevPage()">‹</button><span id="pageInfo" style="padding:0 6px">1/1</span><button onclick="nextPage()">›</button>
+      </div>
+    </div>
+  </aside>
+
+  <!-- 右侧详情 -->
+  <div class="detail" id="detail">
+    <div class="detail-head">
+      <div class="dh-name" id="dhName">请选择企业</div>
+      <div class="dh-acts" id="dhActs"></div>
+    </div>
+    <div class="tabs" id="detailTabs"></div>
+    <div class="panel-wrap" id="panelWrap"></div>
+  </div>
+</div>
+
+<!-- 弹窗容器 -->
+<div class="modal" id="modal"><div class="modal-box"><div class="modal-head"><span id="mTitle"></span><span class="x" onclick="closeModal()">×</span></div><div class="modal-body" id="mBody"></div><div class="modal-foot" id="mFoot"></div></div></div>
+
+<script src="../assets/icons.js"></script>
+<script src="../assets/ent_data.js"></script>
+<script>
+// ============ 角色感知 ============
+const userRole = localStorage.getItem('userRole') || 'enterprise';
+const isAdmin = userRole === 'admin';
+const isProvider = (userRole === 'provider' || isAdmin);
+const ROLE_LABEL = isAdmin ? '超级管理员' : (isProvider ? '服务商' : '企业');
+
+// ============ 数据源：企业主数据共享层（与企业信息管理共用） ============
+// 读取 window.EntData：服务商 / 企业档案 / 账号池统一维护，任一侧修改另一侧立即一致
+const PROVIDERS = window.EntData.PROVIDERS;
+
+const ALL_MODULES = [
+  {key:'archive', name:'电子档案柜', icon:'folder', sub:'核心归档与台账'},
+  {key:'monitor', name:'动态监控台账', icon:'monitor', sub:'违规识别与靶向教育'},
+  {key:'training', name:'培训教育', icon:'school', sub:'线上学习+月度培训'},
+  {key:'danger', name:'隐患排查治理', icon:'search', sub:'隐患登记与闭环'},
+  {key:'risk', name:'风险辨识管控', icon:'shield', sub:'风险分级管控'},
+  {key:'emergency', name:'应急管理', icon:'alertTriangle', sub:'预案+物资'},
+  {key:'exam', name:'考试题库与学习', icon:'fileText', sub:'视频库+在线考试'},
+  {key:'meeting', name:'安全会议', icon:'megaphone', sub:'会议记录'},
+  {key:'budget', name:'安全投入', icon:'chart', sub:'费用提取与使用'}
+];
+
+// 内存单例（修改后调用 EntData.commit() 落盘）
+let ENTERPRISES = window.EntData.list();
+
+// ============ 状态 ============
+let curProvider = isAdmin ? localStorage.getItem('curProvider') || 'SP01' : 'SP01'; // 服务商视角固定 SP01
+let curEntId = null;
+let curTab = 'info';
+let page = 0; const PAGE_SIZE = 6;
+
+function visibleEnterprises(){
+  let list = ENTERPRISES.filter(e => e.sp === curProvider);
+  // 搜索
+  const kw = (document.getElementById('entSearch').value||'').trim().toLowerCase();
+  if(kw) list = list.filter(e => e.name.toLowerCase().includes(kw) || e.code.toLowerCase().includes(kw));
+  // 筛选：地区 / 货类 / 分组 / 状态
+  const rf = document.getElementById('regionFilter').value;
+  const cf = document.getElementById('cargoFilter').value;
+  const gf = document.getElementById('groupFilter').value;
+  const sf = document.getElementById('statusFilter').value;
+  if(rf) list = list.filter(e => e.region===rf);
+  if(cf) list = list.filter(e => e.cargo===cf);
+  if(gf) list = list.filter(e => e.group===gf);
+  if(sf) list = list.filter(e => e.status===sf);
+  return list;
+}
+
+// ============ 初始化 ============
+function init(){
+  ENTERPRISES = window.EntData.list();
+  // 服务商选择器：超管可切换服务商；服务商只显示自己
+  const psel = document.getElementById('providerSel');
+  if(isAdmin){
+    psel.innerHTML = PROVIDERS.map(p=>`<option value="${p.id}">${p.name}</option>`).join('');
+    psel.value = curProvider;
+  } else {
+    // 服务商视角：固定显示本服务商
+    const self = PROVIDERS[0];
+    psel.innerHTML = `<option value="${self.id}">${self.name}</option>`;
+    psel.disabled = true;
+  }
+  // 筛选下拉：取自共享数据字典（新增企业/新分组自动出现在选项中）
+  const fillFilter = function(id, arr, label){
+    document.getElementById(id).innerHTML = '<option value="">'+label+'</option>' + arr.map(v=>`<option value="${v}">${v}</option>`).join('');
+  };
+  fillFilter('regionFilter', window.EntData.REGIONS, '全部地区');
+  fillFilter('cargoFilter', window.EntData.CARGOS, '全部货类');
+  fillFilter('groupFilter', window.EntData.GROUPS, '全部分组');
+  buildTabs();
+  renderEntList();
+  renderSelMeta();
+  iconsRender();
+}
+
+function switchProvider(v){
+  curProvider = v;
+  if(isAdmin) localStorage.setItem('curProvider', v);
+  curEntId = null;
+  page = 0;
+  renderEntList();
+  renderSelMeta();
+  showEmptyDetail();
+}
+
+function renderSelMeta(){
+  const p = PROVIDERS.find(x=>x.id===curProvider);
+  const list = ENTERPRISES.filter(e=>e.sp===curProvider);
+  if(isAdmin){
+    // 超管：显示服务商名 + 名下企业数量
+    document.getElementById('selMeta').innerHTML = `<b>${p ? p.name : '—'}</b>　·　名下企业 <b>${list.length}</b> 家`;
+  } else {
+    // 服务商：显示服务商名 + 名下企业数量
+    document.getElementById('selMeta').innerHTML = `<b>${p ? p.name : '—'}</b>　·　名下企业 <b>${list.length}</b> 家`;
+  }
+}
+
+// ============ 左侧企业列表 ============
+function renderEntList(){
+  const list = visibleEnterprises();
+  const total = list.length;
+  const pages = Math.max(1, Math.ceil(total/PAGE_SIZE));
+  if(page >= pages) page = pages-1;
+  const slice = list.slice(page*PAGE_SIZE, page*PAGE_SIZE+PAGE_SIZE);
+  const el = document.getElementById('entList');
+  if(slice.length===0){
+    el.innerHTML = '<div class="empty">该服务商下暂无企业</div>';
+  } else {
+    el.innerHTML = slice.map(e=>{
+      const ct = e.contract.status==='有效'?'tag-green':(e.contract.status==='临期'?'tag-yellow':'tag-red');
+      const st = e.status==='正常'?'tag-green':'tag-red';
+      const cg = e.cargo==='危货'?'tag-yellow':'tag-blue';
+      return `<div class="ent-item ${e.id===curEntId?'on':''}" onclick="selectEnt('${e.id}')">
+        <div class="ei-main">
+          <div class="ei-name">${e.name}</div>
+          <div class="ei-sub"><span class="tag ${st}">${e.status}</span><span class="tag ${cg}">${e.cargo}</span><span>${e.region}</span><span class="tag tag-gray">${e.group}</span></div>
+        </div>
+      </div>`;
+    }).join('');
+  }
+  document.getElementById('listInfo').textContent = '共 '+total+' 家';
+  document.getElementById('pageInfo').textContent = (page+1)+'/'+pages;
+}
+function prevPage(){ if(page>0){ page--; renderEntList(); } }
+function nextPage(){ const pages=Math.max(1,Math.ceil(visibleEnterprises().length/PAGE_SIZE)); if(page<pages-1){ page++; renderEntList(); } }
+
+function selectEnt(id){
+  curEntId = id;
+  renderEntList();
+  renderDetail();
+}
+
+function showEmptyDetail(){
+  document.getElementById('dhName').innerHTML = '请选择企业';
+  document.getElementById('dhActs').innerHTML = '';
+  document.getElementById('panelWrap').innerHTML = '<div class="empty">请从左侧选择一家企业以查看与管理其账号、合同、模块、人车、待办、题库</div>';
+  iconsRender();
+}
+
+// ============ 右侧详情 ============
+function buildTabs(){
+  const tabs = [
+    {k:'info', name:'企业信息', icon:'building'},
+    {k:'account', name:'账号管理', icon:'users'},
+    {k:'contract', name:'合同期', icon:'calendar'},
+    {k:'module', name:'功能模块', icon:'table'},
+    {k:'pv', name:'人车管理', icon:'truck'},
+    {k:'todo', name:'待办事项', icon:'clipboard'}
+  ];
+  document.getElementById('detailTabs').innerHTML = tabs.map(t=>
+    `<div class="tab ${t.k==='info'?'active':''}" data-tab="${t.k}" onclick="switchTab('${t.k}')"><span class="ico" data-icon="${t.icon}"></span>${t.name}</div>`).join('');
+}
+function switchTab(k){
+  curTab = k;
+  document.querySelectorAll('#detailTabs .tab').forEach(t=>t.classList.toggle('active', t.getAttribute('data-tab')===k));
+  renderPanel();
+}
+function renderDetail(){
+  const e = cur();
+  if(!e){ showEmptyDetail(); return; }
+  const ct = e.contract.status==='有效'?'tag-green':(e.contract.status==='临期'?'tag-yellow':'tag-red');
+  document.getElementById('dhName').innerHTML =
+    `${e.name} <span class="tag ${e.status==='正常'?'tag-green':'tag-red'}">${e.status}</span>`;
+  const disabled = (e.status==='禁用');
+  document.getElementById('dhActs').innerHTML = `
+    <button class="btn btn-primary btn-sm" onclick="impersonate()" ${disabled?'disabled':''}><span class="ico" data-icon="logOut"></span> 一键登录企业</button>
+    <button class="btn btn-outline btn-sm" onclick="openEntModal('${e.id}')"><span class="ico" data-icon="edit"></span> 编辑企业</button>
+    <button class="btn ${disabled?'btn-success':'btn-danger'} btn-sm" onclick="toggleEntStatus('${e.id}')"><span class="ico" data-icon="${disabled?'undo':'lock'}"></span> ${disabled?'启用企业':'禁用企业'}</button>`;
+  // 更新徽标
+  const todoOpen = e.todos.filter(t=>!t.done).length;
+  const expiring = e.contract.status==='临期'||e.contract.status==='已到期';
+  const tabs = document.querySelectorAll('#detailTabs .tab');
+  tabs.forEach(t=>{
+    if(t.getAttribute('data-tab')==='todo'){ t.querySelector('.badge')?.remove(); if(todoOpen>0){ t.innerHTML = `<span class="ico" data-icon="clipboard"></span>待办事项<span class="badge">${todoOpen}</span>`; } }
+    if(t.getAttribute('data-tab')==='contract'){ t.querySelector('.badge')?.remove(); if(expiring){ t.innerHTML = `<span class="ico" data-icon="calendar"></span>合同期<span class="badge warn">!</span>`; } }
+  });
+  renderPanel();
+}
+function renderPanel(){
+  const e = cur();
+  if(!e) return;
+  const wrap = document.getElementById('panelWrap');
+  const renderers = {
+    info: renderInfo, account: renderAccounts, contract: renderContract,
+    module: renderModules, pv: renderPV, todo: renderTodos
+  };
+  wrap.innerHTML = '';
+  (renderers[curTab])();
+  iconsRender();
+}
+
+function cur(){ return ENTERPRISES.find(e=>e.id===curEntId) || null; }
+
+// ---- 一键登录企业（代登，直接跳转，无弹窗） ----
+function impersonate(){
+  const e = cur(); if(!e) return;
+  localStorage.setItem('impersonating','1');
+  localStorage.setItem('serviceProvider', PROVIDERS.find(p=>p.id===curProvider).name);
+  localStorage.setItem('impersonatedEnt', e.name);
+  localStorage.setItem('userRole','enterprise');
+  if(window.top !== window) window.top.location.href = '../index.html';
+  else location.href = '../index.html';
+}
+
+// ---- 新增 / 编辑企业（档案写入共享数据层，与企业信息管理页同源） ----
+function openEntModal(id){
+  const editing = !!id;
+  const e = editing ? cur() : null;
+  const regionOpts = window.EntData.REGIONS.map(r=>`<option ${e&&e.region===r?'selected':''}>${r}</option>`).join('');
+  const cargoOpts  = window.EntData.CARGOS.map(r=>`<option ${e&&e.cargo===r?'selected':''}>${r}</option>`).join('');
+  const groupOpts  = window.EntData.GROUPS.map(r=>`<option ${e&&e.group===r?'selected':''}>${r}</option>`).join('');
+  const spOpts     = PROVIDERS.map(p=>`<option value="${p.id}" ${e&&e.sp===p.id?'selected':''}>${p.name}</option>`).join('');
+  openModal(editing ? ('编辑企业 · '+e.name) : '新增企业', `
+    <div class="form-item"><label class="form-label"><span class="req">*</span>企业名称</label><input class="form-input" id="f_en" value="${e?e.name:''}" placeholder="如：佛山市南海区某某运输有限公司"></div>
+    <div class="form-item" style="display:flex;gap:12px"><div style="flex:1"><label class="form-label">统一社会信用代码</label><input class="form-input" id="f_ec" value="${e?e.code:''}" placeholder="18 位信用代码"></div>
+      <div style="flex:1"><label class="form-label">法定代表人</label><input class="form-input" id="f_el" value="${e?e.legal:''}" placeholder="与营业执照一致"></div></div>
+    <div class="form-item" style="display:flex;gap:12px"><div style="flex:1"><label class="form-label">联系电话</label><input class="form-input" id="f_ep" value="${e?e.phone:''}" placeholder="手机号码"></div>
+      <div style="flex:1"><label class="form-label">经营类型</label><select class="form-select" id="f_es">
+        <option ${e&&e.scale==='道路货物运输（货运）'?'selected':''}>道路货物运输（货运）</option>
+        <option ${e&&e.scale==='危险货物运输（危运）'?'selected':''}>危险货物运输（危运）</option>
+        <option ${e&&e.scale==='客运（客运）'?'selected':''}>客运（客运）</option></select></div></div>
+    <div class="form-item" style="display:flex;gap:12px"><div style="flex:1"><label class="form-label"><span class="req">*</span>所在地区</label><select class="form-select" id="f_er">${regionOpts}</select></div>
+      <div style="flex:1"><label class="form-label"><span class="req">*</span>运输类型</label><select class="form-select" id="f_ek">${cargoOpts}</select></div>
+      <div style="flex:1"><label class="form-label"><span class="req">*</span>客户分组</label><select class="form-select" id="f_eg">${groupOpts}</select></div></div>
+    <div class="form-item"><label class="form-label">所属服务商</label><select class="form-select" id="f_es2">${spOpts}</select></div>
+    ${editing?'':'<div class="role-hint provider">📄 新增企业将自动创建企业主账号（用户名 = <b>企业名称全称</b>，初始密码 <b>888888</b>），可在「账号管理」中修改。</div>'}
+  `, `<button class="btn btn-outline" onclick="closeModal()">取消</button><button class="btn btn-primary" onclick="saveEnt(${editing?"'"+id+"'":"''"})">${editing?'保存修改':'创建企业'}</button>`);
+}
+function saveEnt(id){
+  const name = document.getElementById('f_en').value.trim();
+  if(!name){ toast('请填写企业名称'); return; }
+  const patch = {
+    name: name,
+    code: document.getElementById('f_ec').value.trim(),
+    legal: document.getElementById('f_el').value.trim() || '—',
+    phone: document.getElementById('f_ep').value.trim() || '—',
+    scale: document.getElementById('f_es').value,
+    region: document.getElementById('f_er').value,
+    cargo: document.getElementById('f_ek').value,
+    group: document.getElementById('f_eg').value,
+    sp: document.getElementById('f_es2').value
+  };
+  if(id){
+    window.EntData.update(id, patch);
+    closeModal(); renderDetail(); renderEntList(); renderSelMeta();
+    toast('企业「'+name+'」档案已更新（企业信息管理页同步可见）');
+  } else {
+    const e = window.EntData.add(patch);
+    closeModal();
+    curProvider = e.sp;
+    document.getElementById('providerSel').value = e.sp;
+    renderEntList(); renderSelMeta();
+    curEntId = e.id; renderDetail();
+    toast('企业「'+e.name+'」已创建，主账号「'+e.name+'」初始密码 888888');
+  }
+}
+
+// ---- 禁用 / 启用企业 ----
+function toggleEntStatus(id){
+  const e = window.EntData.get(id);
+  if(!e) return;
+  const to = (e.status==='正常') ? '禁用' : '正常';
+  if(to==='禁用' && !confirm('确认禁用企业「'+e.name+'」？禁用后该企业全部账号将无法登录，数据与档案继续留存。')) return;
+  window.EntData.toggleStatus(id);
+  ENTERPRISES = window.EntData.list();
+  renderEntList(); renderDetail(); renderSelMeta();
+  toast('企业「'+e.name+'」已'+to+(to==='禁用'?'，账号同步禁用':'，可正常登录'));
+}
+
+// ---- 重置演示数据 ----
+function resetDemoData(){
+  if(!confirm('确认重置演示数据？所有新增企业、档案修改、账号变更将恢复初始状态。')) return;
+  window.EntData.reset();
+  ENTERPRISES = window.EntData.list();
+  curEntId = null; page = 0;
+  renderEntList(); renderSelMeta(); showEmptyDetail();
+  toast('演示数据已重置');
+}
+
+// ---- 1. 企业信息（去掉"模块"字段） ----
+function renderInfo(){
+  const e = cur();
+  const wrap = document.getElementById('panelWrap');
+  wrap.innerHTML = `
+    <div class="role-hint provider">🗂️ <b>${ROLE_LABEL}视角</b>：您正在管理「${e.name}」。可在此查看档案、管理账号合同模块人车待办题库，或一键代登企业。</div>
+    <div class="info-card">
+      <div class="ic-l">
+        <div style="font-size:16px;font-weight:700;margin-bottom:10px">企业档案</div>
+        <div class="kv"><span class="k">统一社会信用代码</span><span class="v">${e.code}</span></div>
+        <div class="kv"><span class="k">法定代表人</span><span class="v">${e.legal}</span></div>
+        <div class="kv"><span class="k">联系电话</span><span class="v">${e.phone}</span></div>
+        <div class="kv"><span class="k">经营类型</span><span class="v">${e.scale}</span></div>
+        <div class="kv"><span class="k">所属服务商</span><span class="v">${(PROVIDERS.find(p=>p.id===e.sp)||{}).name||'—'}</span></div>
+        <div class="kv"><span class="k">所在地区</span><span class="v">${e.region} ${e.dist||''}</span></div>
+      </div>
+      <div class="ic-r">
+        <div style="font-size:16px;font-weight:700;margin-bottom:10px">分类与运营概览</div>
+        <div class="kv"><span class="k">运输类型</span><span class="v"><span class="tag ${e.cargo==='危货'?'tag-yellow':'tag-blue'}">${e.cargo}</span></span></div>
+        <div class="kv"><span class="k">客户分组</span><span class="v"><span class="tag tag-gray">${e.group}</span></span></div>
+        <div class="kv"><span class="k">人员数量</span><span class="v">${e.people.length} 人（在职 ${e.people.filter(p=>p.s==='在岗').length}）</span></div>
+        <div class="kv"><span class="k">车辆数量</span><span class="v">${e.vehicles.length} 辆（在运 ${e.vehicles.filter(v=>v.s==='运营').length}）</span></div>
+        <div class="kv"><span class="k">合同状态</span><span class="v"><span class="tag ${e.contract.status==='有效'?'tag-green':(e.contract.status==='临期'?'tag-yellow':'tag-red')}">${e.contract.status}</span></span></div>
+        <div class="kv"><span class="k">待办未结</span><span class="v">${e.todos.filter(t=>!t.done).length} 项</span></div>
+      </div>
+    </div>`;
+}
+
+// ---- 2. 账号管理（账号池存于共享数据层，企业信息管理页可见同一份） ----
+function renderAccounts(){
+  const e = cur(); const list = e.accounts || [];
+  document.getElementById('panelWrap').innerHTML = `
+    <div class="pc-header" style="margin-bottom:14px">
+      <div><div style="font-size:17px;font-weight:700">企业账号</div><div class="desc">管理「${e.name}」的登录账号；该账号池与「企业信息管理」共用同一份数据</div></div>
+      <div class="actions"><button class="btn btn-primary btn-sm" onclick="openAccountModal()"><span class="ico" data-icon="plus"></span> 新增账号</button></div>
+    </div>
+    <div class="card" style="padding:0;overflow:hidden"><table class="table"><thead><tr><th>用户名</th><th>姓名</th><th>角色</th><th>状态</th><th>最近登录</th><th>操作</th></tr></thead><tbody>
+      ${list.map((a,idx)=>`<tr><td>${a.u}</td><td>${a.n}</td><td>${a.r}</td><td><span class="tag ${a.s==='启用'?'tag-green':'tag-gray'}">${a.s}</span></td><td>${a.last}</td>
+        <td><a class="btn btn-primary btn-sm" onclick="editAccount(${idx})">编辑</a>
+        <a class="btn btn-outline btn-sm" onclick="toggleAcc(${idx})">${a.s==='启用'?'禁用':'启用'}</a>
+        <a class="btn btn-outline btn-sm" onclick="openPwdModal(${idx})"><span class="ico" data-icon="lock"></span> 修改密码</a>
+        <a class="btn btn-outline btn-sm" onclick="removeAcc(${idx})">删除</a></td></tr>`).join('') || '<tr><td colspan="6" class="empty">暂无账号</td></tr>'}
+    </tbody></table><div class="table-foot"><span>共 ${list.length} 条记录</span></div></div>`;
+}
+function toggleAcc(idx){
+  const e=cur(); const a=e.accounts[idx];
+  window.EntData.toggleAccount(e.id, a.u);
+  renderAccounts(); toast('账号「'+a.u+'」已'+(a.s==='启用'?'启用':'禁用'));
+}
+function removeAcc(idx){
+  const e=cur(); const a=e.accounts[idx];
+  if(!confirm('确认删除账号「'+a.u+'」？')) return;
+  window.EntData.removeAccount(e.id, a.u);
+  renderAccounts(); toast('账号已删除');
+}
+function editAccount(idx){
+  const e=cur(); const a=e.accounts[idx];
+  openModal('编辑账号 · '+a.u, `
+    <div class="form-item"><label class="form-label">用户名</label><input class="form-input" value="${a.u}" disabled></div>
+    <div class="form-item"><label class="form-label">姓名</label><input class="form-input" id="f_acc_n" value="${a.n}"></div>
+    <div class="form-item"><label class="form-label">角色</label><select class="form-select" id="f_acc_r"><option ${a.r==='企业管理员'?'selected':''}>企业管理员</option><option ${a.r==='安全员'?'selected':''}>安全员</option><option ${a.r==='驾驶员'?'selected':''}>驾驶员</option><option ${a.r==='监控员'?'selected':''}>监控员</option></select></div>
+  `, `<button class="btn btn-outline" onclick="closeModal()">取消</button><button class="btn btn-primary" onclick="saveAccount(${idx})">保存</button>`);
+}
+function saveAccount(idx){
+  const e=cur(); const a=e.accounts[idx];
+  window.EntData.updateAccount(e.id, a.u, { n:document.getElementById('f_acc_n').value, r:document.getElementById('f_acc_r').value });
+  closeModal(); renderAccounts(); toast('账号信息已更新');
+}
+function openAccountModal(){
+  openModal('新增企业账号 · '+cur().name, `
+    <div class="form-item"><label class="form-label"><span class="req">*</span>用户名</label><input class="form-input" id="f_nu" placeholder="登录账号，如 liqiang"></div>
+    <div class="form-item"><label class="form-label"><span class="req">*</span>姓名</label><input class="form-input" id="f_nn" placeholder="姓名"></div>
+    <div class="form-item"><label class="form-label">角色</label><select class="form-select" id="f_nr"><option>企业管理员</option><option>安全员</option><option>驾驶员</option><option>监控员</option></select></div>
+    <div class="form-item"><label class="form-label">初始密码</label><input class="form-input" id="f_np" value="888888" placeholder="默认初始密码"></div>
+  `, `<button class="btn btn-outline" onclick="closeModal()">取消</button><button class="btn btn-primary" onclick="addAccount()">创建账号</button>`);
+}
+function addAccount(){
+  const u=document.getElementById('f_nu').value.trim(), n=document.getElementById('f_nn').value.trim();
+  if(!u||!n){ toast('请填写用户名和姓名'); return; }
+  const e=cur();
+  window.EntData.addAccount(e.id, { u, n, r:document.getElementById('f_nr').value, s:'启用', last:'—', pwd:document.getElementById('f_np').value||'888888' });
+  closeModal(); renderAccounts(); toast('已为企业「'+e.name+'」创建账号 '+u);
+}
+
+// ---- 修改企业账号密码 ----
+function openPwdModal(idx){
+  const e=cur(); const a=e.accounts[idx];
+  openModal('修改密码 · '+a.u+'（'+e.name+'）', `
+    <div class="role-hint provider" style="margin-bottom:14px">🔐 为企业账号设置新密码。修改后该账号需使用新密码登录，密码在「企业信息管理 → 账号」中同样可见。</div>
+    <div class="form-item"><label class="form-label">账号</label><input class="form-input" value="${a.u}" disabled></div>
+    <div class="form-item"><label class="form-label"><span class="req">*</span>新密码</label><input class="form-input" id="f_pw1" type="text" value="${a.pwd||'888888'}" placeholder="至少 6 位，含字母与数字"></div>
+    <div class="form-item"><label class="form-label"><span class="req">*</span>确认新密码</label><input class="form-input" id="f_pw2" type="text" placeholder="再次输入新密码"></div>
+  `, `<button class="btn btn-outline" onclick="closeModal()">取消</button><button class="btn btn-primary" onclick="savePwd(${idx})">保存密码</button>`);
+}
+function savePwd(idx){
+  const e=cur(); const a=e.accounts[idx];
+  const p1=document.getElementById('f_pw1').value.trim(), p2=document.getElementById('f_pw2').value.trim();
+  if(!p1){ toast('请填写新密码'); return; }
+  if(p1!==p2){ toast('两次输入的密码不一致'); return; }
+  if(p1.length<6){ toast('密码长度至少 6 位'); return; }
+  window.EntData.setPassword(e.id, a.u, p1);
+  closeModal(); renderAccounts(); toast('账号「'+a.u+'」密码已更新');
+}
+
+// ---- 3. 合同期 ----
+function renderContract(){
+  const e=cur(); const c=e.contract;
+  const days = Math.round((new Date(c.end)-new Date('2026-11-03'))/86400000);
+  const tag = c.status==='有效'?'tag-green':(c.status==='临期'?'tag-yellow':'tag-red');
+  document.getElementById('panelWrap').innerHTML = `
+    <div class="pc-header" style="margin-bottom:14px">
+      <div><div style="font-size:17px;font-weight:700">合同期管理</div><div class="desc">「${e.name}」服务合同</div></div>
+      <div class="actions"><button class="btn btn-primary btn-sm" onclick="openContractModal()"><span class="ico" data-icon="plus"></span> 续签 / 新建合同</button></div>
+    </div>
+    <div class="card">
+      <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px">
+        <div class="mini-h" style="margin:0"><span class="ico" data-icon="fileText"></span>服务合同</div>
+        <span class="tag ${tag}">${c.status}${c.status==='临期'?'（剩 '+days+' 天）':''}</span>
+      </div>
+      <div class="kv"><span class="k">合同编号</span><span class="v">${c.no}</span></div>
+      <div class="kv"><span class="k">服务起止</span><span class="v">${c.start} 至 ${c.end}</span></div>
+      <div class="kv"><span class="k">合同期限</span><span class="v">${Math.round((new Date(c.end)-new Date(c.start))/31536000000*10)/10} 年</span></div>
+      <div class="kv"><span class="k">服务金额</span><span class="v">${Number(c.amount).toLocaleString()} 元 / 年</span></div>
+    </div>`;
+}
+function openContractModal(){
+  const e=cur(); const c=e.contract;
+  openModal('续签 / 新建合同 · '+e.name, `
+    <div class="form-item"><label class="form-label">合同编号</label><input class="form-input" id="f_cn" value="${c.no}"></div>
+    <div class="form-item" style="display:flex;gap:12px"><div style="flex:1"><label class="form-label">开始日期</label><input class="form-input" id="f_cs" type="date" value="${c.start}"></div><div style="flex:1"><label class="form-label">结束日期</label><input class="form-input" id="f_ce" type="date" value="${c.end}"></div></div>
+    <div class="form-item"><label class="form-label">服务金额（元/年）</label><input class="form-input" id="f_ca" type="number" value="${c.amount}"></div>
+  `, `<button class="btn btn-outline" onclick="closeModal()">取消</button><button class="btn btn-primary" onclick="saveContract()">保存合同</button>`);
+}
+function saveContract(){
+  const e=cur(); e.contract.no=document.getElementById('f_cn').value; e.contract.start=document.getElementById('f_cs').value; e.contract.end=document.getElementById('f_ce').value; e.contract.amount=document.getElementById('f_ca').value;
+  const days=Math.round((new Date(e.contract.end)-new Date('2026-11-03'))/86400000); e.contract.status = days<0?'已到期':(days<=30?'临期':'有效');
+  window.EntData.commit(); closeModal(); renderContract(); toast('合同已更新：'+e.contract.status);
+}
+
+// ---- 4. 功能模块 ----
+function renderModules(){
+  const e=cur();
+  document.getElementById('panelWrap').innerHTML = `
+    <div class="pc-header" style="margin-bottom:14px"><div><div style="font-size:17px;font-weight:700">功能模块开通</div><div class="desc">「${e.name}」已开通 ${e.modules.length}/${ALL_MODULES.length} 个模块</div></div></div>
+    <div class="mod-grid">${ALL_MODULES.map(m=>{
+      const on=e.modules.includes(m.key);
+      return `<div class="mod-card"><div class="mc-ic"><span class="ico" data-icon="${m.icon}"></span></div><div style="flex:1"><div class="mc-name">${m.name}</div><div class="mc-sub">${m.sub}</div></div>
+        <label class="switch"><input type="checkbox" ${on?'checked':''} onchange="toggleModule('${m.key}')"><span class="sl"></span></label></div>`;
+    }).join('')}</div>`;
+}
+function toggleModule(key){ const e=cur(); const i=e.modules.indexOf(key); if(i>=0) e.modules.splice(i,1); else e.modules.push(key); window.EntData.commit(); renderModules(); toast((e.modules.includes(key)?'已开通':'已关闭')+'模块：'+ALL_MODULES.find(m=>m.key===key).name); }
+
+// ---- 5. 人车管理（含停用恢复） ----
+function pStatusTag(s){ if(s==='在岗'||s==='运营') return '<span class="tag tag-green">'+s+'</span>'; if(s==='维修') return '<span class="tag tag-yellow">'+s+'</span>'; return '<span class="tag tag-gray">'+s+' · 留存</span>'; }
+function renderPV(){
+  const e=cur();
+  const pOn=e.people.filter(p=>p.s==='在岗').length, vOn=e.vehicles.filter(v=>v.s==='运营').length;
+  const pr=e.people.map(p=>{
+    const btn = p.s==='离职' ? '<a class="btn btn-outline btn-sm" onclick="restorePv(\'person\',\''+p.id+'\')">恢复</a>' : '—';
+    return `<tr class="${p.s==='离职'?'retained':''}"><td><input type="checkbox" class="chk-p" data-id="${p.id}"></td><td>${p.n}</td><td>${p.r}</td><td>${p.entry}</td><td>${pStatusTag(p.s)}</td><td>${btn}</td></tr>`;
+  }).join('');
+  const vr=e.vehicles.map(v=>{
+    const btn = v.s==='停用' ? '<a class="btn btn-outline btn-sm" onclick="restorePv(\'vehicle\',\''+v.id+'\')">恢复</a>' : '—';
+    return `<tr class="${v.s==='停用'?'retained':''}"><td><input type="checkbox" class="chk-v" data-id="${v.id}"></td><td>${v.p}</td><td>${v.t}</td><td>${pStatusTag(v.s)}</td><td>${btn}</td></tr>`;
+  }).join('');
+  document.getElementById('panelWrap').innerHTML = `
+    <div class="pc-header" style="margin-bottom:12px"><div><div style="font-size:17px;font-weight:700">企业人车管理</div><div class="desc">新增、Excel 导入、离职/停用（留存）与恢复</div></div></div>
+    <div class="role-hint provider" style="margin-bottom:14px">📌 <b>留存要求</b>：人档、车档保留 ≥3 年；离职/停用仅作标记并留存，可随时<b>恢复</b>。</div>
+    <div class="split-2">
+      <div class="card"><div class="mini-h"><span class="ico" data-icon="users"></span>人员台账（共 ${e.people.length} 人 · 在职 ${pOn}）
+        <div style="margin-left:auto;display:flex;gap:6px;flex-wrap:wrap">
+          <button class="btn btn-primary btn-sm" onclick="openPersonModal()"><span class="ico" data-icon="plus"></span>新增</button>
+          <button class="btn btn-outline btn-sm" onclick="openExcelModal('person')"><span class="ico" data-icon="upload"></span>Excel导入</button>
+          <button class="btn btn-danger btn-sm" onclick="batchLeave('person')"><span class="ico" data-icon="logOut"></span>批量离职</button>
+          <button class="btn btn-success btn-sm" onclick="batchRestore('person')"><span class="ico" data-icon="undo"></span>批量恢复</button>
+        </div></div>
+        <table class="table"><thead><tr><th style="width:36px"><input type="checkbox" id="chkAllP" onchange="chkAll('person',this)"></th><th>姓名</th><th>岗位</th><th>入职</th><th>状态</th><th>操作</th></tr></thead><tbody>${pr||'<tr><td colspan="6" class="empty">暂无人员</td></tr>'}</tbody></table></div>
+      <div class="card"><div class="mini-h"><span class="ico" data-icon="truck"></span>车辆台账（共 ${e.vehicles.length} 辆 · 在运 ${vOn}）
+        <div style="margin-left:auto;display:flex;gap:6px;flex-wrap:wrap">
+          <button class="btn btn-primary btn-sm" onclick="openVehicleModal()"><span class="ico" data-icon="plus"></span>新增</button>
+          <button class="btn btn-outline btn-sm" onclick="openExcelModal('vehicle')"><span class="ico" data-icon="upload"></span>Excel导入</button>
+          <button class="btn btn-danger btn-sm" onclick="batchLeave('vehicle')"><span class="ico" data-icon="logOut"></span>批量停用</button>
+          <button class="btn btn-success btn-sm" onclick="batchRestore('vehicle')"><span class="ico" data-icon="undo"></span>批量恢复</button>
+        </div></div>
+        <table class="table"><thead><tr><th style="width:36px"><input type="checkbox" id="chkAllV" onchange="chkAll('vehicle',this)"></th><th>车牌</th><th>车型</th><th>状态</th><th>操作</th></tr></thead><tbody>${vr||'<tr><td colspan="5" class="empty">暂无车辆</td></tr>'}</tbody></table></div>
+    </div>`;
+}
+function chkAll(kind,el){ document.querySelectorAll('.chk-'+(kind==='person'?'p':'v')).forEach(c=>c.checked=el.checked); }
+function batchLeave(kind){
+  const sel=Array.from(document.querySelectorAll('.chk-'+(kind==='person'?'p':'v')+':checked')).map(c=>c.dataset.id);
+  if(sel.length===0){ toast('请先勾选要'+(kind==='person'?'离职':'停用')+'的记录'); return; }
+  const e=cur(); const list=kind==='person'?e.people:e.vehicles; const to=kind==='person'?'离职':'停用'; let n=0;
+  list.forEach(x=>{ if(sel.includes(x.id)&&x.s!==to){ x.s=to; n++; } });
+  window.EntData.commit(); renderPV(); toast('已将 '+n+' 条标记为「'+to+'」，信息留存（可恢复）');
+}
+function batchRestore(kind){
+  const sel=Array.from(document.querySelectorAll('.chk-'+(kind==='person'?'p':'v')+':checked')).map(c=>c.dataset.id);
+  if(sel.length===0){ toast('请先勾选要恢复的记录'); return; }
+  const e=cur(); const list=kind==='person'?e.people:e.vehicles; const to=kind==='person'?'在岗':'运营'; let n=0;
+  list.forEach(x=>{ if(sel.includes(x.id)&&x.s!==to){ x.s=to; n++; } });
+  window.EntData.commit(); renderPV(); toast('已批量恢复 '+n+' 条记录');
+}
+function restorePv(kind,id){
+  const e=cur(); const list=kind==='person'?e.people:e.vehicles;
+  const x=list.find(i=>i.id===id); if(!x) return;
+  x.s = kind==='person' ? '在岗' : '运营';
+  window.EntData.commit(); renderPV(); toast('已恢复：'+(kind==='person'?x.n:x.p)+' → '+(kind==='person'?'在岗':'运营'));
+}
+function openPersonModal(){
+  openModal('新增人员 · '+cur().name, `
+    <div class="form-item"><label class="form-label"><span class="req">*</span>姓名</label><input class="form-input" id="f_pn" placeholder="如：张伟"></div>
+    <div class="form-item"><label class="form-label">岗位</label><select class="form-select" id="f_pr"><option>主要负责人</option><option>安全员</option><option>驾驶员</option><option>监控员</option><option>押运员</option></select></div>
+    <div class="form-item"><label class="form-label">入职日期</label><input class="form-input" id="f_pe" type="date" value="2026-11-03"></div>
+  `, `<button class="btn btn-outline" onclick="closeModal()">取消</button><button class="btn btn-primary" onclick="addPerson()">保存</button>`);
+}
+function addPerson(){ const n=document.getElementById('f_pn').value.trim(); if(!n){toast('请填写姓名');return;} const e=cur(); e.people.push({id:e.id+'P'+Date.now(),n,r:document.getElementById('f_pr').value,s:'在岗',entry:document.getElementById('f_pe').value}); window.EntData.commit(); closeModal(); renderPV(); toast('人员「'+n+'」已新增'); }
+function openVehicleModal(){
+  openModal('新增车辆 · '+cur().name, `
+    <div class="form-item"><label class="form-label"><span class="req">*</span>车牌号</label><input class="form-input" id="f_vp" placeholder="如：粤E·12345"></div>
+    <div class="form-item"><label class="form-label">车型</label><input class="form-input" id="f_vt" placeholder="如：重型仓栅式货车"></div>
+  `, `<button class="btn btn-outline" onclick="closeModal()">取消</button><button class="btn btn-primary" onclick="addVehicle()">保存</button>`);
+}
+function addVehicle(){ const p=document.getElementById('f_vp').value.trim(); if(!p){toast('请填写车牌号');return;} const e=cur(); e.vehicles.push({id:e.id+'V'+Date.now(),p,t:document.getElementById('f_vt').value||'—',s:'运营'}); window.EntData.commit(); closeModal(); renderPV(); toast('车辆「'+p+'」已新增'); }
+function openExcelModal(kind){
+  const tpl = kind==='person' ? '人员导入模板.xlsx' : '车辆导入模板.xlsx';
+  openModal(kind==='person'?'人员 Excel 批量导入':'车辆 Excel 批量导入', `
+    <div class="role-hint provider" style="margin-bottom:14px">📥 支持 .xlsx / .csv 导入，批量新增为在职 / 在运记录。</div>
+    <div class="form-item"><label class="form-label">下载导入模板</label><button class="btn btn-outline btn-sm" onclick="toast('模板已下载：${tpl}')"><span class="ico" data-icon="download"></span> 下载模板</button></div>
+    <div class="form-item"><label class="form-label">选择文件</label><input class="form-input" type="file" accept=".xlsx,.csv"></div>
+  `, `<button class="btn btn-outline" onclick="closeModal()">取消</button><button class="btn btn-primary" onclick="simImport('${kind}')">模拟导入</button>`);
+}
+function simImport(kind){
+  const e=cur();
+  if(kind==='person'){ e.people.push({id:e.id+'P'+Date.now()+'a',n:'（导入）赵六',r:'驾驶员',s:'在岗',entry:'2026-11-03'}); e.people.push({id:e.id+'P'+Date.now()+'b',n:'（导入）钱七',r:'安全员',s:'在岗',entry:'2026-11-03'}); }
+  else { e.vehicles.push({id:e.id+'V'+Date.now()+'a',p:'粤E·'+(Math.floor(Math.random()*90000)+10000),t:'重型栏板货车',s:'运营'}); e.vehicles.push({id:e.id+'V'+Date.now()+'b',p:'粤E·'+(Math.floor(Math.random()*90000)+10000),t:'轻型厢式货车',s:'运营'}); }
+  window.EntData.commit(); closeModal(); renderPV(); toast('已模拟导入 2 条'+(kind==='person'?'人员':'车辆')+'记录');
+}
+
+// ---- 6. 待办 ----
+function renderTodos(){
+  const e=cur();
+  const list = e.todos;
+  document.getElementById('panelWrap').innerHTML = `
+    <div class="pc-header" style="margin-bottom:14px"><div><div style="font-size:17px;font-weight:700">企业待办事项</div><div class="desc">跟踪「${e.name}」的待签文件、培训、会议、隐患排查等未完成工作</div></div>
+    <div class="actions"><button class="btn btn-primary btn-sm" onclick="openTodoModal()"><span class="ico" data-icon="plus"></span> 新增待办</button></div></div>
+    <div id="todoInner">${list.map((t,i)=>`
+      <div class="todo-item ${t.done?'done':''}">
+        <span class="ico t-check" data-icon="${t.done?'checkCircle':'circle'}" onclick="toggleTodo(${i})"></span>
+        <div class="t-text">${t.t}<div class="t-meta"><span class="tag tag-blue">${t.type}</span><span>截止：${t.due}</span><span>负责人：${t.owner}</span></div></div>
+        <a class="btn btn-outline btn-sm" onclick="delTodo(${i})"><span class="ico" data-icon="trash"></span></a>
+      </div>`).join('') || '<div class="empty">暂无待办事项</div>'}</div>`;
+}
+function toggleTodo(i){ const e=cur(); e.todos[i].done=!e.todos[i].done; window.EntData.commit(); renderTodos(); }
+function delTodo(i){ cur().todos.splice(i,1); window.EntData.commit(); renderTodos(); toast('待办已删除'); }
+function openTodoModal(){
+  openModal('新增待办 · '+cur().name, `
+    <div class="form-item"><label class="form-label"><span class="req">*</span>待办内容</label><input class="form-input" id="f_tt" placeholder="如：完成年度责任制重签"></div>
+    <div class="form-item" style="display:flex;gap:12px"><div style="flex:1"><label class="form-label">类型</label><select class="form-select" id="f_tc"><option>待签文件</option><option>培训</option><option>会议</option><option>隐患排查</option><option>其他</option></select></div><div style="flex:1"><label class="form-label">截止日期</label><input class="form-input" id="f_td" type="date" value="2026-11-20"></div></div>
+    <div class="form-item"><label class="form-label">负责人</label><input class="form-input" id="f_to" value="李强"></div>
+  `, `<button class="btn btn-outline" onclick="closeModal()">取消</button><button class="btn btn-primary" onclick="addTodo()">添加</button>`);
+}
+function addTodo(){ const t=document.getElementById('f_tt').value.trim(); if(!t){toast('请填写待办内容');return;} cur().todos.push({t,type:document.getElementById('f_tc').value,due:document.getElementById('f_td').value,owner:document.getElementById('f_to').value,done:false}); window.EntData.commit(); closeModal(); renderTodos(); toast('待办已添加'); }
+
+// ============ 弹窗 & 通用 ============
+function openModal(title, body, foot){ document.getElementById('mTitle').textContent=title; document.getElementById('mBody').innerHTML=body; document.getElementById('mFoot').innerHTML=foot; document.getElementById('modal').classList.add('show'); iconsRender(); }
+function closeModal(){ document.getElementById('modal').classList.remove('show'); }
+function toast(msg){ let t=document.getElementById('toast'); if(!t){ t=document.createElement('div'); t.id='toast'; t.style.cssText='position:fixed;top:24px;right:24px;background:#141c2b;color:#fff;padding:12px 20px;border-radius:10px;font-size:14px;z-index:9999;opacity:0;transform:translateY(-10px);transition:.25s;pointer-events:none;box-shadow:0 4px 16px rgba(0,0,0,.2)'; document.body.appendChild(t); } t.textContent=msg; t.style.opacity='1'; t.style.transform='translateY(0)'; clearTimeout(t._t); t._t=setTimeout(function(){t.style.opacity='0';t.style.transform='translateY(-10px)'},2200); }
+function iconsRender(){ if(window.__rerenderIcons) window.__rerenderIcons(); }
+
+init();
+</script>
+</body></html>

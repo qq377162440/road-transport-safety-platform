@@ -1,10 +1,440 @@
 <!DOCTYPE html>
 <html lang="zh-CN"><head><meta charset="UTF-8"><title>企业信息管理</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <link rel="stylesheet" href="../assets/common.css"><link rel="stylesheet" href="../assets/pc.css">
-<style></style></head><body>
-<div class="pc-page">
-<div class="pc-header"><div><h1>企业信息管理</h1><div class="desc">企业主体信息与资质证照登记</div></div><div class="actions"><button class="btn btn-primary"><span class="ico" data-icon="plus"></span> 新增企业</button></div></div><div class="filter-bar"><div class="f-item"><label>企业名称</label><input type="text" placeholder="请输入企业名称"></div><div class="f-item"><label>状态</label><select><option>全部</option><option>正常</option><option>停用</option></select></div><div class="f-actions"><button class="btn btn-primary btn-sm"><span class="ico" data-icon="search"></span> 查询</button><button class="btn btn-outline btn-sm">重置</button></div></div><div class="card" style="padding:0;overflow:hidden"><table class="table"><thead><tr><th>序号</th><th>名称</th><th>创建日期</th><th>更新日期</th><th>说明</th><th>操作</th></tr></thead><tbody><tr><td>1</td><td>佛山市南海区小塘塘安运输服务有限公司</td><td>2024-03-01</td><td>2026-10-20</td><td>道路货物运输（货运）</td><td><a class="btn btn-primary btn-sm">查看</a> <a class="btn btn-outline btn-sm">编辑</a></td></tr><tr><td>2</td><td>（示例）塘安物流分公司</td><td>2025-01-15</td><td>2026-09-30</td><td>危险货物运输（危运）</td><td><a class="btn btn-primary btn-sm">查看</a> <a class="btn btn-outline btn-sm">编辑</a></td></tr></tbody></table>
-<div class="table-foot"><span>共 2 条记录</span>
-<div class="pagination"><button>&lt;</button><button class="active">1</button><button>2</button><button>3</button><button>…</button><button>&gt;</button></div></div></div>
+<style>
+  .c-tabs{display:flex;gap:4px;border-bottom:1px solid var(--border);margin-bottom:18px}
+  .c-tab{padding:10px 18px;font-size:14px;color:var(--text-2);border:none;background:none;cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-1px}
+  .c-tab.active{color:var(--brand-600);border-bottom-color:var(--brand-600);font-weight:600}
+  .sec-title{font-size:15px;font-weight:700;margin:0 0 14px;color:var(--text)}
+  .form-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px 28px}
+  @media (max-width:900px){.form-grid{grid-template-columns:1fr}}
+  .fg .lbl{font-size:13px;color:var(--text-2);margin-bottom:6px}
+  .fg .req::before{content:'*';color:var(--danger);margin-right:2px}
+  .fg input,.fg select{width:100%;padding:9px 12px;border:1px solid var(--border);border-radius:8px;font-size:14px;background:#fff;color:var(--text)}
+  .fg input:focus,.fg select:focus{outline:none;border-color:var(--brand-500);box-shadow:0 0 0 3px var(--brand-100)}
+  .fg input[readonly]{background:var(--bg-2);color:var(--text-2)}
+  .addr-row{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px}
+  .ocr-panel{background:var(--brand-50);border:1px dashed var(--brand-200);border-radius:var(--radius);padding:16px 18px;margin-bottom:18px;display:flex;gap:16px;align-items:center;flex-wrap:wrap}
+  .ocr-drop{display:flex;align-items:center;gap:10px;cursor:pointer}
+  .ocr-drop .ico{color:var(--brand-600)}
+  .ocr-status{font-size:13px;display:flex;align-items:center;gap:8px}
+  .ocr-field-chip{font-size:12px;padding:3px 10px;border-radius:14px;background:var(--ok-bg);color:var(--ok-ink);display:inline-flex;align-items:center;gap:5px}
+  .ocr-field-chip .ico{width:12px;height:12px}
+  .detail-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;gap:12px;flex-wrap:wrap}
+  .role-hint{font-size:13px;border-radius:10px;padding:12px 16px;margin-bottom:16px;line-height:1.6}
+  .role-hint.enterprise{background:#f0fdf4;border:1px solid #bbf7d0;color:#15803d}
+  .role-hint.provider{background:var(--brand-50);border:1px solid var(--brand-100);color:var(--brand-700)}
+  .photo-box{border:2px dashed var(--border);border-radius:var(--radius);min-height:180px;display:flex;align-items:center;justify-content:center;color:var(--text-3);font-size:14px;background:var(--bg-2)}
+  .photo-box.small{min-height:110px;cursor:pointer}
+  .photo-box.small:hover{border-color:var(--brand-400);color:var(--brand-600)}
+  .toast{position:fixed;top:24px;right:24px;background:#141c2b;color:#fff;padding:12px 20px;border-radius:10px;font-size:14px;z-index:9999;opacity:0;transform:translateY(-10px);transition:.25s;pointer-events:none;box-shadow:0 4px 16px rgba(0,0,0,.2)}
+</style></head><body>
+<div class="pc-page" id="viewList">
+  <div class="pc-header"><div><h1>企业信息管理</h1><div class="desc" id="pageDesc">企业主体信息与资质证照登记 · 支持营业执照智能识别录入</div></div><div class="actions" id="headerActions"><button class="btn btn-primary" id="btnAdd" onclick="openDetail(-1)"><span class="ico" data-icon="plus"></span> 新增企业</button></div></div>
+  <div class="role-hint" id="roleHint" style="display:none"></div>
+  <div class="filter-bar"><div class="f-item"><label>企业名称</label><input type="text" id="fltName" placeholder="请输入企业名称" oninput="renderEntTable()"></div><div class="f-item"><label>所在地区</label><select id="fltRegion" onchange="renderEntTable()"></select></div><div class="f-item"><label>运输类型</label><select id="fltCargo" onchange="renderEntTable()"></select></div><div class="f-item"><label>客户分组</label><select id="fltGroup" onchange="renderEntTable()"></select></div><div class="f-item"><label>状态</label><select id="fltStatus" onchange="renderEntTable()"><option value="">全部</option><option>正常</option><option>禁用</option></select></div><div class="f-actions"><button class="btn btn-outline btn-sm" onclick="resetFilter()">重置</button></div></div>
+  <div class="card" style="padding:0;overflow:hidden"><table class="table"><thead><tr><th>序号</th><th>企业名称</th><th>所在地区</th><th>运输类型</th><th>客户分组</th><th>所属服务商</th><th>状态</th><th>操作</th></tr></thead><tbody id="entTbody"></tbody></table>
+  <div class="table-foot"><span id="entCount">共 0 条记录</span></div></div>
 </div>
-<script src="../assets/icons.js"></script></body></html>
+
+<div class="pc-page" id="viewDetail" style="display:none">
+  <div class="detail-head">
+    <div><h1 id="dTitle" style="font-size:20px">企业基本信息</h1><div class="desc" id="dSub">录入企业主体信息，可上传营业执照智能识别自动填写</div></div>
+    <div class="actions" style="display:flex;gap:8px">
+      <button class="btn btn-outline" id="backBtn" onclick="showList()">返回列表</button>
+      <button class="btn btn-primary" onclick="saveCompany()"><span class="ico" data-icon="save"></span> 保存</button>
+    </div>
+  </div>
+
+  <div class="c-tabs">
+    <button class="c-tab active" data-c="basic">企业基本信息</button>
+    <button class="c-tab" data-c="cert">证照信息</button>
+    <button class="c-tab" data-c="material">材料信息</button>
+    <button class="c-tab" data-c="parking">停车场档案</button>
+  </div>
+
+  <!-- 企业基本信息 -->
+  <div id="c-basic">
+    <div class="ocr-panel">
+      <div class="ocr-drop" onclick="mockOcr()">
+        <span class="ico" data-icon="upload"></span>
+        <div><b style="font-size:14px">上传营业执照，智能识别填写</b><div style="font-size:12.5px;color:var(--text-3);margin-top:2px">支持 JPG / PNG，自动识别企业名称、统一社会信用代码、法定代表人、成立日期、经营范围等字段</div></div>
+      </div>
+      <button class="btn btn-outline btn-sm" onclick="mockBizQuery()"><span class="ico" data-icon="search"></span> 一键读取天眼查 / 企查查工商信息</button>
+      <div style="margin-left:auto" id="ocrStatus" class="ocr-status"></div>
+    </div>
+    <div id="ocrChips" style="display:none;margin:-6px 0 16px"></div>
+    <div class="card" style="padding:22px 24px">
+      <div class="sec-title">基本资料</div>
+      <div class="form-grid">
+        <div class="fg"><div class="lbl req">企业名称</div><input id="f_name" type="text" placeholder="请输入或上传营业执照识别"></div>
+        <div class="fg"><div class="lbl req">统一社会信用代码</div><input id="f_code" type="text" placeholder="18 位信用代码"></div>
+        <div class="fg"><div class="lbl">成立日期</div><input id="f_found" type="date"></div>
+        <div class="fg"><div class="lbl">法定代表人</div><input id="f_legal" type="text" placeholder="与营业执照一致"></div>
+        <div class="fg"><div class="lbl">安全生产主要负责人</div><input id="f_safe" type="text" placeholder="主要负责人姓名"></div>
+        <div class="fg"><div class="lbl">负责人电话</div><input id="f_phone" type="text" placeholder="手机号码"></div>
+        <div class="fg"><div class="lbl">联系电话</div><input type="text" placeholder="座机，如 0757-86603101"></div>
+      </div>
+      <div class="sec-title" style="margin-top:22px">注册与经营范围</div>
+      <div class="form-grid">
+        <div class="fg"><div class="lbl req">所在地区</div>
+          <div class="addr-row">
+            <select id="f_prov"><option>广东省</option><option>湖南省</option></select>
+            <select id="f_city"><option>佛山市</option><option>广州市</option></select>
+            <select id="f_dist"><option>南海区</option><option>禅城区</option></select>
+          </div>
+        </div>
+        <div class="fg"><div class="lbl">经营许可证</div><input type="text" placeholder="道路运输经营许可证号"></div>
+        <div class="fg"><div class="lbl">管理类型</div><select id="f_mgmt"><option>货运站</option><option>道路货物运输企业</option><option>危险货物运输企业</option></select></div>
+        <div class="fg"><div class="lbl req">主要运输路线</div><input id="f_route" type="text" placeholder="如：佛山—广州—深圳（珠三角干线）"></div>
+        <div class="fg"><div class="lbl req">主要运输货物</div><input id="f_mainCargo" type="text" placeholder="如：普货（建材 / 钢材 / 日用百货）"></div>
+        <div class="fg" style="grid-column:1/-1"><div class="lbl">经营范围</div><input id="f_scope" type="text" placeholder="如：普通货运，货物专用运输（集装箱）"></div>
+      </div>
+      <div class="sec-title" style="margin-top:22px">服务分类 <span id="svcNote" style="font-size:12px;font-weight:400;color:var(--text-3);margin-left:8px">与服务商「企业管理」共用同一份数据，任一侧修改另一侧立即同步</span></div>
+      <div class="form-grid">
+        <div class="fg"><div class="lbl req">运输类型</div><select id="f_cargo"><option>普货</option><option>危货</option></select></div>
+        <div class="fg"><div class="lbl req">客户分组</div><select id="f_group"></select></div>
+        <div class="fg"><div class="lbl req">所在地区（分组筛选依据）</div><select id="f_region"></select></div>
+        <div class="fg" id="fg_sp" style="display:none"><div class="lbl">所属服务商</div><input id="f_sp" type="text" readonly></div>
+      </div>
+      <div class="sec-title" style="margin-top:22px">规模信息</div>
+      <div class="form-grid">
+        <div class="fg"><div class="lbl">注册资金（万元）</div><input id="f_capital" type="number" placeholder="500"></div>
+        <div class="fg"><div class="lbl">经营面积（平方米）</div><input id="f_barea" type="number" placeholder="37"></div>
+        <div class="fg"><div class="lbl">停车场面积（平方米）</div><input id="f_parea" type="number" placeholder="9000"></div>
+        <div class="fg"><div class="lbl">专职安全管理人员数量</div><input id="f_safer" type="number" placeholder="2"></div>
+        <div class="fg"><div class="lbl">从业人员数量</div><input id="f_staff" type="number" placeholder="47"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 证照信息 -->
+  <div id="c-cert" style="display:none">
+    <div class="card" style="padding:0;overflow:hidden"><table class="table"><thead><tr><th>证照名称</th><th>证号</th><th>发证机关</th><th>有效期至</th><th>证照文件</th><th>状态</th><th>操作</th></tr></thead><tbody>
+      <tr><td>营业执照</td><td>9144060574616121X4</td><td>佛山市南海区市场监督管理局</td><td>2029-03-05</td><td>已上传</td><td><span class="tag tag-green">有效</span></td><td><a class="btn btn-outline btn-sm">预览</a></td></tr>
+      <tr><td>道路运输经营许可证</td><td>粤交运管许可佛字440605xxxxx</td><td>佛山市南海区交通运输局</td><td>2027-06-30</td><td>已上传</td><td><span class="tag tag-green">有效</span></td><td><a class="btn btn-outline btn-sm">预览</a></td></tr>
+      <tr><td>安全生产责任险保单</td><td>—</td><td>—</td><td>2026-12-31</td><td>未上传</td><td><span class="tag tag-yellow">临期</span></td><td><a class="btn btn-primary btn-sm">上传</a></td></tr>
+    </tbody></table></div>
+  </div>
+
+  <!-- 材料信息（安全评估 / 许可相关材料） -->
+  <div id="c-material" style="display:none">
+    <div class="card" style="padding:0;overflow:hidden"><table class="table"><thead><tr><th>材料名称</th><th>类型</th><th>上传时间</th><th>文件</th><th>操作</th></tr></thead><tbody>
+      <tr><td>安全生产现状评价报告</td><td>安全评估类</td><td>2026-06-15</td><td>安全现状评价报告.pdf</td><td><a class="btn btn-outline btn-sm">下载</a></td></tr>
+      <tr><td>安全设施设计专篇</td><td>安全评估类</td><td>2026-06-15</td><td>安全设施设计专篇.pdf</td><td><a class="btn btn-outline btn-sm">下载</a></td></tr>
+      <tr><td>道路运输经营许可证</td><td>许可类</td><td>2026-05-20</td><td>道路运输经营许可证.pdf</td><td><a class="btn btn-outline btn-sm">下载</a></td></tr>
+      <tr><td>安全生产标准化达标证书</td><td>许可类</td><td>2026-07-01</td><td>安全生产标准化证书.pdf</td><td><a class="btn btn-outline btn-sm">下载</a></td></tr>
+      <tr><td>应急预案备案登记表</td><td>许可类</td><td>2026-08-08</td><td>应急预案备案表.pdf</td><td><a class="btn btn-outline btn-sm">下载</a></td></tr>
+    </tbody></table></div>
+    <div style="margin-top:12px"><button class="btn btn-primary btn-sm" onclick="toast('示例：已打开材料上传')"><span class="ico" data-icon="upload"></span> 上传材料</button></div>
+  </div>
+
+  <!-- 停车场档案 -->
+  <div id="c-parking" style="display:none">
+    <div class="card" style="padding:22px 24px">
+      <div class="sec-title">停车场基本信息</div>
+      <div class="form-grid">
+        <div class="fg"><div class="lbl req">停车场地址</div><input id="f_p_addr" type="text" placeholder="停车场详细地址"></div>
+        <div class="fg"><div class="lbl req">所有权</div><select id="f_p_own"><option>自有</option><option>租赁</option></select></div>
+        <div class="fg"><div class="lbl req">面积（平方米）</div><input id="f_p_area" type="number" placeholder="如 9000"></div>
+        <div class="fg"><div class="lbl">租赁期限</div><input id="f_p_lease" type="text" placeholder="如 2024-01-01 至 2026-12-31"></div>
+      </div>
+      <div class="sec-title" style="margin-top:22px">佐证材料</div>
+      <div class="form-grid">
+        <div class="fg"><div class="lbl req">土地使用证明</div><div class="photo-box small" onclick="toast('示例：已上传土地使用证明')"><span class="ico" data-icon="fileText"></span>&nbsp;上传土地使用证明</div></div>
+        <div class="fg"><div class="lbl">平面布置图</div><div class="photo-box small" onclick="toast('示例：已上传平面布置图')"><span class="ico" data-icon="map"></span>&nbsp;上传平面布置图</div></div>
+        <div class="fg"><div class="lbl">租赁协议</div><div class="photo-box small" onclick="toast('示例：已上传租赁协议')"><span class="ico" data-icon="file"></span>&nbsp;上传租赁协议</div></div>
+        <div class="fg"><div class="lbl req">停车场图片</div><div class="photo-box small" onclick="toast('示例：已上传停车场图片')"><span class="ico" data-icon="camera"></span>&nbsp;上传停车场实景图片</div></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="../assets/icons.js"></script>
+<script src="../assets/ent_data.js"></script>
+<script>
+// —— 角色感知：企业视角仅可查看/编辑【本企业】；服务商 / 超管可查看并编辑【全部企业】 ——
+// 角色与全局角色切换器保持一致：localStorage['userRole'] = enterprise | provider | admin
+// 数据源：window.EntData（与服务商「企业管理」共用同一份企业档案 + 账号池）
+const userRole = localStorage.getItem('userRole') || 'enterprise';
+const isEnterprise = (userRole === 'enterprise');
+let LIST = window.EntData.list();     // 共享数据层单例
+let curEntId = null;                 // 当前正在查看/编辑的企业 id
+
+// —— 列表渲染（服务商 / 超管视角）——
+function renderEntTable(){
+  const tb = document.getElementById('entTbody');
+  if(!tb) return;
+  let list = LIST.slice();
+  const kw = (document.getElementById('fltName').value||'').trim().toLowerCase();
+  if(kw) list = list.filter(e => (e.name||'').toLowerCase().includes(kw) || (e.code||'').toLowerCase().includes(kw));
+  const rf = document.getElementById('fltRegion').value;
+  const cf = document.getElementById('fltCargo').value;
+  const gf = document.getElementById('fltGroup').value;
+  const sf = document.getElementById('fltStatus').value;
+  if(rf) list = list.filter(e => e.region===rf);
+  if(cf) list = list.filter(e => e.cargo===cf);
+  if(gf) list = list.filter(e => e.group===gf);
+  if(sf) list = list.filter(e => e.status===sf);
+
+  tb.innerHTML = list.map((e,i)=>`
+    <tr>
+      <td>${i+1}</td>
+      <td>${e.name}<div style="font-size:12px;color:var(--text-3);margin-top:2px">${e.code}</div></td>
+      <td>${e.region} ${e.dist||''}</td>
+      <td><span class="tag ${e.cargo==='危货'?'tag-yellow':'tag-blue'}">${e.cargo}</span></td>
+      <td><span class="tag tag-gray">${e.group}</span></td>
+      <td>${(window.EntData.PROVIDERS.find(p=>p.id===e.sp)||{}).name||'—'}</td>
+      <td><span class="tag ${e.status==='正常'?'tag-green':'tag-red'}">${e.status}</span></td>
+      <td style="white-space:nowrap">
+        <a class="btn btn-primary btn-sm" onclick="openDetail('${e.id}')">查看</a>
+        <a class="btn btn-outline btn-sm" onclick="openDetail('${e.id}')">编辑</a>
+        <a class="btn ${e.status==='正常'?'btn-danger':'btn-success'} btn-sm" onclick="toggleEnt('${e.id}')">${e.status==='正常'?'禁用':'启用'}</a>
+      </td>
+    </tr>`).join('') || '<tr><td colspan="8" class="empty">没有符合条件的企业</td></tr>';
+  document.getElementById('entCount').textContent = '共 '+list.length+' 条记录';
+}
+function resetFilter(){
+  ['fltName','fltRegion','fltCargo','fltGroup','fltStatus'].forEach(function(id){
+    const el=document.getElementById(id); if(el) el.value = (id==='fltStatus')?'':'';
+  });
+  renderEntTable();
+}
+
+// —— 详情：打开某企业 ——
+function openDetail(id){
+  const e = (typeof id==='string') ? LIST.filter(x=>x.id===id)[0] : LIST[0];
+  if(!e){ toast('未找到企业数据'); return; }
+  curEntId = e.id;
+  const backBtn = document.getElementById('backBtn');
+  document.getElementById('viewList').style.display='none';
+  document.getElementById('viewDetail').style.display='';
+  if(isEnterprise){
+    backBtn.style.display='none';
+    document.getElementById('dTitle').textContent='本企业信息';
+    document.getElementById('dSub').textContent='管理本企业主体信息，可上传营业执照智能识别自动填写';
+  } else {
+    backBtn.style.display='';
+    document.getElementById('dTitle').textContent = '企业基本信息 · 编辑';
+    document.getElementById('dSub').textContent='录入企业主体信息，可上传营业执照智能识别自动填写';
+  }
+  // 清空
+  document.querySelectorAll('#viewDetail input[type=text], #viewDetail input[type=number], #viewDetail input[type=date]').forEach(function(el){ el.value=''; });
+  document.getElementById('ocrStatus').innerHTML='';
+  document.getElementById('ocrChips').style.display='none';
+  fillForm(e);
+  window.scrollTo(0,0);
+  iconsRender();
+}
+function fillForm(e){
+  setValue('f_name', e.name);
+  setValue('f_code', e.code);
+  const fd = document.getElementById('f_found'); if(fd) fd.value = e.found||'';
+  setValue('f_legal', e.legal);
+  setValue('f_safe', e.legal);
+  setValue('f_phone', e.phone);
+  setValue('f_scope', e.scope||'');
+  setValue('f_capital', e.capital||'');
+  setValue('f_barea', e.barea||'');
+  setValue('f_parea', e.parea||'');
+  setValue('f_safer', e.safer||'');
+  setValue('f_staff', e.staff||'');
+  setValue('f_sp', (window.EntData.PROVIDERS.find(p=>p.id===e.sp)||{}).name||'—');
+  // 分类字段
+  const sel = function(id,v){ const el=document.getElementById(id); if(el){ el.value=v||''; if(el.value!==v) el.selectedIndex=0; } };
+  sel('f_cargo', e.cargo);
+  sel('f_group', e.group);
+  sel('f_region', e.region);
+  sel('f_mgmt', e.mgmtType);
+  sel('f_prov', e.prov);
+  sel('f_city', e.region);
+  sel('f_dist', e.dist);
+  // 主要运输路线 / 主要运输货物
+  setValue('f_route', e.mainRoute||'');
+  setValue('f_mainCargo', e.mainCargo||'');
+  // 停车场档案
+  const pk = e.parking || {};
+  setValue('f_p_addr', pk.addr||'');
+  setValue('f_p_area', pk.area||'');
+  setValue('f_p_lease', pk.lease||'');
+  sel('f_p_own', pk.own||'自有');
+}
+function showList(){
+  document.getElementById('viewDetail').style.display='none';
+  document.getElementById('viewList').style.display='';
+  renderEntTable();
+}
+function setValue(id,v){ const el=document.getElementById(id); if(el) el.value=v; }
+
+// —— 禁用 / 启用企业（服务商视角）——
+function toggleEnt(id){
+  const e = LIST.filter(x=>x.id===id)[0];
+  if(!e) return;
+  const to = (e.status==='正常') ? '禁用' : '正常';
+  if(to==='禁用' && !confirm('确认禁用企业「'+e.name+'」？禁用后该企业全部账号将无法登录，数据继续留存。')) return;
+  window.EntData.toggleStatus(id);
+  LIST = window.EntData.list();
+  renderEntTable();
+  if(curEntId===id) fillForm(LIST.filter(x=>x.id===id)[0]);
+  toast('企业「'+e.name+'」已'+to);
+}
+
+// —— 保存（写入共享数据层，企业信息与服务商企业管理页立即一致）——
+function saveCompany(){
+  const e = curEntId ? LIST.filter(x=>x.id===curEntId)[0] : null;
+  const name = document.getElementById('f_name').value.trim();
+  if(!name){ toast('请填写企业名称'); return; }
+  const region = document.getElementById('f_region').value;
+  if(!region){ toast('请选择所在地区'); return; }
+  const cargo = document.getElementById('f_cargo').value;
+  if(!cargo){ toast('请选择普货或危货类型'); return; }
+  const patch = {
+    name: name,
+    code: document.getElementById('f_code').value.trim(),
+    legal: document.getElementById('f_legal').value.trim(),
+    phone: document.getElementById('f_phone').value.trim(),
+    scope: document.getElementById('f_scope').value.trim(),
+    capital: document.getElementById('f_capital').value,
+    barea: document.getElementById('f_barea').value,
+    parea: document.getElementById('f_parea').value,
+    safer: document.getElementById('f_safer').value,
+    staff: document.getElementById('f_staff').value,
+    found: document.getElementById('f_found').value,
+    mgmtType: document.getElementById('f_mgmt').value,
+    prov: document.getElementById('f_prov').value,
+    region: document.getElementById('f_region').value,
+    dist: document.getElementById('f_dist').value,
+    cargo: document.getElementById('f_cargo').value,
+    group: document.getElementById('f_group').value,
+    mainRoute: document.getElementById('f_route').value.trim(),
+    mainCargo: document.getElementById('f_mainCargo').value.trim(),
+    parking: {
+      addr: document.getElementById('f_p_addr').value.trim(),
+      own: document.getElementById('f_p_own').value,
+      area: document.getElementById('f_p_area').value,
+      lease: document.getElementById('f_p_lease').value.trim()
+    }
+  };
+  if(e){
+    window.EntData.update(e.id, patch);
+    LIST = window.EntData.list();
+    renderEntTable();
+    toast('「'+name+'」信息已保存' + (isEnterprise ? '（仅本企业）' : '（代管企业）') + '，服务商侧同步可见');
+  } else {
+    toast('未选择企业');
+  }
+}
+
+// —— 按角色初始化视图 ——
+function initCompany(){
+  LIST = window.EntData.list();
+  const hint = document.getElementById('roleHint');
+  const btnAdd = document.getElementById('btnAdd');
+  // 填充下拉字典
+  const fillSel = function(id, arr, cur){
+    const el=document.getElementById(id); if(!el) return;
+    el.innerHTML = arr.map(v=>`<option ${v===cur?'selected':''}>${v}</option>`).join('');
+  };
+  fillSel('f_region', window.EntData.REGIONS);
+  fillSel('f_group', window.EntData.GROUPS);
+  fillSel('fltRegion', [''].concat(window.EntData.REGIONS));
+  fillSel('fltCargo', [''].concat(window.EntData.CARGOS));
+  fillSel('fltGroup', [''].concat(window.EntData.GROUPS));
+
+  if(isEnterprise){
+    hint.style.display='';
+    hint.className='role-hint enterprise';
+    hint.innerHTML='👤 <b>企业视角</b>：您正在管理<b>本企业</b>的资料，仅可查看与编辑本企业信息。如需代为录入维护，请联系您的服务商。';
+    document.getElementById('pageDesc').textContent='管理本企业主体信息与资质证照 · 支持营业执照智能识别录入';
+    btnAdd.style.display='none';
+    document.getElementById('viewList').style.display='none';
+    // 企业视角不展示「所属服务商」字段与相关服务商措辞
+    document.getElementById('fg_sp').style.display='none';
+    document.getElementById('svcNote').textContent='用于系统归档分类与分组筛选，修改后即时生效';
+    const me = window.EntData.current();
+    openDetail(me ? me.id : LIST[0].id);
+  } else {
+    const who = userRole==='admin' ? '超级管理员' : '服务商';
+    hint.style.display='';
+    hint.className='role-hint provider';
+    hint.innerHTML='🗂️ <b>'+who+'视角</b>：可查看并编辑<b>全部企业</b>的信息，支持代企业录入、维护与批量管理。企业档案与服务商「企业管理」<b>共用同一份数据</b>。';
+    document.getElementById('pageDesc').textContent='企业主体信息与资质证照登记 · 支持营业执照智能识别录入';
+    document.getElementById('fg_sp').style.display='';
+    document.getElementById('svcNote').textContent='与服务商「企业管理」共用同一份数据，任一侧修改另一侧立即同步';
+    btnAdd.style.display='';
+    document.getElementById('viewList').style.display='';
+    document.getElementById('viewDetail').style.display='none';
+    renderEntTable();
+  }
+}
+
+// —— 详情页 tabs ——
+document.querySelectorAll('.c-tab').forEach(function(t){
+  t.addEventListener('click',function(){
+    document.querySelectorAll('.c-tab').forEach(function(x){x.classList.remove('active')});
+    ['basic','cert','material','parking'].forEach(function(c){document.getElementById('c-'+c).style.display='none'});
+    t.classList.add('active');
+    document.getElementById('c-'+t.getAttribute('data-c')).style.display='';
+  });
+});
+
+// —— 营业执照 OCR 智能识别（模拟）——
+function mockOcr(){
+  const st = document.getElementById('ocrStatus');
+  const chips = document.getElementById('ocrChips');
+  st.innerHTML = '<span class="tag tag-blue">识别中…</span> 正在解析营业执照';
+  chips.style.display='none';
+  setTimeout(function(){
+    setValue('f_name','佛山市南海区小塘塘安运输服务有限公司');
+    setValue('f_code','9144060574616121X4');
+    document.getElementById('f_found').value='2003-03-28';
+    setValue('f_legal','黄云云');
+    setValue('f_scope','道路货物运输（普通货运）；货物专用运输（集装箱）');
+    setValue('f_capital','500');
+    setValue('f_mgmt','道路货物运输企业');
+    st.innerHTML = '<span class="ocr-field-chip"><span class="ico" data-icon="check"></span>识别完成</span> 7 个字段已自动填充，请核对后保存';
+    chips.style.display='';
+    chips.innerHTML = ['企业名称','统一社会信用代码','成立日期','法定代表人','经营范围','注册资金','管理类型']
+      .map(function(f){return '<span class="ocr-field-chip"><span class="ico" data-icon="check"></span>'+f+'</span>'}).join(' ');
+    iconsRender();
+    toast('营业执照识别完成，已自动填写 7 个字段');
+  }, 1200);
+}
+
+// —— 一键读取天眼查 / 企查查工商信息（模拟）——
+function mockBizQuery(){
+  const st = document.getElementById('ocrStatus');
+  const chips = document.getElementById('ocrChips');
+  st.innerHTML = '<span class="tag tag-blue">查询中…</span> 正在读取天眼查 / 企查查工商信息';
+  chips.style.display='none';
+  setTimeout(function(){
+    setValue('f_name','佛山市南海区小塘塘安运输服务有限公司');
+    setValue('f_code','9144060574616121X4');
+    document.getElementById('f_found').value='2003-03-28';
+    setValue('f_legal','黄云云');
+    setValue('f_scope','道路货物运输（普通货运）；货物专用运输（集装箱）');
+    setValue('f_capital','500');
+    setValue('f_mgmt','道路货物运输企业');
+    setValue('f_route','佛山—广州—深圳（珠三角干线）');
+    setValue('f_mainCargo','普货（建材 / 钢材 / 日用百货）');
+    st.innerHTML = '<span class="ocr-field-chip"><span class="ico" data-icon="check"></span>读取完成</span> 已从工商信息自动填充 9 个字段，请核对后保存';
+    chips.style.display='';
+    chips.innerHTML = ['企业名称','统一社会信用代码','成立日期','法定代表人','经营范围','注册资金','管理类型','主要运输路线','主要运输货物']
+      .map(function(f){return '<span class="ocr-field-chip"><span class="ico" data-icon="check"></span>'+f+'</span>'}).join(' ');
+    iconsRender();
+    toast('已从天眼查 / 企查查读取工商信息，自动填写 9 个字段');
+  }, 1200);
+}
+function toast(msg){
+  let t=document.getElementById('toast');
+  if(!t){ t=document.createElement('div'); t.id='toast'; t.className='toast'; document.body.appendChild(t); }
+  t.textContent=msg; t.style.opacity='1'; t.style.transform='translateY(0)';
+  clearTimeout(t._t); t._t=setTimeout(function(){t.style.opacity='0';t.style.transform='translateY(-10px)'},2200);
+}
+function iconsRender(){ if(window.__rerenderIcons) window.__rerenderIcons(); }
+
+// 页面加载：按当前角色决定展示「本企业」还是「全部企业」
+initCompany();
+</script>
+</body></html>

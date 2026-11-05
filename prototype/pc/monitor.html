@@ -1,15 +1,116 @@
 <!DOCTYPE html>
-<html lang="zh-CN"><head><meta charset="UTF-8"><title>动态监控</title>
+<html lang="zh-CN"><head><meta charset="UTF-8"><title>动态监控台账</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <link rel="stylesheet" href="../assets/common.css"><link rel="stylesheet" href="../assets/pc.css">
-<style></style></head><body>
+<style>
+  .notice{display:flex;gap:12px;align-items:flex-start;background:var(--brand-50);border:1px solid var(--brand-200);border-radius:var(--radius);padding:14px 16px;margin-bottom:16px;color:var(--text);}
+  .notice .ico{color:var(--brand-600);flex:none;margin-top:2px}
+  .notice b{color:var(--brand-700)}
+  .tabs{display:flex;gap:4px;border-bottom:1px solid var(--border);margin-bottom:16px}
+  .tab{padding:10px 16px;font-size:14px;color:var(--text-2);border:none;background:none;cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-1px}
+  .tab.active{color:var(--brand-600);border-bottom-color:var(--brand-600);font-weight:600}
+  .toolbar{display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;gap:12px;flex-wrap:wrap}
+  .toolbar .hint{font-size:13px;color:var(--text-2)}
+  .btn-group{display:flex;gap:8px}
+  .edu-chain{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--text-2);flex-wrap:wrap;margin-top:4px}
+  .edu-chain .step{display:inline-flex;align-items:center;gap:6px;padding:4px 10px;background:var(--bg-2);border-radius:20px}
+  .edu-chain .step.done{background:var(--ok-bg);color:var(--ok)}
+  .edu-chain .step.todo{background:var(--warn-bg);color:var(--warn)}
+  .edu-chain .arrow{color:var(--text-3)}
+</style></head><body>
 <div class="pc-page">
-<div class="pc-header"><div><h1>动态监控</h1><div class="desc">车辆动态监控（模拟数据演示）</div></div><div class="actions"><button class="btn btn-outline"><span class="ico" data-icon="setting"></span> 监控设置</button></div></div><div class="stat-grid">
-    <div class="stat-card"><div class="ic" style="background:var(--brand-100);color:var(--brand-500)">{ico("truck",24)}</div><div><div class="val">86</div><div class="lbl">在线车辆</div></div></div>
-    <div class="stat-card"><div class="ic" style="background:var(--warn-bg);color:var(--warn)">{ico("alertTriangle",24)}</div><div><div class="val">3</div><div class="lbl">今日预警</div></div></div>
-    <div class="stat-card"><div class="ic" style="background:var(--danger-bg);color:var(--danger)">{ico("alert",24)}</div><div><div class="val">1</div><div class="lbl">待处理</div></div></div>
-    <div class="stat-card"><div class="ic" style="background:var(--ok-bg);color:var(--ok)">{ico("checkCircle",24)}</div><div><div class="val">12</div><div class="lbl">今日已处置</div></div></div>
-    </div><div class="filter-bar"><div class="f-item"><label>车辆</label><input type="text" placeholder="请输入车牌"></div><div class="f-item"><label>预警等级</label><select><option>全部</option><option>严重</option><option>一般</option><option>提示</option></select></div><div class="f-actions"><button class="btn btn-primary btn-sm"><span class="ico" data-icon="search"></span> 查询</button><button class="btn btn-outline btn-sm">重置</button></div></div><div class="card" style="padding:0;overflow:hidden"><table class="table"><thead><tr><th>车辆</th><th>事件类型</th><th>预警等级</th><th>发生时间</th><th>处理状态</th><th>操作</th></tr></thead><tbody><tr><td>粤E·12345</td><td>超速预警</td><td><span class="tag tag-red">严重</span></td><td>2026-10-27 09:35:12</td><td><span class="tag tag-red">待处理</span></td><td><a class="btn btn-primary btn-sm">处理</a> </td></tr><tr><td>粤E·67890</td><td>疲劳驾驶</td><td><span class="tag tag-yellow">一般</span></td><td>2026-10-27 08:20:44</td><td><span class="tag tag-blue">已提醒</span></td><td><a class="btn btn-primary btn-sm">处理</a> </td></tr><tr><td>粤E·54321</td><td>偏离路线</td><td><span class="tag tag-blue">提示</span></td><td>2026-10-27 07:58:03</td><td><span class="tag tag-green">已处理</span></td><td><a class="btn btn-primary btn-sm">详情</a> </td></tr></tbody></table>
-<div class="table-foot"><span>共 3 条记录</span>
-<div class="pagination"><button>&lt;</button><button class="active">1</button><button>2</button><button>3</button><button>…</button><button>&gt;</button></div></div></div>
+<div class="pc-header">
+  <div><h1>动态监控台账</h1><div class="desc">动态监控平台/交警抄报台账上传留存 · 违规车辆识别统计 · 驾驶员登记 · 靶向教育联动 · 落实跟踪</div></div>
+  <div class="actions"><button class="btn btn-primary"><span class="ico" data-icon="upload"></span> 上传台账</button></div>
 </div>
-<script src="../assets/icons.js"></script></body></html>
+
+<div class="notice">
+  <span class="ico" data-icon="info"></span>
+  <div><b>动态监控不归本系统管理。</b>车辆卫星定位、超速/疲劳/偏离线路等实时监测由外部动态监控平台（或交警抄报）完成，本系统<b>只做台账上传留存</b>：导入外部台账 → 识别并统计违规车辆 → 登记违规驾驶员 → 联动生成针对性违规教育 → 跟踪教育落实闭环。</div>
+</div>
+
+<div class="stat-grid">
+  <div class="stat-card"><div class="ic" style="background:var(--brand-100);color:var(--brand-500)"><span class="ico" data-icon="fileText"></span></div><div><div class="val">18</div><div class="lbl">已留存台账</div></div></div>
+  <div class="stat-card"><div class="ic" style="background:var(--warn-bg);color:var(--warn)"><span class="ico" data-icon="alertTriangle"></span></div><div><div class="val">6</div><div class="lbl">违规车辆</div></div></div>
+  <div class="stat-card"><div class="ic" style="background:var(--danger-bg);color:var(--danger)"><span class="ico" data-icon="users"></span></div><div><div class="val">6</div><div class="lbl">违规驾驶员</div></div></div>
+  <div class="stat-card"><div class="ic" style="background:var(--ok-bg);color:var(--ok)"><span class="ico" data-icon="school"></span></div><div><div class="val">4</div><div class="lbl">靶向教育已落实</div></div></div>
+</div>
+
+<div class="tabs">
+  <button class="tab active" data-tab="ledger">台账留存</button>
+  <button class="tab" data-tab="violation">违规车辆与驾驶员</button>
+  <button class="tab" data-tab="edu">靶向教育跟踪</button>
+</div>
+
+<!-- 台账留存 -->
+<div id="tab-ledger" class="tab-pane">
+  <div class="toolbar">
+    <div class="hint">台账来源：动态监控平台导出 / 交警抄报单 / 人工录入。上传后系统留存并自动识别违规车辆。</div>
+  </div>
+  <div class="card" style="padding:0;overflow:hidden"><table class="table"><thead><tr><th>台账名称</th><th>来源</th><th>周期</th><th>上传人</th><th>上传时间</th><th>识别违规</th><th>操作</th></tr></thead><tbody>
+    <tr><td>2026-10 动态监控工作记录台账</td><td>动态监控平台</td><td>2026-10</td><td>监控员·李四</td><td>2026-11-01 09:12</td><td><span class="tag tag-yellow">识别 3 辆</span></td><td><a class="btn btn-outline btn-sm">查看</a></td></tr>
+    <tr><td>2026-10 交警抄报违法记录</td><td>交警抄报</td><td>2026-10</td><td>安全员·王五</td><td>2026-10-28 16:40</td><td><span class="tag tag-yellow">识别 2 辆</span></td><td><a class="btn btn-outline btn-sm">查看</a></td></tr>
+    <tr><td>2026-09 动态监控工作记录台账</td><td>动态监控平台</td><td>2026-09</td><td>监控员·李四</td><td>2026-10-01 08:55</td><td><span class="tag tag-yellow">识别 1 辆</span></td><td><a class="btn btn-outline btn-sm">查看</a></td></tr>
+    <tr><td>2026-09 在线率月报</td><td>动态监控平台</td><td>2026-09</td><td>监控员·李四</td><td>2026-10-01 08:58</td><td><span class="tag tag-blue">无违规</span></td><td><a class="btn btn-outline btn-sm">查看</a></td></tr>
+  </tbody></table>
+  <div class="table-foot"><span>共 18 条记录</span><div class="pagination"><button>&lt;</button><button class="active">1</button><button>2</button><button>&gt;</button></div></div></div>
+</div>
+
+<!-- 违规车辆与驾驶员 -->
+<div id="tab-violation" class="tab-pane" style="display:none">
+  <div class="toolbar">
+    <div class="hint">系统自动从台账识别违规车辆，登记对应驾驶员后可联动生成靶向教育。</div>
+    <div class="btn-group"><button class="btn btn-primary btn-sm"><span class="ico" data-icon="plus"></span> 登记违规驾驶员</button></div>
+  </div>
+  <div class="card" style="padding:0;overflow:hidden"><table class="table"><thead><tr><th>车牌</th><th>违规类型</th><th>违规时间</th><th>驾驶员</th><th>违规次数</th><th>靶向教育</th><th>操作</th></tr></thead><tbody>
+    <tr><td>粤E·12345</td><td>超速</td><td>2026-10-27 09:35</td><td>张伟</td><td>2</td><td><span class="tag tag-green">已落实</span></td><td><a class="btn btn-outline btn-sm">详情</a></td></tr>
+    <tr><td>粤E·67890</td><td>疲劳驾驶</td><td>2026-10-26 08:20</td><td>陈强</td><td>1</td><td><span class="tag tag-green">已落实</span></td><td><a class="btn btn-outline btn-sm">详情</a></td></tr>
+    <tr><td>粤E·54321</td><td>偏离路线</td><td>2026-10-25 07:58</td><td>刘洋</td><td>1</td><td><span class="tag tag-yellow">教育中</span></td><td><a class="btn btn-outline btn-sm">详情</a></td></tr>
+    <tr><td>粤E·13579</td><td>超速</td><td>2026-10-24 15:12</td><td>赵磊</td><td>3</td><td><span class="tag tag-red">未生成</span></td><td><a class="btn btn-primary btn-sm">生成靶向教育</a></td></tr>
+    <tr><td>粤E·24680</td><td>疲劳驾驶</td><td>2026-10-22 03:41</td><td>孙涛</td><td>1</td><td><span class="tag tag-red">未生成</span></td><td><a class="btn btn-primary btn-sm">生成靶向教育</a></td></tr>
+  </tbody></table>
+  <div class="table-foot"><span>共 6 辆违规车辆</span><div class="pagination"><button>&lt;</button><button class="active">1</button><button>&gt;</button></div></div></div>
+</div>
+
+<!-- 靶向教育跟踪 -->
+<div id="tab-edu" class="tab-pane" style="display:none">
+  <div class="toolbar"><div class="hint">按违规类型匹配靶向教育视频 → 推送给违规驾驶员 → 学习 + 考核 → 落实归档盒六。</div></div>
+  <div class="card" style="padding:0;overflow:hidden"><table class="table"><thead><tr><th>驾驶员</th><th>违规类型</th><th>靶向教育内容</th><th>落实状态</th><th>落实闭环</th></tr></thead><tbody>
+    <tr>
+      <td>赵磊</td><td>超速</td><td>《超速驾驶的危害与防范》</td>
+      <td><span class="tag tag-red">未开始</span></td>
+      <td><div class="edu-chain"><span class="step">1 生成教育</span><span class="arrow">→</span><span class="step todo">2 推送学习</span><span class="arrow">→</span><span class="step todo">3 考核通过</span><span class="arrow">→</span><span class="step todo">4 归档</span></div></td>
+    </tr>
+    <tr>
+      <td>刘洋</td><td>偏离路线</td><td>《按规定线路行驶》</td>
+      <td><span class="tag tag-yellow">学习中</span></td>
+      <td><div class="edu-chain"><span class="step done">1 生成教育</span><span class="arrow">→</span><span class="step done">2 推送学习</span><span class="arrow">→</span><span class="step todo">3 考核通过</span><span class="arrow">→</span><span class="step todo">4 归档</span></div></td>
+    </tr>
+    <tr>
+      <td>张伟</td><td>超速</td><td>《超速驾驶的危害与防范》</td>
+      <td><span class="tag tag-green">已落实</span></td>
+      <td><div class="edu-chain"><span class="step done">1 生成教育</span><span class="arrow">→</span><span class="step done">2 推送学习</span><span class="arrow">→</span><span class="step done">3 考核通过</span><span class="arrow">→</span><span class="step done">4 归档</span></div></td>
+    </tr>
+    <tr>
+      <td>陈强</td><td>疲劳驾驶</td><td>《疲劳驾驶的预防与处置》</td>
+      <td><span class="tag tag-green">已落实</span></td>
+      <td><div class="edu-chain"><span class="step done">1 生成教育</span><span class="arrow">→</span><span class="step done">2 推送学习</span><span class="arrow">→</span><span class="step done">3 考核通过</span><span class="arrow">→</span><span class="step done">4 归档</span></div></td>
+    </tr>
+  </tbody></table>
+  <div class="table-foot"><span>共 6 名违规驾驶员 · 4 名已落实</span></div></div>
+</div>
+
+</div>
+<script src="../assets/icons.js"></script>
+<script>
+  // 页签切换
+  document.querySelectorAll('.tab').forEach(function (t) {
+    t.addEventListener('click', function () {
+      document.querySelectorAll('.tab').forEach(function (x) { x.classList.remove('active'); });
+      document.querySelectorAll('.tab-pane').forEach(function (p) { p.style.display = 'none'; });
+      t.classList.add('active');
+      document.getElementById('tab-' + t.getAttribute('data-tab')).style.display = '';
+    });
+  });
+</script>
+</body></html>

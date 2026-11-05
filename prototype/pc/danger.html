@@ -1,10 +1,125 @@
 <!DOCTYPE html>
-<html lang="zh-CN"><head><meta charset="UTF-8"><title>隐患排查治理</title>
+<html lang="zh-CN"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>隐患排查治理</title>
 <link rel="stylesheet" href="../assets/common.css"><link rel="stylesheet" href="../assets/pc.css">
-<style></style></head><body>
+<style>
+  .seg{display:flex;gap:4px;background:#F1F5F9;padding:4px;border-radius:10px;margin-bottom:16px}
+  .seg .s{flex:1;padding:9px;text-align:center;border-radius:8px;font-size:14px;cursor:pointer;color:var(--text-2);font-weight:600;transition:.12s}
+  .seg .s.on{background:#fff;color:var(--brand-600);box-shadow:var(--shadow-sm)}
+  .check-list{border:1px solid var(--border);border-radius:10px;overflow:hidden}
+  .check-item{display:flex;align-items:flex-start;gap:12px;padding:13px 16px;border-bottom:1px solid var(--border)}
+  .check-item:last-child{border-bottom:none}
+  .check-item .cat{flex-shrink:0;width:96px;font-size:12px}
+  .check-item .cat.major{color:var(--danger);font-weight:700}
+  .check-item .cat.base{color:var(--text-2)}
+  .check-item .txt{flex:1;font-size:14px;line-height:1.6}
+  .check-item .verdict{flex-shrink:0;display:flex;gap:8px}
+  .verdict .v{cursor:pointer;padding:4px 12px;border:1px solid var(--border-strong);border-radius:6px;font-size:13px}
+  .verdict .v.yes.on{background:var(--ok);border-color:var(--ok);color:#fff}
+  .verdict .v.no.on{background:var(--danger);border-color:var(--danger);color:#fff}
+  .hint{background:var(--warn-bg);border:1px solid var(--warn);border-radius:8px;padding:10px 14px;font-size:13px;color:#8a5a00;margin-bottom:12px}
+  .modal-mask{position:fixed;inset:0;background:rgba(20,28,43,.45);display:none;align-items:center;justify-content:center;z-index:100}
+  .modal-mask.show{display:flex}
+  .modal{background:#fff;border-radius:var(--r-lg);width:680px;max-width:94vw;max-height:88vh;overflow:auto;box-shadow:var(--shadow-md)}
+  .modal-head{display:flex;align-items:center;justify-content:space-between;padding:16px 20px;border-bottom:1px solid var(--border);font-weight:700;font-size:16px}
+  .modal-head .x{cursor:pointer;font-size:24px;color:var(--text-3);line-height:1}
+  .modal-body{padding:20px}
+</style></head><body>
 <div class="pc-page">
-<div class="pc-header"><div><h1>隐患排查治理</h1><div class="desc">隐患排査、登记、整改、闭环</div></div><div class="actions"><button class="btn btn-primary"><span class="ico" data-icon="plus"></span> 发起检查</button></div></div><div class="filter-bar"><div class="f-item"><label>检查时间</label><input type="text" placeholder="开始日期 - 结束日期"></div><div class="f-item"><label>检查类型</label><select><option>全部</option><option>日常检查</option><option>专项检查</option><option>季节检查</option></select></div><div class="f-actions"><button class="btn btn-primary btn-sm"><span class="ico" data-icon="search"></span> 查询</button><button class="btn btn-outline btn-sm">重置</button></div></div><div class="card" style="padding:0;overflow:hidden"><table class="table"><thead><tr><th>检查名称</th><th>检查时间</th><th>检查类型</th><th>检查项目</th><th>整改项</th><th>状态</th><th>操作</th></tr></thead><tbody><tr><td>季度安全大检查</td><td>2026-09-28</td><td>专项检查</td><td>18</td><td>3</td><td><span class="tag tag-yellow">整改中</span></td><td><a class="btn btn-primary btn-sm">详情</a> <a class="btn btn-outline btn-sm">处理</a></td></tr><tr><td>日常隐患排查</td><td>2026-10-20</td><td>日常检查</td><td>10</td><td>1</td><td><span class="tag tag-red">待整改</span></td><td><a class="btn btn-primary btn-sm">详情</a> <a class="btn btn-outline btn-sm">处理</a></td></tr><tr><td>冬季安全检查</td><td>2026-10-15</td><td>季节检查</td><td>15</td><td>0</td><td><span class="tag tag-green">已闭环</span></td><td><a class="btn btn-primary btn-sm">详情</a> </td></tr></tbody></table>
-<div class="table-foot"><span>共 3 条记录</span>
-<div class="pagination"><button>&lt;</button><button class="active">1</button><button>2</button><button>3</button><button>…</button><button>&gt;</button></div></div></div>
+  <div class="pc-header"><div><h1>隐患排查治理</h1><div class="desc">隐患排查、登记、整改、闭环 · 预置重大事故隐患专项排查项</div></div>
+    <div class="actions"><button class="btn btn-outline" onclick="window.parent.gotoPage('pc/archive_flow.html?box=8')"><span class="ico" data-icon="archive"></span> 存档到电子档案柜（盒八）</button><button class="btn btn-primary" onclick="openNew()"><span class="ico" data-icon="plus"></span> 发起检查</button></div>
+  </div>
+
+  <div class="card" style="margin-bottom:16px">
+    <div class="card-title">排查清单范本预览 <span style="font-size:13px;color:var(--text-3);font-weight:400">列结构：序号/项目类别/检查项目/检查内容与检查标准/检查结果/备注</span></div>
+    <div class="seg" id="seg">
+      <div class="s on" onclick="switchSeg(0)">重大事故隐患项<span class="n" style="display:block;font-size:12px;color:var(--danger);margin-top:1px">一票否决</span></div>
+      <div class="s" onclick="switchSeg(1)">基础管理项<span class="n" style="display:block;font-size:12px;color:var(--text-3);margin-top:1px">常规检查</span></div>
+    </div>
+    <div class="check-list" id="checkList"></div>
+  </div>
+
+  <div class="card" style="padding:0;overflow:hidden">
+    <div class="card-title" style="padding:16px 20px 0">排查记录</div>
+    <div style="padding:0 20px 16px"><table class="table"><thead><tr><th>检查名称</th><th>检查时间</th><th>检查类型</th><th>检查项目</th><th>整改项</th><th>状态</th><th>操作</th></tr></thead>
+    <tbody><tr><td>2026年10月重大事故隐患专项排查</td><td>2026-10-15</td><td>月度重大事故隐患</td><td><span class="tag tag-red">6</span></td><td>1</td><td><span class="tag tag-yellow">整改中</span></td><td><a class="btn btn-primary btn-sm">详情</a> <a class="btn btn-outline btn-sm">处理</a></td></tr>
+    <tr><td>2026年10月全面隐患排查</td><td>2026-10-20</td><td>月度全面</td><td>18</td><td>1</td><td><span class="tag tag-red">待整改</span></td><td><a class="btn btn-primary btn-sm">详情</a> <a class="btn btn-outline btn-sm">处理</a></td></tr>
+    <tr><td>国庆节前专项排查</td><td>2026-09-28</td><td>重大节假日前</td><td>15</td><td>0</td><td><span class="tag tag-green">已闭环</span></td><td><a class="btn btn-primary btn-sm">详情</a></td></tr></tbody></table></div>
+  </div>
 </div>
-<script src="../assets/icons.js"></script></body></html>
+
+<div class="modal-mask" id="newModal">
+  <div class="modal">
+    <div class="modal-head">发起检查 <span class="x" onclick="closeModal('newModal')">×</span></div>
+    <div class="modal-body">
+      <div class="form-item"><label class="form-label">排查类型 <span class="req">*</span></label>
+        <select class="form-select" onchange="onTypeChange(this.value)">
+          <option value="monthly_major">月度重大事故隐患排查（专项）</option>
+          <option value="monthly_full">月度全面隐患排查</option>
+          <option value="holiday_pre">重大节假日前隐患排查</option>
+          <option value="emergency_supply">应急物资排查</option>
+          <option value="season_risk">汛期/暑期重大风险排查</option>
+        </select></div>
+      <div class="hint" id="typeHint">选择「月度重大事故隐患排查」将自动带出 6 项重大事故隐患专项排查项（一票否决类）。</div>
+      <div class="form-item"><label class="form-label">检查名称</label><input class="form-input" placeholder="如：2026年11月重大事故隐患专项排查"></div>
+      <div style="display:flex;gap:10px;justify-content:flex-end">
+        <button class="btn btn-outline" onclick="closeModal('newModal')">取消</button>
+        <button class="btn btn-primary" onclick="saveCheck()">发起并带出清单范本</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="../assets/icons.js"></script>
+<script>
+const MAJOR = [
+  ['特殊天气','经营地或运营线路途经地已发布台风橙色及以上预警，暴雨、暴雪、冰雹、大雾、沙尘暴、大风、道路结冰红色预警等不具备安全通行条件时，是否执行政府部门停运指令或企业应急预案要求仍擅自安排运输作业'],
+  ['企业资质','是否存在未取得经营许可或未按规定进行备案从事经营活动，或超出许可（备案）事项和有效期经营的情况'],
+  ['三超一疲劳','所属经营性驾驶员和车辆是否存在长期"三超一疲劳"（超速、超员、超载、疲劳驾驶）且未及时提醒纠正、结束后一个月内未严肃处理，或存在一次计10分及以上诚信考核计分情形仍未严肃处理仍继续安排上岗'],
+  ['车辆运输','所属货运车辆是否故意夹带危险货物或违规运输禁运、限运物品'],
+  ['车辆运输','所属货运车辆运输过程中是否违法装载导致车货总质量超过100吨'],
+  ['车辆改装','是否使用报废、擅自改装、拼装、检验检测不合格（含未在有效期内）等不符合国家规定的车辆装备、设施设备从事经营活动'],
+];
+const BASE = [
+  ['安全会议管理','安全生产例会是否按制度召开，有会议记录（会议通知、参会人员签到、会议内容材料、会议照片等）'],
+  ['安全培训','是否按计划开展安全教育培训，培训记录（内容、照片、签字）齐全'],
+  ['动态监控','动态监控平台是否正常使用，违规记录是否及时处理'],
+  ['应急物资','应急器材、设备是否配备齐全、维护到位'],
+];
+let curSeg = 0;
+
+function switchSeg(i){
+  curSeg = i;
+  document.querySelectorAll('#seg .s').forEach((el,idx)=>el.classList.toggle('on', idx===i));
+  renderList();
+}
+function renderList(){
+  const data = curSeg===0 ? MAJOR : BASE;
+  const cat = curSeg===0 ? 'major' : 'base';
+  const catName = curSeg===0 ? '重大事故隐患排查项' : '基础管理';
+  document.getElementById('checkList').innerHTML = data.map((d,i)=>`
+    <div class="check-item">
+      <div class="cat ${cat}">${catName}<br><span style="font-size:11px;opacity:.7">${i+1}</span></div>
+      <div class="txt"><b>${d[0]}</b>：${d[1]}</div>
+      <div class="verdict">
+        <span class="v yes" onclick="mark(this,'yes')">□ 合格</span>
+        <span class="v no" onclick="mark(this,'no')">□ 不合格</span>
+      </div>
+    </div>`).join('');
+}
+function mark(el, kind){
+  const p = el.parentElement;
+  p.querySelectorAll('.v').forEach(v=>v.classList.remove('on'));
+  el.classList.add('on');
+  if(kind==='no' && curSeg===0){ alert('重大事故隐患项判定为「不合格」——系统将自动标记为重大隐患，立即督办整改（模拟）'); }
+}
+function onTypeChange(v){
+  const hint = document.getElementById('typeHint');
+  if(v==='monthly_major') hint.textContent = '选择「月度重大事故隐患排查」将自动带出 6 项重大事故隐患专项排查项（一票否决类）。';
+  else hint.textContent = '将自动带出该类型的系统级排查清单范本，可增删项目。';
+}
+function openNew(){ document.getElementById('newModal').classList.add('show'); }
+function saveCheck(){ alert('已发起检查并带出清单范本（模拟）'); closeModal('newModal'); }
+function closeModal(id){ document.getElementById(id).classList.remove('show'); }
+
+renderList();
+</script></body></html>

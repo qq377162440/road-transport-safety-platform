@@ -176,35 +176,35 @@ def check():
 # 12. 隐患排查治理
 def danger():
     tb = table(['检查名称','检查时间','检查类型','检查项目','整改项','状态','操作'],
-        [['季度安全大检查','2026-09-28','专项检查','18','3', tag('整改中','yellow'), opt_btn('详情','处理')],
-         ['日常隐患排查','2026-10-20','日常检查','10','1', tag('待整改','red'), opt_btn('详情','处理')],
-         ['冬季安全检查','2026-10-15','季节检查','15','0', tag('已闭环','green'), opt_btn('详情')]])
+        [['2026年10月重大事故隐患专项排查','2026-10-15','月度重大事故隐患', tag('6','red'),'1', tag('整改中','yellow'), opt_btn('详情','处理')],
+         ['2026年10月全面隐患排查','2026-10-20','月度全面','18','1', tag('待整改','red'), opt_btn('详情','处理')],
+         ['国庆节前专项排查','2026-09-28','重大节假日前','15','0', tag('已闭环','green'), opt_btn('详情')]])
     return page('隐患排查治理','安全隐患排查与整改闭环',
-        head('隐患排查治理','隐患排査、登记、整改、闭环', f'<button class="btn btn-primary">{ico("plus")} 发起检查</button>') +
-        filter_bar([fitem('检查时间', inp('开始日期 - 结束日期')), fitem('检查类型', sel(['全部','日常检查','专项检查','季节检查']))],
+        head('隐患排查治理','隐患排查、登记、整改、闭环', f'<button class="btn btn-primary">{ico("plus")} 发起检查</button>') +
+        filter_bar([fitem('检查时间', inp('开始日期 - 结束日期')), fitem('检查类型', sel(['全部','一日三检异常','月度全面','月度重大事故隐患','重大节假日前','应急物资','汛期暑期','司机上报']))],
             f'<button class="btn btn-primary btn-sm">{ico("search")} 查询</button><button class="btn btn-outline btn-sm">重置</button>') + tb)
 
 # 13. 安全会议管理
 def meeting():
     tb = table(['会议名称','会议类型','召开时间','主持人','参会人数','状态','操作'],
-        [['2026年10月安全例会','安全例会','2026-10-25 09:00','李强','32', tag('已结束','gray'), opt_btn('详情','纪要')],
-         ['冬季行车安全专题会','专题会议','2026-10-28 14:00','张伟','40', tag('未开始','blue'), opt_btn('详情')],
-         ['消防应急演练','应急演练','2026-11-05 10:00','王芳','50', tag('未开始','blue'), opt_btn('详情')]])
-    return page('安全会议管理','安全生产会议与培训记录',
-        head('安全会议管理','会议安排、签到、纪要管理', f'<button class="btn btn-primary">{ico("plus")} 新增会议</button>') +
-        filter_bar([fitem('会议名称', inp('请输入')), fitem('会议类型', sel(['全部','安全例会','专题会议','应急演练'])),
-                    fitem('会议状态', sel(['全部','未开始','进行中','已结束']))],
+        [['2026年第4季度安全生产领导小组会议','领导小组会议','2026-10-25 09:00','张伟','12', tag('已结束','gray'), opt_btn('详情','纪要')],
+         ['2026年10月安全生产月度会议','月度会议','2026-10-28 14:00','李强','32', tag('未开始','blue'), opt_btn('详情')],
+         ['2026年9月安全生产月度会议','月度会议','2026-09-25 14:00','李强','30', tag('已归档','green'), opt_btn('详情','归档')]])
+    return page('安全会议管理','安全生产领导小组会议与月度会议',
+        head('安全会议管理','会议通知、签到、纪要、照片四段式', f'<button class="btn btn-primary">{ico("plus")} 新增会议</button>') +
+        filter_bar([fitem('会议名称', inp('请输入')), fitem('会议类型', sel(['全部','领导小组会议','月度会议'])),
+                    fitem('会议状态', sel(['全部','未开始','进行中','已结束','已归档']))],
             f'<button class="btn btn-primary btn-sm">{ico("search")} 查询</button><button class="btn btn-outline btn-sm">重置</button>') + tb)
 
 # 14. 安全投入管理
 def budget():
-    tb = table(['序号','预算周期','上期营收(万)','提取比例(%)','上期结余(万)','已使用(万)','剩余(万)','签字','操作'],
-        [['1','2026年第三季度','1200','2.5','30','18','12', tag('已签','green'), opt_btn('详情')],
-         ['2','2026年第二季度','1100','2.5','27','22','5', tag('已签','green'), opt_btn('详情')],
-         ['3','2026年第一季度','1000','2.5','25','25','0', tag('已签','green'), opt_btn('详情')]])
-    return page('安全投入管理','安全生产费用提取与使用台账',
-        head('安全投入管理','安全费用提取、使用、结余', f'<button class="btn btn-primary">{ico("plus")} 新增预算</button>') +
-        filter_bar([fitem('预算周期', inp('请选择'))], f'<button class="btn btn-primary btn-sm">{ico("search")} 查询</button>') + tb)
+    tb = table(['序号','计提年度','上年度营收(元)','计提比例','应提金额(元)','已使用(元)','结余(元)','签字','操作'],
+        [['1','2026','12,000,000','1%（普货）','120,000','98,000','22,000', tag('已签','green'), opt_btn('详情','登记支出')],
+         ['2','2025','11,000,000','1%（普货）','110,000','105,000','5,000', tag('已签','green'), opt_btn('详情','登记支出')],
+         ['3','2024','10,000,000','1%（普货）','100,000','100,000','0', tag('已签','green'), opt_btn('详情')]])
+    return page('安全投入管理','安全生产费用提取与使用台账（财资〔2022〕136号）',
+        head('安全投入管理','安全费用计提、11类支出登记、使用台账', f'<button class="btn btn-primary">{ico("plus")} 新增计提</button><button class="btn btn-outline">{ico("download")} 出台账</button>') +
+        filter_bar([fitem('计提年度', sel(['全部','2026','2025','2024'])), fitem('营运类型', sel(['全部','普货','危货']))], f'<button class="btn btn-primary btn-sm">{ico("search")} 查询</button><button class="btn btn-outline btn-sm">重置</button>') + tb)
 
 # 15. 风险辨识管控
 def risk():
@@ -372,8 +372,15 @@ pages = {
     'notice': notice, 'archive': archive, 'monitor': monitor,
 }
 
+# 已手工增强为「可交互版」的页面（含内嵌 JS/CSS 的完整交互），
+# 重新运行 gen_pc.py 时跳过覆盖，保留手写成果。
+ENHANCED = {'person', 'doc_sample', 'danger', 'meeting', 'budget', 'risk', 'emergency', 'quick_gen', 'template_manager', 'template_push', 'custom_sign'}
+
 for name, fn in pages.items():
     path = os.path.join(OUT, f'{name}.html')
+    if name in ENHANCED and os.path.exists(path):
+        print(f'KEEP {name}.html  (手写增强版，跳过覆盖)')
+        continue
     with open(path, 'w', encoding='utf-8') as f:
         f.write(fn())
     print(f'OK  {name}.html')

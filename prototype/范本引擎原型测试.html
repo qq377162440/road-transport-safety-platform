@@ -1,0 +1,594 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>范本引擎原型测试 — 盒一</title>
+<style>
+  :root {
+    --primary: #1a73e8;
+    --border: #e0e0e0;
+    --bg: #f5f6f8;
+    --text: #1f2329;
+    --muted: #8a919f;
+    --danger: #d93025;
+    --ok: #188038;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    font-size: 14px;
+  }
+  .topbar {
+    background: #fff;
+    border-bottom: 1px solid var(--border);
+    padding: 14px 24px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+  }
+  .topbar h1 { font-size: 18px; }
+  .topbar .hint { color: var(--muted); font-size: 13px; }
+  .layout {
+    display: grid;
+    grid-template-columns: 360px 1fr;
+    gap: 16px;
+    padding: 16px 24px;
+    max-width: 1400px;
+    margin: 0 auto;
+    height: calc(100vh - 60px);
+  }
+  .panel {
+    background: #fff;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+  .panel-left { overflow-y: auto; }
+  .panel-header {
+    padding: 14px 16px;
+    border-bottom: 1px solid var(--border);
+    font-weight: 600;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .panel-body { padding: 16px; }
+  .section { margin-bottom: 20px; }
+  .section-title {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--muted);
+    margin-bottom: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+  .field { margin-bottom: 12px; }
+  .field label {
+    display: block;
+    font-size: 13px;
+    margin-bottom: 4px;
+    color: #444;
+  }
+  .field label .req { color: var(--danger); }
+  .field input, .field select {
+    width: 100%;
+    padding: 8px 10px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    font-size: 14px;
+    font-family: inherit;
+  }
+  .field input:focus, .field select:focus {
+    outline: none;
+    border-color: var(--primary);
+    box-shadow: 0 0 0 2px rgba(26,115,232,0.1);
+  }
+  .field input.empty-field {
+    background: #fffdf5;
+    border-style: dashed;
+  }
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 10px 18px;
+    border-radius: 8px;
+    border: 1px solid transparent;
+    font-size: 14px;
+    cursor: pointer;
+    font-family: inherit;
+    transition: all 0.15s;
+  }
+  .btn-primary { background: var(--primary); color: #fff; }
+  .btn-primary:hover { background: #1557b3; }
+  .btn-outline { background: #fff; border-color: var(--border); color: var(--text); }
+  .btn-outline:hover { background: #f5f6f8; }
+  .btn-block { width: 100%; justify-content: center; }
+  .btn-group { display: flex; gap: 8px; }
+
+  /* 右侧预览区 */
+  .panel-right { position: relative; }
+  .preview-toolbar {
+    display: flex;
+    gap: 6px;
+    padding: 10px 16px;
+    border-bottom: 1px solid var(--border);
+    flex-wrap: wrap;
+  }
+  .tab {
+    padding: 6px 14px;
+    border-radius: 6px;
+    border: 1px solid var(--border);
+    background: #fff;
+    cursor: pointer;
+    font-size: 13px;
+    font-family: inherit;
+  }
+  .tab.active { background: var(--primary); color: #fff; border-color: var(--primary); }
+  .preview-body {
+    flex: 1;
+    overflow-y: auto;
+    background: #e8eaed;
+    padding: 30px;
+    display: flex;
+    justify-content: center;
+  }
+  /* A4 纸张模拟 */
+  .paper {
+    background: #fff;
+    width: 720px;
+    min-height: 900px;
+    padding: 60px 55px;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.12);
+    font-family: "SimSun", "宋体", serif;
+    font-size: 14px;
+    line-height: 1.9;
+    color: #000;
+  }
+  .paper h2 { text-align: center; font-size: 22px; letter-spacing: 3px; margin-bottom: 20px; font-weight: normal; }
+  .paper h3 { font-size: 15px; margin: 18px 0 8px; font-weight: bold; }
+  .paper p { text-indent: 2em; margin: 6px 0; }
+  .paper .no-indent { text-indent: 0; }
+  .paper ol { padding-left: 3em; }
+  .paper ol li { margin: 3px 0; text-indent: 0; }
+  .sign-block { margin-top: 40px; }
+  .sign-row { display: flex; justify-content: space-between; margin: 14px 0; }
+  .sign-cell { text-align: center; min-width: 140px; }
+  .sign-line { display: inline-block; min-width: 120px; border-bottom: 1px solid #000; padding: 0 8px; min-height: 1.2em; }
+  .sign-line.filled { color: #1a4b8c; font-weight: bold; }
+  .sign-line.empty { border-bottom-style: dashed; border-bottom-color: #999; }
+  .fill-var { color: #1a4b8c; font-weight: bold; }
+  .fill-empty { color: #999; border-bottom: 1px dashed #bbb; }
+  .hazard-item { margin: 6px 0; }
+  .hazard-name { font-weight: bold; }
+
+  .badge {
+    display: inline-block;
+    font-size: 11px;
+    padding: 2px 8px;
+    border-radius: 10px;
+    margin-left: 6px;
+  }
+  .badge.merged { background: #e6f4ea; color: var(--ok); }
+  .badge.split { background: #fce8e6; color: var(--danger); }
+
+  .tip {
+    background: #fff8e1;
+    border: 1px solid #f0d99a;
+    border-radius: 8px;
+    padding: 10px 12px;
+    font-size: 12px;
+    color: #7a5c00;
+    margin-bottom: 16px;
+  }
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <h1>范本引擎原型测试</h1>
+  <span class="hint">盒一「公司档案及管理层档案」— 验证：变量填充 / 范本版式 / 岗位合并 / 留空手填</span>
+</div>
+
+<div class="layout">
+  <!-- 左：数据录入 -->
+  <div class="panel panel-left">
+    <div class="panel-header">① 录入关键信息 <span style="color:var(--muted);font-weight:normal;font-size:12px">（可修改测试留空）</span></div>
+    <div class="panel-body">
+      <div class="section">
+        <div class="section-title">企业信息（企业级字段）</div>
+        <div class="field">
+          <label>企业全称 <span class="req">*</span></label>
+          <input id="company_name" value="佛山市优成得物流有限公司">
+        </div>
+        <div class="field">
+          <label>法定代表人</label>
+          <input id="company_legal" value="马志勇">
+        </div>
+        <div class="field">
+          <label>通讯地址 <span style="color:var(--muted)">（留空测试手填）</span></label>
+          <input id="company_address" value="" placeholder="留空 → 打印时手填" class="empty-field">
+        </div>
+      </div>
+
+      <div class="section">
+        <div class="section-title">人员信息（人员级字段）</div>
+        <div class="field">
+          <label>姓名 <span class="req">*</span></label>
+          <input id="person_name" value="马志勇">
+        </div>
+        <div class="field">
+          <label>岗位 <span class="req">*</span>（决定范本与条件段落）</label>
+          <select id="person_post">
+            <option value="主要负责人">主要负责人</option>
+            <option value="安全员">安全员</option>
+            <option value="监控员">监控员</option>
+            <option value="驾驶员" selected>驾驶员</option>
+            <option value="行政财务">行政财务</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>身份证号 <span style="color:var(--muted)">（留空测试手填）</span></label>
+          <input id="person_idcard" value="" placeholder="留空 → 打印时手填" class="empty-field">
+        </div>
+      </div>
+
+      <div class="section">
+        <div class="section-title">上下文字段（生成时确定）</div>
+        <div class="field">
+          <label>年度</label>
+          <input id="year" value="2025">
+        </div>
+        <div class="field">
+          <label>签订日期</label>
+          <input id="sign_date" value="2025-06-24">
+        </div>
+      </div>
+
+      <button class="btn btn-primary btn-block" onclick="renderAll()">生成范本预览</button>
+      <div style="height:12px"></div>
+      <button class="btn btn-outline btn-block" onclick="resetData()">重置为样例数据</button>
+    </div>
+  </div>
+
+  <!-- 右：范本预览 -->
+  <div class="panel panel-right">
+    <div class="preview-toolbar">
+      <span style="font-size:13px;color:var(--muted);margin-right:8px">② 预览生成结果：</span>
+      <button class="tab active" data-tab="resp" onclick="switchTab('resp')">责任书 <span class="badge split">替换型·独立</span></button>
+      <button class="tab" data-tab="appoint" onclick="switchTab('appoint')">任命书 <span class="badge merged">增减型·合并</span></button>
+      <button class="tab" data-tab="hazard" onclick="switchTab('hazard')">岗位告知书 <span class="badge merged">增减型·列表</span></button>
+    </div>
+    <div class="preview-body">
+      <div class="paper" id="paper"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ============ 数据获取（模拟字段字典取值） ============
+function getData() {
+  return {
+    company_name: document.getElementById('company_name').value,
+    company_legal: document.getElementById('company_legal').value,
+    company_address: document.getElementById('company_address').value,
+    person_name: document.getElementById('person_name').value,
+    person_post: document.getElementById('person_post').value,
+    person_idcard: document.getElementById('person_idcard').value,
+    year: document.getElementById('year').value,
+    sign_date: document.getElementById('sign_date').value,
+  };
+}
+
+// 填充函数：有值填值，无值显示空栏（留空手填）
+function fill(val) {
+  if (val && val.trim() !== '') {
+    return '<span class="fill-var">' + escapeHtml(val) + '</span>';
+  }
+  return '<span class="fill-empty">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span>';
+}
+
+function escapeHtml(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+// 签字栏：有签字图则填充，否则空栏
+function signCell(val) {
+  if (val) return '<span class="sign-line filled">' + escapeHtml(val) + '</span>';
+  return '<span class="sign-line empty"></span>';
+}
+
+// ============ 岗位危害清单（结构化列表数据） ============
+const hazardData = {
+  '主要负责人': [
+    { name: '颈、腰椎病', desc: '久坐不动，长时间一个姿势会引起颈椎僵硬...' },
+    { name: '脂肪肝', desc: '长期饮食不规律、暴饮暴食、缺少运动。' },
+    { name: '视力下降', desc: '总是对着屏幕会对视网膜产生危害。' },
+    { name: '手腕酸痛', desc: '长时间手握鼠标，手腕处用力导致酸痛。' },
+  ],
+  '安全员': [
+    { name: '颈、腰椎病', desc: '久坐不动，长时间一个姿势...' },
+    { name: '视力下降', desc: '长期面对电脑屏幕。' },
+  ],
+  '监控员': [
+    { name: '前列腺疾病', desc: '久坐不动，血液循环不畅。' },
+    { name: '颈、腰椎病', desc: '长时间一个姿势。' },
+    { name: '视力下降', desc: '长期盯屏幕。' },
+    { name: '手腕酸痛', desc: '长时间操作鼠标。' },
+  ],
+  '驾驶员': [
+    { name: '前列腺疾病', desc: '久坐不动，血液循环不畅，憋尿习惯易致慢性前列腺炎。' },
+    { name: '颈、腰椎病', desc: '久坐长时间一个姿势，颈椎僵硬、腰椎劳损。' },
+    { name: '胃肠道疾病', desc: '吃饭不按时，生活不规律。' },
+    { name: '振动病', desc: '车辆行驶振动致手部末梢血管痉挛。' },
+    { name: '噪声性耳聋', desc: '长期接触发动机噪声致听力损伤。' },
+    { name: '视力疲劳综合症', desc: '长时间注视路面导致视力疲劳。' },
+    { name: '脂肪肝', desc: '饮食不规律、油腻食物、缺少运动。' },
+    { name: '肛肠疾病', desc: '过度劳累、饮水少致便秘、痔疮。' },
+  ],
+  '行政财务': [
+    { name: '颈、腰椎病', desc: '久坐伏案。' },
+    { name: '视力下降', desc: '长期面对电脑。' },
+    { name: '手腕酸痛', desc: '长时间使用鼠标键盘。' },
+  ],
+};
+
+// ============ 责任书（替换型·独立范本，按岗位整段不同） ============
+const respDuty = {
+  '主要负责人': [
+    '贯彻执行国家安全生产方针、政策和有关安全生产法律、法规、规章及技术标准等；',
+    '建立健全并落实本公司全员安全生产责任制，加强安全生产标准化建设；',
+    '组织制定并实施本公司安全生产规章制度和操作规程；',
+    '确定符合条件的安全生产分管负责人，依法设置安全生产管理机构或配备专职安全生产管理人员；',
+    '组织制定并实施本公司安全生产教育和培训计划；',
+    '保证本公司安全生产投入的有效实施；',
+    '组织建立并落实安全风险分级管控和隐患排查治理双重预防工作机制；',
+    '督促、检查本公司的安全生产工作，每年至少参加不少于两次的安全生产全面检查；',
+    '每季度召开一次安全生产专题会议；',
+    '定期研究安全生产工作，每年向职工大会报告安全生产情况；',
+    '组织制定并实施本公司的生产安全事故应急救援预案；',
+    '建立、健全本公司的公司负责人现场带班制度；',
+    '及时、如实报告生产安全事故；',
+    '组织做好公司传染病疫情防控工作。',
+  ],
+  '安全员': [
+    '负责公司安全生产工作日常管理工作；',
+    '组织或者参与拟订本单位安全生产规章制度、操作规程和生产安全事故应急救援预案；',
+    '组织或者参与本单位安全生产教育和培训，如实记录；',
+    '组织开展安全风险和危险源辨识、评估；',
+    '组织或者参与本单位应急救援演练；',
+    '组织安全生产岗位检查、日常安全检查和专业性安全检查；',
+    '制止和纠正违章指挥、强令冒险作业、违反操作规程的行为；',
+    '督促本单位履行安全生产职责、落实安全生产整改措施，组织安全生产考核；',
+    '协助组织召开安全生产工作会议；',
+    '协助组织开展安全文化建设及安全生产活动；',
+    '监督本公司安全生产资金投入和技术措施的落实；',
+    '组织劳动防护用品及应急救援物资的购置及使用管理；',
+    '协助组织事故抢险救援工作；',
+    '落实公司的职业健康管理工作；',
+    '负责安全生产统计与安全生产管理档案建立；',
+    '法律、法规、规章、规范、标准规定的其他安全生产管理职责。',
+  ],
+  '监控员': [
+    '负责组织开展公司车辆动态监控管理工作；',
+    '负责对卫星定位监控平台使用及监控信息登记，建立动态监控台账；',
+    '监督卫星定位监控平台及相关车载设备使用情况；',
+    '组织开展驾驶员（车辆）违法违规行为分析；',
+    '负责对驾驶员违法违规行为的监督提醒工作；',
+    '每月对公司动态监控工作开展情况进行全面的总结分析；',
+    '参加公司开展的安全教育培训、安全活动和应急演练；',
+    '配合开展事故调查处理工作；',
+    '定期开展部门所用设备、器材进行经常性检查；',
+    '法律、法规、规章、规范、标准规定的其他安全生产职责。',
+  ],
+  '驾驶员': [
+    '严格遵守国家及地方的法律法规及标准；',
+    '严格落实岗位安全责任，遵守本单位的安全生产规章制度、操作规程和应急预案；',
+    '接受安全生产教育培训和考核，掌握本职工作所需的安全生产知识；',
+    '随身携带相关有效证件及文书，认真做好车辆及安全防护设施的日常检查和维护；',
+    '做好各种个人防护用品、用具的检查工作；',
+    '熟悉车辆性能，熟练驾驶技术，熟练掌握安全技术知识与应急处理方法；',
+    '严格遵守道路交通法规，杜绝违法违规行为，不超载、超速、酒驾、疲劳驾驶；',
+    '进出场站低速慢行，服从作业场所人员的管理指挥；',
+    '合规停放车辆，严禁随意停放；',
+    '运输作业中发生事故时及时上报公司相关负责人，并采取应急处置措施；',
+    '服从公司管理人员的指挥和检查；',
+    '法律、法规、规章、规范、标准规定的其他安全生产职责。',
+  ],
+  '行政财务': [
+    '参与拟订本公司安全生产规章制度、操作规程和生产安全事故应急救援预案；',
+    '认真执行上级对安全生产工作的部署要求和各项安全规章制度；',
+    '负责公司日常行政管理；',
+    '负责公司安全投入费用的提取和使用管理；',
+    '制定、完善财务安全方面的规章制度并组织落实；',
+    '负责拟订本公司安全投入费用的提取和管理，梳理安全投入台账；',
+    '积极参加安全学习及安全培训；',
+    '组织做好财务规范化管理工作，保证安全资金有效使用；',
+    '组织落实安全生产投入管理要求，确保安全生产经费专款专用；',
+    '组织做好重点部位、现金使用过程的安全防范工作；',
+    '做好各类行政管理、后勤保障等工作；',
+    '组织参加安全生产和基本应急知识的学习培训和考核；',
+    '依法为从业人员办理工伤保险，缴纳费用；',
+    '落实火灾预防，不发生火灾事故；',
+    '发生事故时，做好事故救援及处置的后勤及物资保障工作；',
+    '对事故费用及罚没款等款项按规定进行有效监督管理；',
+    '做好收入、成本、费用的财务分析；',
+    '负责公司级会议的筹备和安排，做好会议记录；',
+    '负责传达传染病疫情防控工作要求；',
+    '负责公司日常资金收支结算、往来帐的结算和清理；',
+    '法律、法规、规章、规范、标准规定的其他安全生产职责。',
+  ],
+};
+
+function renderResp(d) {
+  const isMain = d.person_post === '主要负责人';
+  const title = isMain ? '安全生产目标责任书' : '安全生产责任书';
+  // 签订关系：主要负责人=单边，驾驶员=安全员↔驾驶员，其他=安全主要负责人↔X
+  let relation;
+  if (isMain) relation = '公司与主要负责人';
+  else if (d.person_post === '驾驶员') relation = '安全员与驾驶员';
+  else relation = '安全主要负责人与' + d.person_post;
+
+  let dutyItems = respDuty[d.person_post] || respDuty['驾驶员'];
+  let dutyHtml = dutyItems.map(x => '<li>' + x + '</li>').join('');
+
+  let signHtml;
+  if (isMain) {
+    // 单边签字
+    signHtml = `
+      <div class="sign-row"><span class="sign-cell">责任主体：${fill(d.company_name)}　责任人：${d.person_post}</span></div>
+      <div class="sign-row">
+        <span class="sign-cell">盖章：${signCell('')}</span>
+        <span class="sign-cell">签字：${signCell(d.person_name)}</span>
+      </div>
+      <div class="sign-row">
+        <span class="sign-cell">日期：${fill(d.sign_date)}</span>
+        <span class="sign-cell">日期：${fill(d.sign_date)}</span>
+      </div>`;
+  } else {
+    // 双边签字
+    const managerPost = d.person_post === '驾驶员' ? '安全员' : '安全主要负责人';
+    signHtml = `
+      <div class="sign-row"><span class="sign-cell">责任管理人：${managerPost}</span><span class="sign-cell">责任人：${d.person_post}</span></div>
+      <div class="sign-row">
+        <span class="sign-cell">签字：${signCell('')}</span>
+        <span class="sign-cell">签字：${signCell(d.person_name)}</span>
+      </div>
+      <div class="sign-row">
+        <span class="sign-cell">日期：${fill(d.sign_date)}</span>
+        <span class="sign-cell">日期：${fill(d.sign_date)}</span>
+      </div>`;
+  }
+
+  return `
+    <h2>${title}</h2>
+    <p>遵循"安全第一，预防为主，综合治理"的安全方针...按照公司《安全生产责任制》要求，
+    ${relation}签订${d.year}年年度《安全生产责任书》，履行公司责任制规定的${d.person_post}的安全生产责任。</p>
+    <h3>一、安全生产目标</h3>
+    <p class="no-indent">1、责任事故控制指标</p>
+    <ol><li>发生一般及以上生产安全责任事故0宗；</li><li>不发生火灾事故。</li></ol>
+    <p class="no-indent">2、运输安全管理工作指标</p>
+    <ol><li>职业病防护率100%；</li><li>隐患排查治理率100%；</li><li>培训考核合格率100%。</li></ol>
+    <h3>二、安全职责</h3>
+    <ol>${dutyHtml}</ol>
+    <h3>三、责任制考评与奖惩</h3>
+    <p>公司按照绩效考核方案对责任落实进行考评...触犯法律的，交由司法机关处理。</p>
+    <h3>四、其他</h3>
+    <p>（一）本责任书签订人因工作变动，由继任人在任职当日起继续签订本年度责任书；</p>
+    <p>（二）本安全生产责任书期限为一年。</p>
+    <p>（三）本责任书一式贰份，公司与签订人各一份。</p>
+    <div class="sign-block">${signHtml}</div>`;
+}
+
+// ============ 任命书（增减型·合并范本） ============
+const appointIntro = {
+  '主要负责人': '为加强本公司安全生产管理工作，严格认真地落实安全生产工作，经公司研究决定任命 ',
+  '安全员': '为加强本公司安全生产管理工作，严格认真地落实安全生产，做好制度和操作规程管理、安全投入、教育培训、现场检查等规范管理工作，经公司研究决定任命 ',
+  '监控员': '为了进一步加强企业安全生产管理，做好公司车辆动态监控管理工作，经公司研究决定，现任命 ',
+  '驾驶员': '为加强本公司安全生产管理工作，严格认真地落实安全生产工作，经公司研究决定任命 ',
+  '行政财务': '为加强本公司安全生产管理工作，严格认真地落实安全生产，做好财务规范化管理以及公司日常行政管理等工作，经公司研究决定任命 ',
+};
+const appointPostTitle = {
+  '主要负责人': '主要负责人',
+  '安全员': '专职安全生产管理人员',
+  '监控员': '监控人员',
+  '驾驶员': '驾驶员',
+  '行政财务': '财务人员',
+};
+
+function renderAppoint(d) {
+  const name = d.person_name;
+  const postTitle = appointPostTitle[d.person_post] || d.person_post;
+  const intro = appointIntro[d.person_post] || appointIntro['驾驶员'];
+  // 是否带公司名前缀（安全员/监控员带）
+  const needPrefix = (d.person_post === '安全员' || d.person_post === '监控员');
+
+  return `
+    <h2>关于任命${postTitle}的通知</h2>
+    ${needPrefix ? '<p class="no-indent" style="text-align:center">' + fill(d.company_name) + '</p>' : ''}
+    <p>公司全体人员：</p>
+    <p>${intro}${fill(name)} ${d.person_post === '安全员' ? '同志担任公司安全员，作为公司专职安全生产管理人员，负责公司安全生产监督管理工作。' : '为公司' + postTitle + '。'}</p>
+    <p>特此通知。</p>
+    <div class="sign-block" style="text-align:right">
+      <div>公司：${fill(d.company_name)}</div>
+      <div>生效日期：${fill(d.sign_date)}</div>
+    </div>`;
+}
+
+// ============ 岗位告知书（增减型·列表变量） ============
+function renderHazard(d) {
+  const list = hazardData[d.person_post] || [];
+  const items = list.map(h => `
+    <div class="hazard-item"><span class="hazard-name">${h.name}</span>：${h.desc}</div>
+  `).join('');
+
+  return `
+    <h2>岗位职业病危害因素告知书</h2>
+    <p>根据《中华人民共和国职业病防治法》有关规定要求，我公司将工作过程中可能接触的职业病危害因素、可能产生的职业病危害及其后果、职业病防护措施和待遇等如实告知您。</p>
+    <p>现在您在我公司${d.person_post}岗位任职工作，在此岗位任职期间，公司将按照国家有关规定，对您发放相关安全防护用品，并向您告知该岗位存在职业病危害因素及相关职业病防护措施，具体如下：</p>
+    <h3>1、岗位危害</h3>
+    ${items}
+    <h3>2、防护措施</h3>
+    <p>（1）适当增加活动量，定时休息，避免久坐；</p>
+    <p>（2）饮食有节，定时进餐，生活有规律。</p>
+    <p>一旦发生职业病，本单位将按照国家有关法律、法规，为您提供相应待遇。</p>
+    <p>同时，您有履行以下规定的义务：自觉遵守本岗位职业卫生操作规程和制度，正确使用职业病防护设备和个人职业病防护用品，积极参加职业卫生知识培训。</p>
+    <div class="sign-block">
+      <div class="sign-row"><span class="sign-cell">公司名称（盖章）：${fill(d.company_name)}</span></div>
+      <div class="sign-row">
+        <span class="sign-cell">告知时间：${fill(d.sign_date)}</span>
+        <span class="sign-cell">签字时间：${fill('')}</span>
+      </div>
+      <div class="sign-row">
+        <span class="sign-cell">被告知人（签字）：${signCell(d.person_name)}</span>
+      </div>
+    </div>`;
+}
+
+// ============ 渲染控制 ============
+let currentTab = 'resp';
+function renderAll() {
+  const d = getData();
+  const paper = document.getElementById('paper');
+  if (currentTab === 'resp') paper.innerHTML = renderResp(d);
+  else if (currentTab === 'appoint') paper.innerHTML = renderAppoint(d);
+  else paper.innerHTML = renderHazard(d);
+  // 滚动预览到顶部
+  paper.closest('.preview-body').scrollTop = 0;
+}
+
+function switchTab(tab) {
+  currentTab = tab;
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.querySelector(`.tab[data-tab="${tab}"]`).classList.add('active');
+  renderAll();
+}
+
+function resetData() {
+  document.getElementById('company_name').value = '佛山市优成得物流有限公司';
+  document.getElementById('company_legal').value = '马志勇';
+  document.getElementById('company_address').value = '';
+  document.getElementById('person_name').value = '马志勇';
+  document.getElementById('person_post').value = '驾驶员';
+  document.getElementById('person_idcard').value = '';
+  document.getElementById('year').value = '2025';
+  document.getElementById('sign_date').value = '2025-06-24';
+  renderAll();
+}
+
+// 输入变化实时刷新（体验变量填充）
+['company_name','company_legal','company_address','person_name','person_idcard','year','sign_date'].forEach(id => {
+  document.getElementById(id).addEventListener('input', renderAll);
+});
+document.getElementById('person_post').addEventListener('change', renderAll);
+
+// 初始渲染
+renderAll();
+</script>
+</body>
+</html>

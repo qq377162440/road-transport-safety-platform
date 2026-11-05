@@ -1,0 +1,619 @@
+<!DOCTYPE html>
+<html lang="zh-CN"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>服务商代录工作台</title>
+<link rel="stylesheet" href="../assets/common.css"><link rel="stylesheet" href="../assets/pc.css">
+<style>
+  .steps{display:flex;align-items:center;gap:8px;margin-bottom:20px}
+  .step{display:flex;align-items:center;gap:8px}
+  .step .dot{width:28px;height:28px;border-radius:50%;background:#F1F5F9;color:var(--text-3);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:14px}
+  .step.on .dot{background:var(--brand-500);color:#fff}
+  .step.done .dot{background:#15803D;color:#fff}
+  .step .s-name{font-size:14px;font-weight:600;color:var(--text-3)}
+  .step.on .s-name{color:var(--brand-600)}
+  .step.done .s-name{color:var(--text-2)}
+  .step-line{flex:1;height:2px;background:#E2E8F0}
+  .step-line.done{background:#15803D}
+
+  .client-list{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+  .client-card{border:1px solid var(--border);border-radius:12px;padding:16px;cursor:pointer;transition:.12s}
+  .client-card:hover{border-color:var(--brand-400)}
+  .client-card.on{border-color:var(--brand-500);background:var(--brand-50);box-shadow:0 0 0 1px var(--brand-500)}
+  .client-card .c-name{font-weight:700;font-size:15px}
+  .client-card .c-info{font-size:12px;color:var(--text-3);margin-top:4px}
+  .client-card .c-tag{margin-top:8px}
+
+  .box-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}
+  .box-check{display:flex;align-items:center;gap:10px;padding:12px 14px;border:1px solid var(--border);border-radius:10px;cursor:pointer;transition:.12s}
+  .box-check:hover{border-color:var(--brand-400)}
+  .box-check.on{border-color:var(--brand-500);background:var(--brand-50)}
+  .box-check .cb{width:18px;height:18px;border:2px solid #c3cbd6;border-radius:4px;flex-shrink:0;display:flex;align-items:center;justify-content:center;color:#fff;font-size:12px;font-weight:700}
+  .box-check.on .cb{background:var(--brand-500);border-color:var(--brand-500)}
+  .box-check .b-name{font-weight:600;font-size:14px}
+  .box-check .b-desc{font-size:12px;color:var(--text-3);margin-top:2px}
+  .box-check .b-count{margin-left:auto;font-size:12px;color:var(--text-3)}
+
+  .month-grid{display:grid;grid-template-columns:repeat(6,1fr);gap:8px}
+  .month-btn{padding:10px;border:1px solid var(--border);border-radius:8px;text-align:center;cursor:pointer;font-size:14px;transition:.12s}
+  .month-btn:hover{border-color:var(--brand-400)}
+  .month-btn.uploaded{background:#F0FDF4;border-color:#15803D;color:#15803D}
+  .month-btn.missing{background:#FEF2F2;border-color:var(--danger);color:#B91C1C}
+
+  .upload-zone{border:2px dashed var(--border-strong);border-radius:12px;padding:30px;text-align:center;color:var(--text-3);cursor:pointer;transition:.12s}
+  .upload-zone:hover{border-color:var(--brand-400);background:var(--brand-50)}
+  .upload-zone .ico{font-size:32px;margin-bottom:8px}
+
+  .photo-list{display:flex;flex-wrap:wrap;gap:10px;margin-top:12px}
+  .photo-chip{display:flex;align-items:center;gap:6px;background:#F1F5F9;border-radius:8px;padding:6px 10px;font-size:13px}
+  .photo-chip .del{cursor:pointer;color:var(--text-3);font-weight:700}
+
+  .sign-card{border:1px solid var(--border);border-radius:12px;padding:16px;margin-bottom:14px}
+  .renew-tip{background:#FFFBEB;border:1px solid #fde68a;border-radius:10px;padding:10px 14px;font-size:13px;color:#B45309;margin-bottom:14px;line-height:1.6}
+  .sign-card.green{background:#f7fdf9;border-color:#bfe6cd}
+  .sign-card.yellow{background:#fffdf5;border-color:#f0d9a0}
+  .sign-card.gray{background:#f8fafd}
+  .sign-card .sc-title{font-weight:700;margin-bottom:12px;display:flex;align-items:center;gap:6px}
+  .sign-card .sc-sub{font-size:12px;color:var(--text-3);font-weight:400}
+  .sign-item{display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--border)}
+  .sign-item:last-child{border-bottom:none}
+  .sign-item .s-name{font-weight:600;font-size:14px}
+  .sign-item .s-role{font-size:12px;color:var(--text-3)}
+  .sign-item .s-status{margin-left:auto;text-align:right}
+  .sign-summary{display:flex;gap:12px;margin-bottom:16px}
+  .sign-summary .ss-item{flex:1;border:1px solid var(--border);border-radius:10px;padding:12px 14px;text-align:center}
+  .sign-summary .ss-item .num{font-size:26px;font-weight:800;line-height:1}
+  .sign-summary .ss-item .lbl{font-size:12px;color:var(--text-3);margin-top:6px}
+  .sign-summary .ss-item.green{background:#f0faf4;border-color:#b7e4c7}
+  .sign-summary .ss-item.green .num{color:#15803D}
+  .sign-summary .ss-item.yellow{background:#fffaf0;border-color:#f0d9a0}
+  .sign-summary .ss-item.yellow .num{color:#b7791f}
+  .btn-warn{background:#fffaf0;border:1px solid #e8c78a;color:#b7791f}
+  .btn-warn:hover{background:#fdf1d9;border-color:#d9ab55}
+
+  /* 范本库选择 */
+  .tpl-list{max-height:420px;overflow:auto;border:1px solid var(--border);border-radius:12px}
+  .tpl-group{padding:12px 16px;background:#f8fafd;border-bottom:1px solid var(--border);font-weight:700;font-size:13px;color:var(--text-2);position:sticky;top:0;z-index:1}
+  .tpl-item{display:flex;align-items:center;gap:10px;padding:11px 16px;border-bottom:1px solid var(--border);cursor:pointer;transition:.12s}
+  .tpl-item:hover{background:var(--brand-50)}
+  .tpl-item:last-child{border-bottom:none}
+  .tpl-item .cb{width:18px;height:18px;border:2px solid #c3cbd6;border-radius:4px;flex-shrink:0;display:flex;align-items:center;justify-content:center;color:#fff;font-size:12px;font-weight:700}
+  .tpl-item.on .cb{background:var(--brand-500);border-color:var(--brand-500)}
+  .tpl-item .t-name{font-weight:600;font-size:14px}
+  .tpl-item .t-desc{font-size:12px;color:var(--text-3);margin-top:1px}
+  .tpl-item .t-tag{margin-left:auto;font-size:11px;padding:2px 8px;border-radius:8px;background:#F1F5F9;color:var(--text-3);white-space:nowrap}
+  .tpl-item .t-freq{font-size:11px;padding:2px 8px;border-radius:8px;background:#F0FDF4;color:#15803D;white-space:nowrap}
+  .tpl-item .t-freq.once{background:#FFFBEB;color:#B45309}
+  .tpl-item .t-freq.monthly{background:var(--brand-100);color:var(--brand-600)}
+
+  .progress-wrap{display:flex;align-items:center;gap:16px;padding:20px;border:1px solid var(--border);border-radius:12px;background:#f8fafd}
+  .progress-bar{flex:1;height:12px;border-radius:8px;background:#F1F5F9;overflow:hidden}
+  .progress-bar>i{display:block;height:100%;background:linear-gradient(90deg,#1a5bb0,#4a8fe0);border-radius:8px;transition:.3s}
+
+  .result-list{max-height:400px;overflow:auto}
+  .result-item{display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--border)}
+  .result-item .r-name{flex:1;font-size:14px}
+  .modal-mask{position:fixed;inset:0;background:rgba(20,28,43,.45);display:none;align-items:center;justify-content:center;z-index:200}
+  .modal-mask.show{display:flex}
+  .modal{background:#fff;border-radius:var(--r-lg);width:720px;max-width:94vw;max-height:90vh;overflow:auto;box-shadow:var(--shadow-md)}
+  .modal-head{display:flex;align-items:center;justify-content:space-between;padding:16px 20px;border-bottom:1px solid var(--border);font-weight:700;font-size:16px}
+  .modal-head .x{cursor:pointer;font-size:24px;color:var(--text-3)}
+  .modal-body{padding:20px}
+  .pdf-page{background:#fff;padding:40px 48px;font-family:"SimSun","宋体",serif;color:#000;font-size:14px;line-height:1.8}
+  .pdf-page .ph{text-align:center;font-size:13px;border-bottom:2px solid #000;padding-bottom:8px;margin-bottom:6px}
+  .pdf-page .ph .org{font-size:17px;font-weight:bold}
+  .pdf-page .ptitle{text-align:center;font-size:19px;font-weight:bold;letter-spacing:2px;margin:16px 0 6px}
+  .pdf-page table{width:100%;border-collapse:collapse;margin:8px 0;font-size:13px}
+  .pdf-page table th,.pdf-page table td{border:1px solid #000;padding:5px 8px;text-align:center}
+  .pdf-page table th{background:#f2f2f2}
+  .pdf-page p{text-indent:2em;margin:4px 0}
+  .pdf-page p.ni{text-indent:0}
+  .fill{color:#1a4b8c;font-weight:bold}
+  .toast{position:fixed;top:20px;right:20px;background:#1E293B;color:#fff;padding:12px 20px;border-radius:10px;font-size:14px;z-index:300;opacity:0;transform:translateY(-10px);transition:.25s;pointer-events:none}
+  .toast.show{opacity:1;transform:translateY(0)}
+  .role-banner{background:linear-gradient(90deg,#1a3a6b,#1a5bb0);color:#fff;border-radius:12px;padding:14px 18px;margin-bottom:16px;font-size:13px;display:flex;align-items:center;gap:10px}
+  .role-banner .badge{background:#fff;color:#1a5bb0;font-weight:700;padding:3px 10px;border-radius:8px;font-size:12px;white-space:nowrap}
+</style></head><body>
+<div class="pc-page">
+  <div class="pc-header"><div><h1>服务商代录工作台</h1><div class="desc">服务商账号专属 · 上传照片 + 复用历史签字 + 调用范本库 · 企业零参与（仅签字缺失时配合）</div></div>
+    <div class="actions"><button class="btn btn-outline" onclick="resetAll()">重新开始</button></div></div>
+
+  <div class="role-banner"><span class="badge">服务商账号</span> 代录台账能力：服务商直接上传照片、<b>读取企业历史签字数据自动复用</b>，并从<b>范本库</b>选择范本生成台账 PDF。<b>全程无需推送给企业</b>，仅当历史签字缺失时才需企业人员登录账号配合签字。</div>
+
+  <!-- 步骤条 -->
+  <div class="steps">
+    <div class="step on" id="st0"><div class="dot">1</div><div class="s-name">选择客户</div></div>
+    <div class="step-line" id="sl0"></div>
+    <div class="step" id="st1"><div class="dot">2</div><div class="s-name">选盒 + 上传照片</div></div>
+    <div class="step-line" id="sl1"></div>
+    <div class="step" id="st2"><div class="dot">3</div><div class="s-name">签字匹配</div></div>
+    <div class="step-line" id="sl2"></div>
+    <div class="step" id="st3"><div class="dot">4</div><div class="s-name">选范本生成</div></div>
+  </div>
+
+  <!-- 步骤1：选客户 -->
+  <div id="panel0">
+    <div class="card">
+      <div class="card-title">选择客户企业 <span style="font-size:13px;color:var(--text-3);font-weight:400">服务商账号名下企业</span></div>
+      <div class="client-list" id="clientList"></div>
+    </div>
+  </div>
+
+  <!-- 步骤2：选盒 + 上传照片 -->
+  <div id="panel1" style="display:none">
+    <div class="card" style="margin-bottom:16px">
+      <div class="card-title">① 选择要代录的档案盒</div>
+      <div class="box-grid" id="boxGrid"></div>
+    </div>
+    <div class="card" style="margin-bottom:16px">
+      <div class="card-title">② 批量补齐照片 <span style="font-size:13px;color:var(--text-3);font-weight:400">上传培训/会议/隐患等照片，自动补齐对应月份台账</span></div>
+      <div style="display:flex;gap:12px;margin-bottom:12px">
+        <select class="form-select" id="photoType" style="flex:1" onchange="renderMonths()">
+          <option value="培训">培训照片</option>
+          <option value="会议">会议照片</option>
+          <option value="隐患排查">隐患排查照片</option>
+          <option value="应急演练">应急演练照片</option>
+          <option value="一日三检">一日三检照片</option>
+        </select>
+        <select class="form-select" id="photoMonth" style="width:140px">
+          <option value="1">1月</option><option value="2">2月</option><option value="3">3月</option><option value="4">4月</option><option value="5">5月</option><option value="6">6月</option><option value="7">7月</option><option value="8">8月</option><option value="9">9月</option><option value="10">10月</option><option value="11">11月</option><option value="12">12月</option>
+        </select>
+      </div>
+      <div class="upload-zone" onclick="mockUpload()">
+        <div class="ico" data-icon="upload"></div>
+        <div>点击上传照片（模拟，可批量）</div>
+        <div style="font-size:12px;margin-top:4px">支持多张照片，按「类型 + 月份」自动归档</div>
+      </div>
+      <div class="photo-list" id="photoList"></div>
+    </div>
+    <div class="card">
+      <div class="card-title">各月照片补齐状态</div>
+      <div class="month-grid" id="monthGrid"></div>
+    </div>
+  </div>
+
+  <!-- 步骤3：签字匹配 -->
+  <div id="panel2" style="display:none">
+    <div class="card">
+      <div class="card-title">签字数据匹配 <span style="font-size:13px;color:var(--text-3);font-weight:400">自动读取企业历史签字优先复用，缺失才需企业线上签字</span></div>
+      <div class="renew-tip">⚠️ <b>注意签字年限</b>：<b>责任书 / 承诺书一年一签</b>，复用历史签字时请核对签字<b>年份</b>——若历史签字为去年，需重新发起签订；岗前培训入职签一次、岗中培训每月签，代录「月度培训」时请按月补签。</div>
+      <div class="sign-summary" id="signSummary"></div>
+      <div class="sign-card green">
+        <div class="sc-title">✅ 已复用历史签字 <span class="sc-sub">自动从企业历史签字库读取，无需企业参与</span></div>
+        <div id="signListReused"></div>
+      </div>
+      <div class="sign-card yellow">
+        <div class="sc-title">⏳ 待企业线上签字 <span class="sc-sub">唯一需要企业参与的环节：发起请求 → 企业人员登录账号签字</span></div>
+        <div id="signListPending"></div>
+      </div>
+      <div class="sign-card gray">
+        <div class="sc-title">🖨️ 打印手签（兜底） <span class="sc-sub">企业无法线上签时，生成带签字栏 PDF 线下补签</span></div>
+        <div id="signListPrint"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 步骤4：选范本生成 -->
+  <div id="panel3" style="display:none">
+    <div class="card" style="margin-bottom:16px">
+      <div class="card-title">选择范本 <span style="font-size:13px;color:var(--text-3);font-weight:400">从范本库选范本，生成对应台账（必选）</span></div>
+      <p style="font-size:13px;color:var(--text-2);margin-bottom:12px">已选 <b id="tplCount">0</b> 个范本。系统将把上传的照片、签名填入所选范本，生成对应台账 PDF。</p>
+      <div class="tpl-list" id="tplList"></div>
+    </div>
+    <div class="card">
+      <div class="card-title">生成进度</div>
+      <div class="progress-wrap">
+        <div style="font-weight:700;font-size:15px;white-space:nowrap" id="progressLabel">准备中...</div>
+        <div class="progress-bar"><i id="progressBar" style="width:0%"></i></div>
+        <div style="font-size:13px;color:var(--text-3)" id="progressCount">0 / 0</div>
+      </div>
+      <button class="btn btn-primary btn-lg" style="margin-top:14px;width:100%" id="btnGen" onclick="genPdfs()">一键生成台账</button>
+    </div>
+    <div class="card" style="margin-top:16px">
+      <div class="card-title">生成的台账 PDF 清单</div>
+      <div class="result-list" id="resultList"></div>
+    </div>
+  </div>
+
+  <!-- 底部操作 -->
+  <div style="display:flex;justify-content:space-between;margin-top:20px">
+    <button class="btn btn-outline" id="btnPrev" onclick="prevStep()" style="display:none">上一步</button>
+    <button class="btn btn-primary btn-lg" id="btnNext" onclick="nextStep()">下一步</button>
+  </div>
+</div>
+
+<!-- PDF预览弹窗 -->
+<div class="modal-mask" id="pdfModal">
+  <div class="modal">
+    <div class="modal-head">台账 PDF 预览 <span class="x" onclick="closePdf()">×</span></div>
+    <div class="modal-body"><div class="pdf-page" id="pdfPage"></div></div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script src="../assets/icons.js"></script>
+<script>
+// ============ 数据 ============
+const CLIENTS = [
+  {id:1, name:'佛山市悦通物流有限公司', cars:8, cargo:'普货', hasHistory:true},
+  {id:2, name:'顺德区佳邦运输有限公司', cars:5, cargo:'普货', hasHistory:true},
+  {id:3, name:'南海区安达货运部', cars:3, cargo:'普货', hasHistory:false},
+  {id:4, name:'高明区顺捷物流', cars:12, cargo:'普货', hasHistory:true},
+];
+const BOXES = [
+  {id:1, name:'一、公司档案及管理层档案', items:5},
+  {id:2, name:'二、安全生产管理制度', items:2},
+  {id:3, name:'三、安全生产会议', items:2},
+  {id:4, name:'四、安全生产教育培训', items:2},
+  {id:5, name:'五、安全生产费用', items:3},
+  {id:6, name:'六、动态监控（台账上传留存）', items:4},
+  {id:7, name:'七、应急管理', items:5},
+  {id:8, name:'八、风险辨识与隐患排查', items:6},
+  {id:9, name:'九、一日三检', items:1},
+  {id:10, name:'十、事故管理', items:2},
+  {id:11, name:'十一、一人一档 / 一车一档', items:2},
+];
+const SIGNERS = [
+  {name:'张伟', role:'主要负责人'},
+  {name:'李强', role:'安全管理员'},
+  {name:'王芳', role:'监控员'},
+  {name:'陈刚', role:'车队长'},
+  {name:'刘洋', role:'驾驶员'},
+];
+// 企业历史签字库（按客户 id）—— 该企业人员在平台历史台账中已留存的签字数据
+const SIGN_HISTORY = {
+  1: { // 悦通物流：3 人有历史签字
+    '张伟': {has:true, time:'2026-05-08', src:'安全会议签到'},
+    '李强': {has:true, time:'2026-04-15', src:'培训签到'},
+    '王芳': {has:false},
+    '陈刚': {has:true, time:'2026-06-20', src:'隐患排查记录'},
+    '刘洋': {has:false},
+  },
+  2: { // 佳邦运输：3 人有历史签字
+    '张伟': {has:true, time:'2026-03-10', src:'责任书'},
+    '李强': {has:false},
+    '王芳': {has:false},
+    '陈刚': {has:true, time:'2026-02-28', src:'一日三检'},
+    '刘洋': {has:true, time:'2026-07-01', src:'培训签到'},
+  },
+  3: { // 安达货运部：新客户，无历史签字
+    '张伟': {has:false}, '李强': {has:false}, '王芳': {has:false}, '陈刚': {has:false}, '刘洋': {has:false},
+  },
+  4: { // 顺捷物流：5 人全有历史签字
+    '张伟': {has:true, time:'2026-08-01', src:'责任书'},
+    '李强': {has:true, time:'2026-08-01', src:'责任书'},
+    '王芳': {has:true, time:'2026-08-05', src:'动态监控记录'},
+    '陈刚': {has:true, time:'2026-08-10', src:'会议签到'},
+    '刘洋': {has:true, time:'2026-08-12', src:'培训签到'},
+  },
+};
+
+// 范本库（按档案盒归类，来自 09 文档范本引擎）
+const TEMPLATES = [
+  {box:1, name:'安全生产责任书（主要负责人）', desc:'目标责任书 · 单边盖章', tag:'替换型', freq:'一年一签'},
+  {box:1, name:'安全生产责任书（安全员）', desc:'责任书 · 双边签字', tag:'替换型', freq:'一年一签'},
+  {box:1, name:'安全生产责任书（监控员）', desc:'责任书 · 双边签字', tag:'替换型', freq:'一年一签'},
+  {box:1, name:'安全生产责任书（驾驶员）', desc:'责任书 · 双边签字', tag:'替换型', freq:'一年一签'},
+  {box:1, name:'安全生产承诺书（全员）', desc:'承诺书 · 替换型', tag:'替换型', freq:'一年一签'},
+  {box:1, name:'岗位职业病危害因素告知书', desc:'岗位危害清单 · 增减型', tag:'增减型', freq:'入职时签'},
+  {box:1, name:'安全生产管理人员任命书', desc:'管理岗位 · 增减型', tag:'增减型', freq:'有变动时更新'},
+  {box:1, name:'成立安全生产领导小组的通知', desc:'组长/副组长/成员', tag:'单范本', freq:'有变动时更新'},
+  {box:2, name:'制度汇编（含操作规程）', desc:'ZD01~ZD22 · 21项', tag:'单范本', freq:'制度修订时更新'},
+  {box:3, name:'会议通知 / 签到表 / 记录', desc:'四段式', tag:'套装', freq:'每月/每季'},
+  {box:4, name:'安全生产教育培训计划', desc:'年度 8 列计划表', tag:'单范本', freq:'年度一次'},
+  {box:4, name:'安全生产月度培训记录', desc:'内容/照片/签字', tag:'单范本', freq:'每月一次（岗中培训）'},
+  {box:5, name:'安全生产费用使用台账', desc:'11类 × 12月', tag:'单范本', freq:'每月登记'},
+  {box:6, name:'动态监控工作情况记录台账', desc:'上传留存（平台导出/交警抄报）', tag:'上传留存', freq:'每日上传'},
+  {box:6, name:'设备故障异常台账 / 在线率月报', desc:'上传留存（终端/平台）', tag:'上传留存', freq:'按次/每月上传'},
+  {box:6, name:'针对性违规教育', desc:'违规识别 → 靶向教育落实', tag:'自动生成', freq:'按违规发生'},
+  {box:7, name:'应急预案（7套场景）', desc:'综合/道路事故/火灾等', tag:'套装', freq:'三年一次修订'},
+  {box:7, name:'应急演练计划 / 记录', desc:'7列计划表', tag:'单范本', freq:'年度/按计划'},
+  {box:7, name:'应急救援器材配备清单', desc:'器材台账', tag:'单范本', freq:'按需补充'},
+  {box:8, name:'全面风险辨识清单', desc:'一级 6 列', tag:'单范本', freq:'年度一次'},
+  {box:8, name:'风险分级管控清单', desc:'二级 13 列', tag:'单范本', freq:'年度一次'},
+  {box:8, name:'风险告知卡', desc:'每岗位一份', tag:'单范本', freq:'岗位变化时更新'},
+  {box:8, name:'隐患排查记录', desc:'排查/整改/验收', tag:'单范本', freq:'每月排查'},
+  {box:8, name:'重大事故隐患专项排查', desc:'6项预置', tag:'单范本', freq:'按需+节假日前'},
+  {box:9, name:'一日三检记录', desc:'每日行车日志', tag:'单范本', freq:'每日行车前'},
+  {box:10, name:'事故快报表', desc:'发生/报告', tag:'单范本', freq:'按次即时'},
+  {box:11, name:'一人一档', desc:'11/12 项', tag:'单范本', freq:'人员异动+年度更新'},
+  {box:11, name:'一车一档', desc:'车辆证照/维护', tag:'单范本', freq:'车辆异动+年度更新'},
+];
+
+let state = {
+  step: 0,
+  client: null,
+  boxes: [],       // 选中的盒id
+  photos: [],      // {type, month, count}
+  signReused: {},  // name -> true（已复用历史签字）
+  signPending: {}, // name -> 'sent' | 'signed'（企业线上签字）
+  signPrint: {},   // name -> true（打印手签兜底）
+  templates: [],   // 选中的范本（按 box 索引）
+  generated: [],   // {name, count}
+};
+
+// ============ 步骤控制 ============
+function setStep(s){
+  state.step = s;
+  for(let i=0;i<4;i++){
+    document.getElementById('panel'+i).style.display = i===s?'block':'none';
+    const st = document.getElementById('st'+i);
+    st.className = 'step' + (i<s?' done':i===s?' on':'');
+  }
+  for(let i=0;i<3;i++){
+    document.getElementById('sl'+i).className = 'step-line' + (i<s?' done':'');
+  }
+  document.getElementById('btnPrev').style.display = s>0?'inline-flex':'none';
+  const next = document.getElementById('btnNext');
+  if(s===3){
+    next.style.display = 'none'; // 最后一步用「一键生成台账」按钮
+  } else {
+    next.style.display = 'inline-flex';
+    next.textContent = '下一步';
+    next.onclick = function(){ nextStep(); };
+  }
+}
+function nextStep(){
+  if(state.step===0){
+    if(!state.client){ toast('请先选择客户企业'); return; }
+  } else if(state.step===1){
+    if(state.boxes.length===0){ toast('请至少选择一个档案盒'); return; }
+  } else if(state.step===2){
+    // 签字可选，允许跳过
+  }
+  if(state.step < 3){ setStep(state.step+1); if(state.step===3) renderTemplates(); }
+}
+function prevStep(){ if(state.step>0) setStep(state.step-1); }
+function resetAll(){
+  state = {step:0, client:null, boxes:[], photos:[], signReused:{}, signPending:{}, signPrint:{}, templates:[], generated:[]};
+  renderClients(); renderBoxes(); renderPhotos(); renderMonths(); renderSigns(); renderTemplates();
+  setStep(0);
+  toast('已重置');
+}
+
+// ============ 步骤1：客户 ============
+function renderClients(){
+  document.getElementById('clientList').innerHTML = CLIENTS.map(c=>`
+    <div class="client-card ${state.client===c.id?'on':''}" onclick="pickClient(${c.id})">
+      <div class="c-name">${c.name}</div>
+      <div class="c-info">车辆 ${c.cars} 辆 · ${c.cargo}运输</div>
+      <div class="c-tag"><span class="tag ${c.hasHistory?'tag-yellow':'tag-blue'}">${c.hasHistory?'有历史台账待补':'新客户'}</span></div>
+    </div>`).join('');
+}
+function pickClient(id){
+  state.client = id;
+  // 切换客户时重置签字状态（历史签字库跟客户绑定）
+  state.signReused = {}; state.signPending = {}; state.signPrint = {};
+  renderClients(); renderSigns();
+  toast('已选择客户，系统已自动匹配历史签字数据');
+}
+
+// ============ 步骤2：盒 + 照片 ============
+function renderBoxes(){
+  document.getElementById('boxGrid').innerHTML = BOXES.map(b=>`
+    <div class="box-check ${state.boxes.includes(b.id)?'on':''}" onclick="toggleBox(${b.id})">
+      <span class="cb">${state.boxes.includes(b.id)?'✓':''}</span>
+      <div><div class="b-name">${b.name}</div><div class="b-desc">${b.items} 个归档项</div></div>
+      <span class="b-count">${b.items} 项</span>
+    </div>`).join('');
+}
+function toggleBox(id){
+  const i = state.boxes.indexOf(id);
+  if(i>=0) state.boxes.splice(i,1); else state.boxes.push(id);
+  renderBoxes();
+  // 同步清理不再适用盒的范本选择
+  state.templates = state.templates.filter(t=>state.boxes.includes(t.box));
+}
+
+function mockUpload(){
+  const type = document.getElementById('photoType').value;
+  const month = parseInt(document.getElementById('photoMonth').value);
+  const exist = state.photos.find(p=>p.type===type && p.month===month);
+  if(exist){ exist.count += 2; } else { state.photos.push({type, month, count:2}); }
+  renderPhotos(); renderMonths();
+  toast(`已上传 ${type} ${month}月 照片（模拟 2 张）`);
+}
+function renderPhotos(){
+  const el = document.getElementById('photoList');
+  if(state.photos.length===0){ el.innerHTML = '<div style="font-size:13px;color:var(--text-3)">暂无已上传照片</div>'; return; }
+  el.innerHTML = state.photos.map((p,i)=>`
+    <div class="photo-chip">${p.type} · ${p.month}月 × ${p.count}张 <span class="del" onclick="delPhoto(${i})">×</span></div>`).join('');
+}
+function delPhoto(i){ state.photos.splice(i,1); renderPhotos(); renderMonths(); }
+function renderMonths(){
+  const el = document.getElementById('monthGrid');
+  const type = document.getElementById('photoType').value;
+  const uploadedMonths = new Set(state.photos.filter(p=>p.type===type).map(p=>p.month));
+  el.innerHTML = Array.from({length:12},(_,i)=>i+1).map(m=>{
+    const has = uploadedMonths.has(m);
+    return `<div class="month-btn ${has?'uploaded':'missing'}">${m}月<br><span style="font-size:11px">${has?'已上传':'缺'}</span></div>`;
+  }).join('');
+}
+
+// ============ 步骤3：签字匹配 ============
+function renderSigns(){
+  const history = state.client ? SIGN_HISTORY[state.client] : null;
+  const reusedList = [], pendingList = [];
+  SIGNERS.forEach(s=>{
+    const h = history ? history[s.name] : null;
+    if(h && h.has) reusedList.push(s); else pendingList.push(s);
+  });
+
+  // 摘要
+  const donePending = pendingList.filter(s=>state.signPending[s.name]==='signed').length;
+  document.getElementById('signSummary').innerHTML = `
+    <div class="ss-item green"><div class="num">${reusedList.length}</div><div class="lbl">可复用历史签字</div></div>
+    <div class="ss-item yellow"><div class="num">${pendingList.length}</div><div class="lbl">需企业线上签字</div></div>
+    <div class="ss-item"><div class="num" style="color:var(--brand-500)">${donePending}</div><div class="lbl">已在线签完成</div></div>
+  `;
+
+  // 已复用历史签字
+  document.getElementById('signListReused').innerHTML = reusedList.length ? reusedList.map(s=>{
+    const h = history[s.name];
+    return `<div class="sign-item">
+      <div><div class="s-name">${s.name}</div><div class="s-role">${s.role}</div></div>
+      <span class="s-status"><span class="tag tag-green">✓ 已复用历史签字</span><div style="font-size:11px;color:var(--text-3);margin-top:2px">${h.src} · ${h.time}</div></span>
+    </div>`;
+  }).join('') : '<div style="font-size:13px;color:var(--text-3);padding:10px 0">该企业暂无可用历史签字数据</div>';
+
+  // 待企业线上签字
+  document.getElementById('signListPending').innerHTML = pendingList.length ? pendingList.map(s=>{
+    const st = state.signPending[s.name];
+    let btn;
+    if(st==='signed'){
+      btn = `<span class="tag tag-green">✓ 企业已签</span>`;
+    } else if(st==='sent'){
+      btn = `<button class="btn btn-outline btn-sm" disabled>已发送，待企业签</button>`;
+    } else {
+      btn = `<button class="btn btn-warn btn-sm" onclick="sendSignReq('${s.name}')">发起签字请求</button>`;
+    }
+    return `<div class="sign-item">
+      <div><div class="s-name">${s.name}</div><div class="s-role">${s.role}</div></div>
+      <span class="s-status">${btn}</span>
+    </div>`;
+  }).join('') : '<div style="font-size:13px;color:var(--text-3);padding:10px 0">所有签字已复用，无需企业参与 ✓</div>';
+
+  // 打印手签兜底（仅对缺失历史签字的）
+  document.getElementById('signListPrint').innerHTML = pendingList.length ? pendingList.map(s=>{
+    const done = state.signPrint[s.name];
+    return `<div class="sign-item">
+      <div><div class="s-name">${s.name}</div><div class="s-role">${s.role}</div></div>
+      <span class="s-status"><button class="btn ${done?'btn-success':'btn-outline'} btn-sm" onclick="togglePrintSign('${s.name}')">${done?'已补签':'生成签字栏PDF'}</button></span>
+    </div>`;
+  }).join('') : '<div style="font-size:13px;color:var(--text-3);padding:10px 0">无需兜底</div>';
+}
+function sendSignReq(name){
+  state.signPending[name] = 'sent';
+  renderSigns();
+  toast(`已发送签字请求至企业端，等待「${name}」登录企业账号签字`);
+  // 模拟企业人员在客户端完成签字
+  setTimeout(()=>{
+    state.signPending[name] = 'signed';
+    renderSigns();
+    toast(`「${name}」已在企业端完成线上签字，签字数据已回填`);
+  }, 1600);
+}
+function togglePrintSign(name){
+  state.signPrint[name] = !state.signPrint[name];
+  renderSigns();
+  toast(state.signPrint[name] ? `${name} 已生成带签字栏 PDF（线下补签）` : `${name} 已取消打印手签`);
+}
+
+// ============ 步骤4：选范本生成 ============
+function renderTemplates(){
+  // 只显示所选盒对应的范本
+  const relevant = TEMPLATES.filter(t=>state.boxes.includes(t.box));
+  const el = document.getElementById('tplList');
+  if(relevant.length===0){
+    el.innerHTML = '<div style="padding:24px;text-align:center;color:var(--text-3)">所选档案盒暂无匹配范本</div>';
+    return;
+  }
+  // 按盒分组
+  let html = '';
+  state.boxes.forEach(boxId=>{
+    const box = BOXES.find(b=>b.id===boxId);
+    const tpls = relevant.filter(t=>t.box===boxId);
+    if(tpls.length===0) return;
+    html += `<div class="tpl-group">${box.name}</div>`;
+    html += tpls.map(t=>{
+      const idx = state.templates.findIndex(x=>x.box===t.box && x.name===t.name);
+      const on = idx>=0;
+      const freqCls = (t.freq||'').includes('一年') ? '' : ((t.freq||'').includes('入职')||(t.freq||'').includes('修订')||(t.freq||'').includes('变动') ? 'once' : ((t.freq||'').includes('每月')||(t.freq||'').includes('每季') ? 'monthly' : ''));
+      return `<div class="tpl-item ${on?'on':''}" onclick="toggleTpl(${t.box},'${t.name}')">
+        <span class="cb">${on?'✓':''}</span>
+        <div><div class="t-name">${t.name}</div><div class="t-desc">${t.desc}</div></div>
+        <span class="t-tag">${t.tag}</span>
+        <span class="t-freq ${freqCls}">${t.freq||''}</span>
+      </div>`;
+    }).join('');
+  });
+  el.innerHTML = html;
+  updateTplCount();
+}
+function toggleTpl(box, name){
+  const idx = state.templates.findIndex(x=>x.box===box && x.name===name);
+  if(idx>=0) state.templates.splice(idx,1); else state.templates.push({box, name});
+  renderTemplates();
+}
+function updateTplCount(){
+  document.getElementById('tplCount').textContent = state.templates.length;
+}
+
+// ============ 一键生成 ============
+function genPdfs(){
+  const total = state.templates.length;
+  if(total===0){ toast('请先选择至少一个范本'); return; }
+  state.generated = [];
+  const list = document.getElementById('resultList');
+  const label = document.getElementById('progressLabel');
+  const bar = document.getElementById('progressBar');
+  const count = document.getElementById('progressCount');
+  list.innerHTML = '';
+  label.textContent = '准备生成...';
+  bar.style.width = '0%';
+  count.textContent = `0 / ${total}`;
+
+  let i = 0;
+  const items = state.templates.map(t=>{
+    const box = BOXES.find(b=>b.id===t.box);
+    return {name: t.name, box: box.name};
+  });
+  function genNext(){
+    if(i >= total){ label.textContent = '全部生成完成！'; return; }
+    const it = items[i];
+    label.textContent = `正在生成「${it.name}」...`;
+    bar.style.width = Math.round((i/total)*100)+'%';
+    count.textContent = `${i} / ${total}`;
+    setTimeout(()=>{
+      state.generated.push(it);
+      list.innerHTML += `<div class="result-item">
+        <span class="tag tag-green">已生成</span>
+        <span class="r-name">${it.name}</span>
+        <span style="font-size:12px;color:var(--text-3)">${it.box}</span>
+        <button class="btn btn-outline btn-sm" onclick="previewBox('${it.name}','${it.box}')">预览</button>
+        <button class="btn btn-primary btn-sm" onclick="toast('已触发下载（模拟）')">下载</button>
+      </div>`;
+      i++;
+      genNext();
+    }, 300);
+  }
+  genNext();
+  setTimeout(()=>{ bar.style.width='100%'; count.textContent=`${total} / ${total}`; label.textContent='全部生成完成！'; toast(`已生成 ${total} 份台账 PDF`); }, total*300+100);
+}
+
+// ============ PDF 预览 ============
+function previewBox(name, boxName){
+  const el = document.getElementById('pdfPage');
+  const org = state.client ? CLIENTS.find(c=>c.id===state.client).name : '佛山市悦通物流有限公司';
+  el.innerHTML = `<div class="ph"><div class="org">${org}</div><div class="meta" style="font-size:12px;color:#555">${boxName}</div></div>
+    <div class="ptitle">${name}</div>
+    <p class="ni">本范本已填入上传照片及签字数据，生成对应台账。</p>
+    <table><tr><th>序号</th><th>归档项</th><th>范本</th><th>签字来源</th><th>状态</th></tr>
+    <tr><td>1</td><td>${name}</td><td>已套用</td><td>${signSourceText()}</td><td>完整</td></tr></table>
+    <p class="ni" style="margin-top:16px">（此处展示该范本填充后完整台账 PDF 预览，正式版为逐项完整格式）</p>`;
+  document.getElementById('pdfModal').classList.add('show');
+}
+function signSourceText(){
+  const history = state.client ? SIGN_HISTORY[state.client] : null;
+  let reused=0, signed=0, print=0;
+  SIGNERS.forEach(s=>{
+    const h = history ? history[s.name] : null;
+    if(h && h.has) reused++;
+    else if(state.signPending[s.name]==='signed') signed++;
+    else if(state.signPrint[s.name]) print++;
+  });
+  const parts = [];
+  if(reused) parts.push(`${reused}人复用历史`);
+  if(signed) parts.push(`${signed}人线上签`);
+  if(print) parts.push(`${print}人打印签`);
+  return parts.join('、') || '待签';
+}
+function closePdf(){ document.getElementById('pdfModal').classList.remove('show'); }
+
+function toast(msg){
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('show');
+  clearTimeout(t._t); t._t = setTimeout(()=>t.classList.remove('show'), 2200);
+}
+
+// 初始化
+renderClients(); renderBoxes(); renderPhotos(); renderMonths(); renderSigns(); renderTemplates(); setStep(0);
+</script></body></html>

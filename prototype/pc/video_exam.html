@@ -1,0 +1,323 @@
+<!DOCTYPE html>
+<html lang="zh-CN"><head><meta charset="UTF-8"><title>服务商课程库</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="stylesheet" href="../assets/common.css"><link rel="stylesheet" href="../assets/pc.css">
+<style>
+  body{background:var(--bg)}
+  .tabs{display:flex;gap:4px;border-bottom:1px solid var(--border);margin-bottom:16px}
+  .tab{border:none;background:none;padding:12px 18px;font-size:14px;font-weight:600;color:var(--text-3);cursor:pointer;border-bottom:2px solid transparent;transition:.12s}
+  .tab:hover{color:var(--brand-600)}
+  .tab.on{color:var(--brand-600);border-bottom-color:var(--brand-600)}
+  .filter-bar{display:flex;align-items:flex-end;gap:14px;flex-wrap:wrap;margin-bottom:14px}
+  .filter-item{display:flex;flex-direction:column;gap:6px}
+  .filter-item .lbl{font-size:12px;color:var(--text-3);font-weight:600}
+  .chips{display:flex;flex-wrap:wrap;gap:6px;max-width:620px}
+  .chip{padding:5px 11px;border:1px solid var(--border-strong);border-radius:20px;font-size:12.5px;cursor:pointer;background:#fff;color:var(--text-2);transition:.12s;user-select:none}
+  .chip:hover{border-color:var(--brand-400)}
+  .chip.on{background:var(--brand-500);border-color:var(--brand-500);color:#fff}
+  .spacer{flex:1}
+  .pager{display:flex;align-items:center;gap:8px;margin-top:14px;flex-wrap:wrap;font-size:13px;color:var(--text-3)}
+  .pager .pg-btn{border:1px solid var(--border);background:#fff;border-radius:6px;padding:5px 10px;cursor:pointer;font-size:13px;transition:.12s}
+  .pager .pg-btn:hover:not(:disabled){border-color:var(--brand-400)}
+  .pager .pg-btn:disabled{opacity:.45;cursor:not-allowed}
+  .pager .pg-btn.on{background:var(--brand-500);color:#fff;border-color:var(--brand-500)}
+  .pager input{text-align:center}
+  .form-mini{display:flex;flex-direction:column;gap:12px}
+  .mini-table{width:100%;border-collapse:collapse}
+  .mini-table th,.mini-table td{border:1px solid var(--border);padding:8px 10px;text-align:left;font-size:13px;line-height:1.6}
+  .mini-table th{background:#f8fafd;font-weight:700;color:var(--text-2)}
+  .vid-item{display:flex;align-items:center;gap:8px;padding:9px 12px;border:1px solid var(--border);border-radius:8px;margin-bottom:6px;font-size:13px;background:#fff}
+  .vid-item .vd{margin-left:auto;color:var(--text-3);font-size:12px}
+  .role-tag{font-size:11px;padding:2px 9px;border-radius:8px;background:var(--brand-100);color:var(--brand-600);font-weight:600;margin-left:8px}
+  .modal{position:fixed;inset:0;background:rgba(15,23,42,.45);display:none;align-items:center;justify-content:center;z-index:200;padding:20px}
+  .modal.show{display:flex}
+  .modal-box{background:#fff;border-radius:var(--r-xl);width:min(680px,100%);max-height:90vh;overflow-y:auto;box-shadow:var(--shadow-lg)}
+  .modal-head{display:flex;align-items:center;justify-content:space-between;padding:18px 22px;border-bottom:1px solid var(--border);font-size:17px;font-weight:700}
+  .modal-head .x{cursor:pointer;color:var(--text-3);font-size:22px;line-height:1}
+  .modal-body{padding:20px 22px}
+  .modal-foot{padding:14px 22px;border-top:1px solid var(--border);display:flex;justify-content:flex-end;gap:10px}
+  .empty{padding:24px;text-align:center;color:var(--text-3);font-size:14px}
+</style></head><body>
+
+<div class="pc-page">
+  <div class="pc-header"><div><h1>服务商课程库</h1><div class="desc">服务商统一维护安全培训课程与考试卷，企业按岗位 / 行业选用学习<span class="role-tag" id="roleTag"></span></div></div>
+    <div class="actions">
+      <button class="btn btn-outline btn-sm" onclick="CourseData.reset();curPage=1;renderCourseTable();renderPaperTable();toast('演示数据已重置')"><span class="ico" data-icon="rotateCcw"></span> 重置演示数据</button>
+    </div></div>
+
+  <div class="tabs">
+    <button class="tab on" id="tabCourse" onclick="switchTab('course')">课程库</button>
+    <button class="tab" id="tabPaper" onclick="switchTab('paper')">试题管理</button>
+  </div>
+
+  <!-- 课程库 -->
+  <div id="courseView">
+    <div class="filter-bar">
+      <div class="filter-item"><span class="lbl">课程分类（可多选）</span><div class="chips" id="catChips"></div></div>
+      <div class="filter-item"><span class="lbl">行业分类</span><select class="form-select" id="fIndustry" onchange="fIndustry=this.value;curPage=1;renderCourseTable()"></select></div>
+      <div class="filter-item"><span class="lbl">岗位分类</span><select class="form-select" id="fPost" onchange="fPost=this.value;curPage=1;renderCourseTable()">
+        <option value="">全部岗位</option>
+      </select></div>
+      <div class="filter-item"><span class="lbl">&nbsp;</span><button class="btn btn-outline btn-sm" onclick="resetFilter()">重置筛选</button></div>
+      <div class="spacer"></div>
+      <div id="createBtnWrap"></div>
+    </div>
+
+    <div class="card">
+      <div class="card-title" style="display:flex;align-items:center;gap:10px">企业课程列表 <span class="tag tag-gray" id="courseCount">0</span></div>
+      <table class="table">
+        <thead><tr><th>序号</th><th>操作</th><th>课程名称</th><th>课时数</th><th>课程分类</th><th>总时长</th><th>课程来源</th><th>绑定考题</th><th>使用范围</th><th>创建时间</th></tr></thead>
+        <tbody id="courseBody"></tbody>
+      </table>
+    </div>
+    <div class="pager" id="pager"></div>
+  </div>
+
+  <!-- 试题管理 -->
+  <div id="paperView" style="display:none">
+    <div class="filter-bar">
+      <div class="filter-item"><span class="lbl">考试卷列表</span></div>
+      <div class="spacer"></div>
+      <div id="newPaperWrap"></div>
+    </div>
+    <div class="card">
+      <table class="table">
+        <thead><tr><th>序号</th><th>卷子名称</th><th>题目数</th><th>状态</th><th>操作</th></tr></thead>
+        <tbody id="paperBody"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<div class="modal" id="modal"><div class="modal-box"><div class="modal-head"><span id="mTitle"></span><span class="x" onclick="closeModal()">×</span></div><div class="modal-body" id="mBody"></div><div class="modal-foot" id="mFoot"></div></div></div>
+
+<script src="../assets/course_data.js"></script>
+<script src="../assets/icons.js"></script>
+<script>
+const userRole = localStorage.getItem('userRole') || 'enterprise';
+const isAdmin = userRole === 'admin';
+const isProvider = (userRole === 'provider' || isAdmin);
+const canEdit = isProvider;
+
+let curTab = 'course';
+let fCat = new Set(), fIndustry = '', fPost = '';
+let curPage = 1, PAGE_SIZE = 10;
+let editingCats = new Set(), editingPosts = new Set(), editingId = null;
+
+function esc(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+function nowStr(){ const d=new Date(); const p=n=>String(n).padStart(2,'0'); return `${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())}`; }
+
+function switchTab(t){
+  curTab = t;
+  document.getElementById('tabCourse').classList.toggle('on', t==='course');
+  document.getElementById('tabPaper').classList.toggle('on', t==='paper');
+  document.getElementById('courseView').style.display = t==='course'?'':'none';
+  document.getElementById('paperView').style.display = t==='paper'?'':'none';
+  if(t==='paper') renderPaperTable();
+}
+function resetFilter(){ fCat=new Set(); fIndustry=''; fPost=''; document.getElementById('fIndustry').value=''; document.getElementById('fPost').value=''; renderChips(); curPage=1; renderCourseTable(); }
+
+function renderChips(){
+  document.getElementById('catChips').innerHTML = CourseData.CATEGORIES.map(c=>`<span class="chip ${fCat.has(c)?'on':''}" onclick="toggleF('${esc(c)}')">${esc(c)}</span>`).join('');
+}
+
+function init(){
+  document.getElementById('roleTag').textContent = userRole==='enterprise' ? '企业视角（只读）' : (isAdmin?'超级管理员（可管理）':'服务商（可管理）');
+  document.getElementById('fIndustry').innerHTML = '<option value="">全部行业</option>' + CourseData.INDUSTRIES.map(i=>`<option value="${i}">${i}</option>`).join('');
+  document.getElementById('fPost').innerHTML = '<option value="">全部岗位</option>' + CourseData.POSTS.map(p=>`<option value="${p}">${p}</option>`).join('');
+  document.getElementById('createBtnWrap').innerHTML = canEdit ? `<button class="btn btn-primary btn-sm" onclick="openCourseEditor()"><span class="ico" data-icon="plus"></span> 创建课程</button>` : '';
+  document.getElementById('newPaperWrap').innerHTML = canEdit ? `<button class="btn btn-primary btn-sm" onclick="openPaperEditor()"><span class="ico" data-icon="plus"></span> 新建卷子</button>` : '';
+  renderChips();
+  renderCourseTable();
+  renderPaperTable();
+  iconsRender();
+}
+
+function toggleF(v){ fCat.has(v)?fCat.delete(v):fCat.add(v); renderChips(); curPage=1; renderCourseTable(); }
+
+function filtered(){
+  let list = CourseData.list();
+  if(fCat.size) list = list.filter(c=> c.category.some(x=>fCat.has(x)));
+  if(fIndustry) list = list.filter(c=> c.industry===fIndustry);
+  if(fPost) list = list.filter(c=> c.post.includes(fPost));
+  return list;
+}
+
+function renderCourseTable(){
+  const list = filtered();
+  const start = (curPage-1)*PAGE_SIZE;
+  const pageList = curPage===1 ? list : [];   // 演示：仅首页加载真实课程数据，其余页用于展示分页规模（共 726 条）
+  const tb = document.getElementById('courseBody');
+  if(pageList.length===0){
+    tb.innerHTML = `<tr><td colspan="10" class="empty">${curPage===1?'暂无课程，点击右上角「创建课程」新建':'演示数据仅首页加载，全库共 '+CourseData.total+' 条课程'}</td></tr>`;
+  } else {
+    tb.innerHTML = pageList.map((c,i)=>{
+      const idx = start+i+1;
+      const op = `<a class="btn btn-primary btn-sm" onclick="viewCourse('${c.id}')">查看</a> ` + (canEdit?`<a class="btn btn-outline btn-sm" onclick="openCourseEditor('${c.id}')">编辑</a> <a class="btn btn-outline btn-sm" onclick="delCourse('${c.id}')">删除</a>`:'');
+      const bound = c.paperId ? '<span class="tag tag-blue">是</span>' : '<span class="tag tag-gray">--</span>';
+      return `<tr><td>${idx}</td><td>${op}</td><td>${esc(c.name)}</td><td>${c.hours}</td><td>${esc(c.category.join('、'))}</td><td>${c.duration}</td><td>${c.source}</td><td>${bound}</td><td>${c.scope}</td><td>${c.createTime}</td></tr>`;
+    }).join('');
+  }
+  document.getElementById('courseCount').textContent = curPage===1 ? list.length : 0;
+  renderPager();
+  iconsRender();
+}
+
+function renderPager(){
+  const total = CourseData.total, pages = Math.ceil(total/PAGE_SIZE), cur = curPage;
+  const pg = document.getElementById('pager');
+  let h = `共 ${total} 条，${pages} 页，当前第 ${cur} 页`;
+  h += ` <button class="pg-btn" ${cur<=1?'disabled':''} onclick="gotoPage(1)">首页</button>`;
+  h += ` <button class="pg-btn" ${cur<=1?'disabled':''} onclick="gotoPage(${cur-1})">上一页</button>`;
+  for(let i=1;i<=Math.min(6,pages);i++) h += ` <button class="pg-btn ${i===cur?'on':''}" onclick="gotoPage(${i})">${i}</button>`;
+  if(pages>6) h += ' … ' + ` <button class="pg-btn" onclick="gotoPage(${pages})">${pages}</button>`;
+  h += ` <button class="pg-btn" ${cur>=pages?'disabled':''} onclick="gotoPage(${cur+1})">下一页</button>`;
+  h += ` <select class="form-select" style="width:auto;min-width:0;display:inline-block;min-height:32px" onchange="setPageSize(this.value)"><option>10</option><option>20</option><option>50</option></select> 条/页`;
+  h += ` 前往 <input id="pgJump" style="width:56px;min-height:32px;border:1px solid var(--border-strong);border-radius:6px;padding:4px 8px" value="${cur}"> <button class="pg-btn" onclick="gotoPage(parseInt(document.getElementById('pgJump').value)||1)">跳转</button>`;
+  pg.innerHTML = h;
+}
+function gotoPage(p){ const pages=Math.ceil(CourseData.total/PAGE_SIZE); curPage=Math.max(1,Math.min(pages,p)); renderCourseTable(); }
+function setPageSize(v){ PAGE_SIZE=parseInt(v)||10; curPage=1; renderCourseTable(); }
+
+function openCourseEditor(id){
+  editingId = id || null;
+  const c = id ? CourseData.list().find(x=>x.id===id) : null;
+  editingCats = new Set(c?c.category:[]);
+  editingPosts = new Set(c?c.post:[]);
+  const catChips = CourseData.CATEGORIES.map(cat=>`<span class="chip ${editingCats.has(cat)?'on':''}" onclick="toggleChip('cat','${esc(cat)}')">${esc(cat)}</span>`).join('');
+  const postChips = CourseData.POSTS.map(p=>`<span class="chip ${editingPosts.has(p)?'on':''}" onclick="toggleChip('post','${esc(p)}')">${esc(p)}</span>`).join('');
+  const indOpts = CourseData.INDUSTRIES.map(i=>`<option ${c&&c.industry===i?'selected':''}>${i}</option>`).join('');
+  const scopeOpts = CourseData.SCOPES.map(s=>`<option ${c&&c.scope===s?'selected':''}>${s}</option>`).join('');
+  const srcOpts = CourseData.SOURCES.map(s=>`<option ${c?(c.source===s?'selected':''):(s==='服务商'?'selected':'')}>${s}</option>`).join('');
+  const paperOpts = `<option value="">（不绑定）</option>` + CourseData.papers().map(p=>`<option value="${p.id}" ${c&&c.paperId===p.id?'selected':''}>${esc(p.name)}</option>`).join('');
+  const body = `<div class="form-mini">
+    <div class="form-item"><label class="form-label">课程名称 <span class="req">*</span></label><input class="form-input" id="f_cname" value="${c?esc(c.name):''}" placeholder="如：防御性驾驶进阶"></div>
+    <div class="filter-item"><span class="lbl">课程分类（可多选）</span><div class="chips" id="catChips">${catChips}</div></div>
+    <div style="display:flex;gap:12px">
+      <div class="filter-item" style="flex:1"><span class="lbl">行业分类</span><select class="form-select" id="f_industry">${indOpts}</select></div>
+      <div class="filter-item" style="flex:1"><span class="lbl">使用范围</span><select class="form-select" id="f_scope">${scopeOpts}</select></div>
+    </div>
+    <div class="filter-item"><span class="lbl">岗位分类（可多选）</span><div class="chips" id="postChips">${postChips}</div></div>
+    <div style="display:flex;gap:12px">
+      <div class="filter-item" style="flex:1"><span class="lbl">来源</span><select class="form-select" id="f_source">${srcOpts}</select></div>
+      <div class="filter-item" style="flex:1"><span class="lbl">课时数</span><input class="form-input" id="f_hours" type="number" min="1" value="${c?c.hours:1}"></div>
+      <div class="filter-item" style="flex:1"><span class="lbl">总时长</span><input class="form-input" id="f_duration" value="${c?c.duration:'10分'}"></div>
+    </div>
+    <div class="form-item"><label class="form-label">上传视频</label><input class="form-input" type="file" accept="video/*"></div>
+    <div class="form-item"><label class="form-label">绑定考题（考试卷）</label><select class="form-select" id="f_paper">${paperOpts}</select></div>
+  </div>`;
+  openModal(id?'编辑课程 · '+c.name:'创建课程', body, `<button class="btn btn-outline" onclick="closeModal()">取消</button><button class="btn btn-primary" onclick="saveCourse()">${id?'保存修改':'创建课程'}</button>`);
+  iconsRender();
+}
+function toggleChip(kind, val){
+  const set = kind==='cat'?editingCats:editingPosts;
+  set.has(val)?set.delete(val):set.add(val);
+  const box = document.getElementById(kind==='cat'?'catChips':'postChips');
+  const arr = kind==='cat'?CourseData.CATEGORIES:CourseData.POSTS;
+  box.innerHTML = arr.map(v=>`<span class="chip ${set.has(v)?'on':''}" onclick="toggleChip('${kind}','${esc(v)}')">${esc(v)}</span>`).join('');
+}
+function saveCourse(){
+  const name = document.getElementById('f_cname').value.trim();
+  if(!name){ toast('请填写课程名称'); return; }
+  const obj = {
+    name,
+    hours: parseInt(document.getElementById('f_hours').value)||1,
+    category: Array.from(editingCats),
+    industry: document.getElementById('f_industry').value,
+    post: Array.from(editingPosts),
+    duration: document.getElementById('f_duration').value.trim()||'—',
+    source: document.getElementById('f_source').value,
+    scope: document.getElementById('f_scope').value,
+    paperId: document.getElementById('f_paper').value||null,
+    createTime: editingId ? (CourseData.list().find(c=>c.id===editingId).createTime) : nowStr()
+  };
+  if(editingId){ const old=CourseData.list().find(c=>c.id===editingId); obj.videos=old.videos||[]; CourseData.updateCourse(editingId, obj); toast('课程已更新'); }
+  else { CourseData.addCourse(obj); toast('课程已创建'); }
+  closeModal(); renderCourseTable();
+}
+function delCourse(id){
+  if(!confirm('确认删除该课程？')) return;
+  CourseData.delCourse(id); renderCourseTable(); toast('课程已删除');
+}
+function viewCourse(id){
+  const c = CourseData.list().find(x=>x.id===id); if(!c) return;
+  const p = c.paperId ? CourseData.paper(c.paperId) : null;
+  const vids = (c.videos||[]).map(v=>`<div class="vid-item"><span class="ico" data-icon="video"></span> ${esc(v.n)}<span class="vd">${esc(v.d)}</span></div>`).join('') || '<div class="empty">暂无视频</div>';
+  const paperHtml = p ? `<div class="mini-h" style="margin:14px 0 8px">绑定考题：${esc(p.name)}（${p.questions.length} 题）</div><table class="mini-table"><thead><tr><th>题干</th><th>类型</th><th>难度</th><th>答案</th></tr></thead><tbody>${p.questions.map(q=>`<tr><td>${esc(q.q)}</td><td>${q.type}</td><td>${q.diff}</td><td>${esc(q.a)}</td></tr>`).join('')}</tbody></table>` : '<div class="empty">未绑定考题</div>';
+  const body = `<div class="form-mini">
+    <div style="display:flex;gap:8px;flex-wrap:wrap">
+      <span class="tag tag-blue">${esc(c.category.join('/'))}</span>
+      <span class="tag tag-gray">${esc(c.industry)}</span>
+      <span class="tag tag-gray">${esc(c.post.join('/'))}</span>
+      <span class="tag">课时 ${c.hours}</span>
+      <span class="tag">时长 ${esc(c.duration)}</span>
+      <span class="tag ${c.source==='平台'?'tag-green':'tag-blue'}">${esc(c.source)}</span>
+      <span class="tag">使用范围：${esc(c.scope)}</span>
+    </div>
+    <div class="mini-h" style="margin:14px 0 8px">课程视频</div>${vids}
+    ${paperHtml}
+  </div>`;
+  openModal('课程详情 · '+c.name, body, `<button class="btn btn-primary" onclick="closeModal()">关闭</button>`);
+  iconsRender();
+}
+
+// ============ 试题管理 ============
+function renderPaperTable(){
+  const ps = CourseData.papers();
+  document.getElementById('paperBody').innerHTML = ps.map((p,i)=>{
+    const op = (canEdit?`<a class="btn btn-outline btn-sm" onclick="delPaper('${p.id}')">删除</a> `:'') + `<a class="btn btn-primary btn-sm" onclick="viewPaper('${p.id}')">查看/出题</a>`;
+    return `<tr><td>${i+1}</td><td>${esc(p.name)}</td><td>${p.questions.length}</td><td>${p.questions.length>0?'<span class="tag tag-blue">已绑定</span>':'<span class="tag tag-gray">未绑定</span>'}</td><td>${op}</td></tr>`;
+  }).join('') || '<tr><td colspan="5" class="empty">暂无考试卷，点击右上角「新建卷子」</td></tr>';
+  iconsRender();
+}
+function openPaperEditor(){
+  const body = `<div class="form-item"><label class="form-label">卷子名称 <span class="req">*</span></label><input class="form-input" id="p_name" placeholder="如：2026 年度驾驶员安全考试卷"></div>`;
+  openModal('新建考试卷', body, `<button class="btn btn-outline" onclick="closeModal()">取消</button><button class="btn btn-primary" onclick="savePaper()">创建</button>`);
+  iconsRender();
+}
+function savePaper(){
+  const name = document.getElementById('p_name').value.trim();
+  if(!name){ toast('请填写卷子名称'); return; }
+  CourseData.addPaper({name, questions:[]});
+  closeModal(); renderPaperTable(); toast('考试卷已创建');
+}
+function delPaper(pid){ if(!confirm('确认删除该卷子？已绑定该卷子的课程将变为未绑定。')) return; CourseData.delPaper(pid); renderPaperTable(); toast('卷子已删除'); }
+function viewPaper(pid){
+  const p = CourseData.paper(pid); if(!p) return;
+  const head = canEdit? '<th>操作</th>':'';
+  const qs = p.questions.map((q,i)=>`<tr><td>${i+1}</td><td>${esc(q.q)}</td><td>${q.type}</td><td>${q.diff}</td><td>${esc(q.a)}</td>${canEdit?`<td><a class="btn btn-outline btn-sm" onclick="delQuestion('${pid}',${i})">删除</a></td>`:''}</tr>`).join('') || `<tr><td colspan="${canEdit?6:5}" class="empty">本卷暂无试题</td></tr>`;
+  const body = `<div class="form-mini">
+    ${canEdit?`<button class="btn btn-primary btn-sm" onclick="openQuestionEditor('${pid}')"><span class="ico" data-icon="plus"></span> 新增试题</button>`:''}
+    <table class="mini-table"><thead><tr><th>序号</th><th>题干</th><th>类型</th><th>难度</th><th>答案</th>${head}</tr></thead><tbody>${qs}</tbody></table>
+  </div>`;
+  openModal('出题 · '+p.name, body, `<button class="btn btn-primary" onclick="closeModal()">关闭</button>`);
+  iconsRender();
+}
+function openQuestionEditor(pid){
+  const body = `<div class="form-mini">
+    <div class="form-item"><label class="form-label">题干 <span class="req">*</span></label><textarea class="form-input" id="q_q" style="min-height:64px" placeholder="如：驾驶员连续驾驶不得超过几小时？"></textarea></div>
+    <div style="display:flex;gap:12px">
+      <div class="form-item" style="flex:1"><label class="form-label">类型</label><select class="form-select" id="q_t"><option>单选</option><option>多选</option><option>判断</option></select></div>
+      <div class="form-item" style="flex:1"><label class="form-label">难度</label><select class="form-select" id="q_d"><option>易</option><option>中</option><option>难</option></select></div>
+    </div>
+    <div class="form-item"><label class="form-label">正确答案 <span class="req">*</span></label><input class="form-input" id="q_a" placeholder="如：B. 4 小时"></div>
+  </div>`;
+  openModal('新增试题 · '+CourseData.paper(pid).name, body, `<button class="btn btn-outline" onclick="closeModal()">取消</button><button class="btn btn-primary" onclick="saveQuestion('${pid}')">添加</button>`);
+  iconsRender();
+}
+function saveQuestion(pid){
+  const q = document.getElementById('q_q').value.trim(), a = document.getElementById('q_a').value.trim();
+  if(!q||!a){ toast('请填写题干和正确答案'); return; }
+  CourseData.addQuestion(pid, {q, type:document.getElementById('q_t').value, diff:document.getElementById('q_d').value, a});
+  closeModal(); viewPaper(pid);
+}
+function delQuestion(pid,qi){ CourseData.delQuestion(pid,qi); viewPaper(pid); }
+
+// ============ 通用弹窗 / toast ============
+function openModal(title, body, foot){ document.getElementById('mTitle').textContent=title; document.getElementById('mBody').innerHTML=body; document.getElementById('mFoot').innerHTML=foot; document.getElementById('modal').classList.add('show'); iconsRender(); }
+function closeModal(){ document.getElementById('modal').classList.remove('show'); }
+function iconsRender(){ if(window.__rerenderIcons) window.__rerenderIcons(); }
+function toast(msg){ let t=document.getElementById('toast'); if(!t){ t=document.createElement('div'); t.id='toast'; t.style.cssText='position:fixed;top:24px;right:24px;background:#141c2b;color:#fff;padding:12px 20px;border-radius:10px;font-size:14px;z-index:9999;opacity:0;transform:translateY(-10px);transition:.25s;pointer-events:none;box-shadow:0 4px 16px rgba(0,0,0,.2)'; document.body.appendChild(t); } t.textContent=msg; t.style.opacity='1'; t.style.transform='translateY(0)'; clearTimeout(t._t); t._t=setTimeout(function(){t.style.opacity='0';t.style.transform='translateY(-10px)'},2200); }
+
+init();
+</script></body></html>

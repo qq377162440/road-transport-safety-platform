@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="zh-CN"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>登录 · 道路运输安全生产管理平台</title>
+<link rel="stylesheet" href="assets/common.css">
+<style>
+  :root { --primary:#1E40AF; --primary-dark:#1E3A8A; }
+  * { box-sizing:border-box; margin:0; padding:0; }
+  body { font-family:var(--font); height:100vh; display:flex; align-items:center; justify-content:center;
+         background:linear-gradient(135deg,#0f1c3f 0%,#1e3a8a 55%,#2563eb 100%); position:relative; overflow:hidden; }
+  .deco { position:absolute; border-radius:50%; background:rgba(255,255,255,.05); }
+  .deco.d1{width:420px;height:420px;top:-120px;left:-120px}
+  .deco.d2{width:300px;height:300px;bottom:-80px;right:-60px}
+  .deco.d3{width:160px;height:160px;top:40%;right:16%;background:rgba(255,255,255,.04)}
+  .login-card { position:relative; z-index:2; width:min(440px,92vw); background:#fff; border-radius:20px;
+                box-shadow:0 20px 60px rgba(0,0,0,.35); overflow:hidden; }
+  .login-head { padding:34px 36px 22px; text-align:center; }
+  .login-head .logo { width:54px; height:54px; border-radius:14px; background:var(--primary);
+                      display:flex; align-items:center; justify-content:center; margin:0 auto 14px; }
+  .login-head .logo .ico { font-size:28px; color:#fff; }
+  .login-head h1 { font-size:21px; font-weight:700; color:var(--text); }
+  .login-head .sub { font-size:13px; color:var(--text-3); margin-top:6px; }
+  .login-body { padding:0 36px 8px; }
+  .role-tabs { display:flex; gap:6px; background:var(--bg); border-radius:10px; padding:5px; margin-bottom:22px; }
+  .role-tabs .rt { flex:1; text-align:center; padding:9px 0; border-radius:8px; font-size:14px; font-weight:600;
+                   color:var(--text-2); cursor:pointer; transition:.15s; }
+  .role-tabs .rt.on { background:#fff; color:var(--primary); box-shadow:0 1px 4px rgba(0,0,0,.1); }
+  .fld { margin-bottom:18px; }
+  .fld label { display:block; font-size:13px; color:var(--text-2); font-weight:600; margin-bottom:7px; }
+  .fld input { width:100%; min-height:44px; padding:11px 14px; border:1px solid var(--border-strong);
+               border-radius:8px; font-size:15px; transition:.15s; }
+  .fld input:focus { outline:none; border-color:var(--primary); box-shadow:0 0 0 3px rgba(37,99,235,.15); }
+  .fld .pwd-wrap { position:relative; }
+  .fld .pwd-wrap .eye { position:absolute; right:12px; top:50%; transform:translateY(-50%);
+                        cursor:pointer; color:var(--text-3); font-size:18px; }
+  .row { display:flex; justify-content:space-between; align-items:center; margin-bottom:22px; font-size:13px; }
+  .row label { display:flex; align-items:center; gap:6px; color:var(--text-2); cursor:pointer; }
+  .row a { color:var(--primary); text-decoration:none; }
+  .login-btn { width:100%; min-height:48px; border:none; border-radius:10px; background:var(--primary);
+               color:#fff; font-size:16px; font-weight:700; cursor:pointer; transition:.15s; }
+  .login-btn:hover { background:var(--primary-dark); }
+  .login-foot { padding:22px 36px 26px; text-align:center; font-size:12.5px; color:var(--text-3); }
+  .tip { background:var(--blue-50); border:1px solid var(--blue-100); color:var(--blue-900);
+         border-radius:8px; padding:10px 12px; font-size:12.5px; margin-bottom:20px; line-height:1.6; }
+  .tip b { font-weight:700; }
+  .err { color:var(--danger-ink); font-size:13px; margin-bottom:12px; min-height:18px; }
+</style>
+</head><body>
+<div class="deco d1"></div><div class="deco d2"></div><div class="deco d3"></div>
+
+<div class="login-card">
+  <div class="login-head">
+    <div class="logo"><span class="ico" data-icon="truck"></span></div>
+    <h1>道路运输安全生产管理平台</h1>
+    <div class="sub">安全生产 · 台账合规 · 服务商一体化运营</div>
+  </div>
+  <div class="login-body">
+    <div class="fld"><label>账号</label><input id="acc" type="text" placeholder="请输入登录账号" autocomplete="username"></div>
+    <div class="fld"><label>密码</label><div class="pwd-wrap"><input id="pwd" type="password" placeholder="请输入密码" autocomplete="current-password"><span class="eye" id="eye" onclick="togglePwd()">👁</span></div></div>
+    <div class="row">
+      <label><input type="checkbox" id="remember" checked> 记住登录</label>
+      <a href="javascript:toast('请联系管理员重置密码')">忘记密码？</a>
+    </div>
+    <div class="err" id="err"></div>
+    <button class="login-btn" onclick="doLogin()">登 录</button>
+  </div>
+  <div class="login-foot">高保真交互原型 · Demo v1.0<br>演示账号：企业 aa · 服务商 bb · 超管 cc（密码任意）</div>
+</div>
+
+<script src="assets/icons.js"></script>
+<script>
+// 演示账号 → 角色自动识别
+const ACCOUNT_ROLES = { aa:'enterprise', bb:'provider', cc:'admin' };
+function togglePwd(){
+  const p = document.getElementById('pwd');
+  p.type = p.type==='password' ? 'text' : 'password';
+  document.getElementById('eye').textContent = p.type==='password' ? '👁' : '🙈';
+}
+function doLogin(){
+  const acc = document.getElementById('acc').value.trim();
+  const pwd = document.getElementById('pwd').value.trim();
+  const err = document.getElementById('err');
+  if(!acc || !pwd){ err.textContent = '请输入账号和密码'; return; }
+  const role = ACCOUNT_ROLES[acc.toLowerCase()];
+  if(!role){ err.textContent = '账号不存在，演示账号：aa（企业）/ bb（服务商）/ cc（超管）'; return; }
+  localStorage.setItem('userRole', role);
+  localStorage.setItem('userName', acc);
+  localStorage.setItem('loggedIn', '1');
+  localStorage.removeItem('impersonating');
+  localStorage.removeItem('serviceProvider');
+  const rn = role==='admin'?'超级管理员':role==='provider'?'服务商':'企业';
+  toast('身份识别成功，正在进入「'+ rn +'」视角…');
+  setTimeout(function(){ location.href = 'index.html'; }, 500);
+}
+function toast(msg){
+  let t = document.getElementById('toast');
+  if(!t){ t=document.createElement('div'); t.id='toast'; t.style.cssText='position:fixed;top:24px;right:24px;background:#141c2b;color:#fff;padding:12px 20px;border-radius:10px;font-size:14px;z-index:9999;opacity:0;transform:translateY(-10px);transition:.25s;box-shadow:0 4px 16px rgba(0,0,0,.2)'; document.body.appendChild(t); }
+  t.textContent = msg; t.style.opacity='1'; t.style.transform='translateY(0)';
+  clearTimeout(t._t); t._t = setTimeout(function(){ t.style.opacity='0'; t.style.transform='translateY(-10px)'; }, 2500);
+}
+</script>
+</body></html>

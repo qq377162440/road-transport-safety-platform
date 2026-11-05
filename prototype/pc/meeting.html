@@ -1,10 +1,125 @@
 <!DOCTYPE html>
-<html lang="zh-CN"><head><meta charset="UTF-8"><title>安全会议管理</title>
+<html lang="zh-CN"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>安全会议管理</title>
 <link rel="stylesheet" href="../assets/common.css"><link rel="stylesheet" href="../assets/pc.css">
-<style></style></head><body>
+<style>
+  .seg{display:flex;gap:4px;background:#F1F5F9;padding:4px;border-radius:10px;margin-bottom:16px}
+  .seg .s{flex:1;padding:9px;text-align:center;border-radius:8px;font-size:14px;cursor:pointer;color:var(--text-2);font-weight:600;transition:.12s}
+  .seg .s.on{background:#fff;color:var(--brand-600);box-shadow:var(--shadow-sm)}
+  .seg .s .n{display:block;font-size:12px;color:var(--text-3);font-weight:400;margin-top:1px}
+  .seg .s.on .n{color:var(--brand-400)}
+  .doc-preview{border:1px solid var(--border);background:#fff;padding:30px 34px;font-family:"SimSun","宋体",serif;color:#000;font-size:14px;line-height:1.9;min-height:380px}
+  .doc-preview .title{text-align:center;font-size:19px;letter-spacing:2px;font-weight:bold;margin-bottom:16px}
+  .doc-preview h4{font-size:15px;margin:14px 0 6px;font-weight:bold}
+  .doc-preview p{text-indent:2em;margin:4px 0}
+  .doc-preview p.ni{text-indent:0}
+  .doc-preview table{width:100%;border-collapse:collapse;margin:8px 0;font-size:13px}
+  .doc-preview table th,.doc-preview table td{border:1px solid #000;padding:5px 8px;text-align:center}
+  .doc-preview table th{background:#f2f2f2}
+  .fill{color:#1a4b8c;font-weight:bold}
+  .photo{height:80px;border:1px dashed #aaa;margin:8px 0;display:flex;align-items:center;justify-content:center;color:#aaa;font-size:12px}
+  .modal-mask{position:fixed;inset:0;background:rgba(20,28,43,.45);display:none;align-items:center;justify-content:center;z-index:100}
+  .modal-mask.show{display:flex}
+  .modal{background:#fff;border-radius:var(--r-lg);width:680px;max-width:94vw;max-height:88vh;overflow:auto;box-shadow:var(--shadow-md)}
+  .modal-head{display:flex;align-items:center;justify-content:space-between;padding:16px 20px;border-bottom:1px solid var(--border);font-weight:700;font-size:16px}
+  .modal-head .x{cursor:pointer;font-size:24px;color:var(--text-3);line-height:1}
+  .modal-body{padding:20px}
+</style></head><body>
 <div class="pc-page">
-<div class="pc-header"><div><h1>安全会议管理</h1><div class="desc">会议安排、签到、纪要管理</div></div><div class="actions"><button class="btn btn-primary"><span class="ico" data-icon="plus"></span> 新增会议</button></div></div><div class="filter-bar"><div class="f-item"><label>会议名称</label><input type="text" placeholder="请输入"></div><div class="f-item"><label>会议类型</label><select><option>全部</option><option>安全例会</option><option>专题会议</option><option>应急演练</option></select></div><div class="f-item"><label>会议状态</label><select><option>全部</option><option>未开始</option><option>进行中</option><option>已结束</option></select></div><div class="f-actions"><button class="btn btn-primary btn-sm"><span class="ico" data-icon="search"></span> 查询</button><button class="btn btn-outline btn-sm">重置</button></div></div><div class="card" style="padding:0;overflow:hidden"><table class="table"><thead><tr><th>会议名称</th><th>会议类型</th><th>召开时间</th><th>主持人</th><th>参会人数</th><th>状态</th><th>操作</th></tr></thead><tbody><tr><td>2026年10月安全例会</td><td>安全例会</td><td>2026-10-25 09:00</td><td>李强</td><td>32</td><td><span class="tag tag-gray">已结束</span></td><td><a class="btn btn-primary btn-sm">详情</a> <a class="btn btn-outline btn-sm">纪要</a></td></tr><tr><td>冬季行车安全专题会</td><td>专题会议</td><td>2026-10-28 14:00</td><td>张伟</td><td>40</td><td><span class="tag tag-blue">未开始</span></td><td><a class="btn btn-primary btn-sm">详情</a> </td></tr><tr><td>消防应急演练</td><td>应急演练</td><td>2026-11-05 10:00</td><td>王芳</td><td>50</td><td><span class="tag tag-blue">未开始</span></td><td><a class="btn btn-primary btn-sm">详情</a> </td></tr></tbody></table>
-<div class="table-foot"><span>共 3 条记录</span>
-<div class="pagination"><button>&lt;</button><button class="active">1</button><button>2</button><button>3</button><button>…</button><button>&gt;</button></div></div></div>
+  <div class="pc-header"><div><h1>安全会议管理</h1><div class="desc">会议通知、签到、纪要、照片四段式 · 两类会议（领导小组/月度）</div></div>
+    <div class="actions"><button class="btn btn-outline" onclick="window.parent.gotoPage('pc/archive_flow.html?box=3')"><span class="ico" data-icon="archive"></span> 存档到电子档案柜（盒三）</button><button class="btn btn-primary" onclick="openNew()"><span class="ico" data-icon="plus"></span> 新增会议</button></div>
+  </div>
+
+  <div class="card" style="margin-bottom:16px">
+    <div class="card-title">会议归档四段式预览 <span id="meetName" style="font-size:13px;color:var(--brand-500);font-weight:600"></span></div>
+    <div class="seg" id="seg">
+      <div class="s on" onclick="switchSeg(0)">① 会议通知<span class="n">时间/地点/内容/参会人</span></div>
+      <div class="s" onclick="switchSeg(1)">② 签到表<span class="n">岗位顺序固定</span></div>
+      <div class="s" onclick="switchSeg(2)">③ 会议记录<span class="n">议题 + 正文</span></div>
+      <div class="s" onclick="switchSeg(3)">④ 会场照片<span class="n">附于表后</span></div>
+    </div>
+    <div class="doc-preview" id="docPreview"></div>
+  </div>
+
+  <div class="card" style="padding:0;overflow:hidden">
+    <div class="card-title" style="padding:16px 20px 0">会议列表</div>
+    <div style="padding:0 20px 16px"><table class="table"><thead><tr><th>会议名称</th><th>会议类型</th><th>召开时间</th><th>主持人</th><th>参会人数</th><th>状态</th><th>操作</th></tr></thead>
+    <tbody><tr><td>2026年第4季度安全生产领导小组会议</td><td>领导小组会议</td><td>2026-10-25 09:00</td><td>张伟</td><td>12</td><td><span class="tag tag-gray">已结束</span></td><td><a class="btn btn-primary btn-sm" onclick="preview('2026年第4季度安全生产领导小组会议')">四段式预览</a></td></tr>
+    <tr><td>2026年10月安全生产月度会议</td><td>月度会议</td><td>2026-10-28 14:00</td><td>李强</td><td>32</td><td><span class="tag tag-blue">未开始</span></td><td><a class="btn btn-primary btn-sm" onclick="preview('2026年10月安全生产月度会议')">四段式预览</a></td></tr>
+    <tr><td>2026年9月安全生产月度会议</td><td>月度会议</td><td>2026-09-25 14:00</td><td>李强</td><td>30</td><td><span class="tag tag-green">已归档</span></td><td><a class="btn btn-primary btn-sm" onclick="preview('2026年9月安全生产月度会议')">四段式预览</a></td></tr></tbody></table></div>
+  </div>
 </div>
-<script src="../assets/icons.js"></script></body></html>
+
+<div class="modal-mask" id="newModal">
+  <div class="modal">
+    <div class="modal-head">新增会议 <span class="x" onclick="closeModal('newModal')">×</span></div>
+    <div class="modal-body">
+      <div class="form-item"><label class="form-label">会议类型 <span class="req">*</span></label>
+        <select class="form-select"><option>安全生产领导小组会议</option><option>安全生产月度会议</option></select></div>
+      <div class="form-item"><label class="form-label">会议名称 <span class="req">*</span></label><input class="form-input" placeholder="如：2026年11月安全生产月度会议"></div>
+      <div class="form-item"><label class="form-label">会议议题</label><textarea class="form-textarea" rows="3" placeholder="会议议题（强调的问题、做出的决定、部署的工作）"></textarea></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+        <div class="form-item"><label class="form-label">会议时间</label><input class="form-input" type="datetime-local"></div>
+        <div class="form-item"><label class="form-label">会议地点</label><input class="form-input" placeholder="办公室"></div>
+      </div>
+      <div style="display:flex;gap:10px;justify-content:flex-end">
+        <button class="btn btn-outline" onclick="closeModal('newModal')">取消</button>
+        <button class="btn btn-primary" onclick="saveMeet()">保存并生成通知</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="../assets/icons.js"></script>
+<script>
+const POSTS = ['安全管理员','监控员','总经理','车队长','驾驶员','驾驶员','驾驶员','驾驶员'];
+let curSeg = 0;
+let curName = '2026年第4季度安全生产领导小组会议';
+
+function preview(name){ curName = name; document.getElementById('meetName').textContent = name; switchSeg(0); }
+function switchSeg(i){
+  curSeg = i;
+  document.querySelectorAll('#seg .s').forEach((el,idx)=>el.classList.toggle('on', idx===i));
+  renderSeg();
+}
+function renderSeg(){
+  const el = document.getElementById('docPreview');
+  if(curSeg===0){
+    el.innerHTML = `<div class="title">关于召开2026年第4季度安全生产领导机构会议通知</div>
+      <p>为了确保公司安全生产工作顺利开展，兹定于2026年12月召开2026年第4季度安全生产领导机构会议，研究部署公司相关工作，现将有关事宜通知如下：</p>
+      <p class="ni"><b>会议时间：</b>2026年12月&nbsp;&nbsp;日</p>
+      <p class="ni"><b>会议地点：</b>公司会议室</p>
+      <p class="ni"><b>会议内容：</b></p>
+      <p>一、学习近期道路货运安全生产主要文件</p>
+      <p>二、培训大雾安全行车知识</p>
+      <p>三、讲解严防超限超载问题</p>
+      <p>四、通报近期省内外严重交通事故案例</p>
+      <p class="ni"><b>参会人员：</b>安全生产领导小组成员</p>
+      <p style="text-align:right">佛山市悦通物流有限公司<br>2026年12月&nbsp;&nbsp;日</p>`;
+  } else if(curSeg===1){
+    let rows = POSTS.map((p,i)=>`<tr><td>${i+1}</td><td></td><td>${p}</td><td></td></tr>`).join('');
+    el.innerHTML = `<div class="title">2026年第4季度安全生产领导机构会议签到表</div>
+      <p class="ni">会议时间：2026年&nbsp;&nbsp;月&nbsp;&nbsp;日&nbsp;&nbsp;&nbsp;&nbsp;参会人数：<span class="fill">8/8</span>&nbsp;&nbsp;&nbsp;&nbsp;主持人：<span class="fill">张伟</span></p>
+      <p class="ni" style="color:#1a4b8c;font-size:13px">▍签到岗位列固定顺序：安全管理员 → 监控员 → 总经理 → 车队长 → 驾驶员</p>
+      <table><tr><th>序号</th><th>姓名</th><th>岗位</th><th>签名</th></tr>${rows}</table>`;
+  } else if(curSeg===2){
+    el.innerHTML = `<div class="title">2026年第4季度安全生产领导机构会议记录</div>
+      <p class="ni"><b>会议名称：</b>2026年第4季度安全生产领导机构会议</p>
+      <p class="ni"><b>会议地点：</b>公司会议室&nbsp;&nbsp;&nbsp;&nbsp;<b>会议时间：</b>2026年12月&nbsp;&nbsp;日&nbsp;&nbsp;:&nbsp;&nbsp;</p>
+      <p class="ni"><b>主持人：</b><span class="fill">张伟</span>&nbsp;&nbsp;&nbsp;&nbsp;<b>记录人：</b><span class="fill">李强</span></p>
+      <p class="ni"><b>会议议题（强调的问题、做出的决定、部署的工作）：</b></p>
+      <p>文件宣贯 / 大雾安全行车 / 严防超限超载 / 警示案例</p>
+      <p class="ni"><b>会议记录：</b></p>
+      <p>一、学习近期道路货运安全生产主要文件；二、培训大雾安全行车知识；三、讲解严防超限超载问题；四、通报近期省内外严重交通事故案例，汲取事故教训。</p>`;
+  } else {
+    el.innerHTML = `<div class="title">会场照片</div>
+      <p class="ni">（附于会议记录表后，企业拍摄后上传）</p>
+      <div class="photo">会议现场照片占位（点击上传）</div>
+      <div class="photo">签到现场照片占位（点击上传）</div>`;
+  }
+}
+function openNew(){ document.getElementById('newModal').classList.add('show'); }
+function saveMeet(){ alert('已保存会议并生成通知（模拟）'); closeModal('newModal'); }
+function closeModal(id){ document.getElementById(id).classList.remove('show'); }
+
+preview(curName);
+</script></body></html>
