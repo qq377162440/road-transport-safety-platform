@@ -35,15 +35,22 @@ if [ -n "$CRED_DEFAULTS" ]; then
 else
   PROD_CHECK="✅ 7 个凭据占位符均无默认值（缺失即启动失败）"
 fi
-# 生产编排强制凭据检查
+# 生产编排强制凭据检查（排除注释里的 ${VAR:?} 示例，避免误计）
 PROD_COMPOSE=server/deploy/docker-compose.prod.yml
-REQUIRED_VARS=$(grep -oE '\$\{[A-Z_]+:\?' "$PROD_COMPOSE" | sed -E 's/\$\{([A-Z_]+):\?/\1/' | sort -u | wc -l)
+REQUIRED_VARS=$(grep -vE '^[[:space:]]*#' "$PROD_COMPOSE" \
+  | grep -oE '\$\{[A-Z_]+:\?' | sed -E 's/\$\{([A-Z_]+):\?/\1/' | sort -u | wc -l)
 
-# 镜像 ID
-FE_IMG=$(docker image inspect safetrans/frontend:latest --format '{{.Id}}' 2>/dev/null | cut -c8-19 || echo '未构建')
-BE_IMG=$(docker image inspect safetrans/backend:latest --format '{{.Id}}' 2>/dev/null | cut -c8-19 || echo '未构建')
-DEV_FE=$(docker image inspect deploy-frontend:latest --format '{{.Id}}' 2>/dev/null | cut -c8-19 || echo '未构建')
-DEV_BE=$(docker image inspect deploy-backend:latest --format '{{.Id}}' 2>/dev/null | cut -c8-19 || echo '未构建')
+# 镜像 ID：CI 尚未打生产 tag 时明确输出「未构建」；
+# 不用 `inspect | cut || echo`（pipefail 下会把换行带进命令替换，污染清单表格）。
+img_short() {
+  local id
+  id=$(docker image inspect "$1" --format '{{.Id}}' 2>/dev/null) || { echo '未构建'; return 0; }
+  [ -n "$id" ] && echo "${id:7:12}" || echo '未构建'
+}
+FE_IMG=$(img_short safetrans/frontend:latest)
+BE_IMG=$(img_short safetrans/backend:latest)
+DEV_FE=$(img_short deploy-frontend:latest)
+DEV_BE=$(img_short deploy-backend:latest)
 
 # 关键文件校验和
 CHECKSUM=$(sha256sum \
