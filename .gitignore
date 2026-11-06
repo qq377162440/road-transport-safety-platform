@@ -26,10 +26,13 @@ pnpm-debug.log*
 __pycache__/
 *.pyc
 
-# 临时验证产物：根目录调试截图、测试 PDF、页面截图
+# 临时验证产物：根目录调试截图、测试 PDF、页面截图与过程截图
 /shot_*.png
 /test_*.pdf
 /*_page*.png
+/archive_preview_*.png
+/截图-原型复刻验证/
+/登录界面隐藏验证/
 
 # 运行期数据备份（可能含真实业务数据，禁止入库）
 server/deploy/backups/
@@ -46,5 +49,4 @@ server/deploy/rollback/
 
 # 公网发布辅助（本地代理与平台生成目录）
 publish_proxy/
-.cloudstudio/
-.cloudstudio/
+.cloudstudio

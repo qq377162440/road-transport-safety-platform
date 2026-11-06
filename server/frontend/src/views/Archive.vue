@@ -4,14 +4,68 @@ import request from '@/api/request'
 import { ElMessage } from 'element-plus'
 import Icon from '@/components/Icon.vue'
 import { ARCHIVE_CATALOG, FREQ_LABEL, STATUS } from '@/config/archiveCatalog'
-import { getArchiveDoc, isCertPage } from '@/config/archiveDocs'
+import { useRouter } from 'vue-router'
+
+const router = useRouter()
+
+// ---- 同源范本库：「台账范本管理」与「电子档案柜」共用 tpl_template ----
+// 范本管理中保存的修改，会直接决定这里的生成结果与预览正文。
+const tplList = ref([])
+const pageCss = ref('')
+const currentSetName = ref('')
+const previewPost = ref('')
+const tplChoice = ref({})   // 行 key -> 用户为该归档项挑选的范本 code
+
+function setTplChoice(key, code) {
+  tplChoice.value = { ...tplChoice.value, [key]: code }
+}
+
+const previewPosts = computed(() => tplList.value
+  .filter((t) => (t.code || '').startsWith('RESP_LETTER_P'))
+  .map((t) => (t.name || '').replace(/^安全生产责任书（/, '').replace(/）$/, '')))
+
+const tplMap = computed(() => {
+  const m = {}
+  tplList.value.forEach((t) => {
+    const n = t.archiveItem
+    if (!n) return
+    ;(m[n] = m[n] || []).push(t)
+  })
+  // 「安全生产责任书（变量化范本）」作为盒一责任书的主范本排在最前
+  Object.values(m).forEach((arr) => arr.sort((a, b) =>
+    (a.code === 'RESP_LETTER' ? 0 : 1) - (b.code === 'RESP_LETTER' ? 0 : 1)))
+  return m
+})
+
+function matchTpl(name) {
+  if (tplMap.value[name]?.length) return tplMap.value[name]
+  const k = Object.keys(tplMap.value).find((x) => x.length >= 4 && (name.includes(x) || x.includes(name)))
+  return k ? tplMap.value[k] : []
+}
+
+// 盒二：由范本库动态注入 24 项制度 + 制度目录 + 责任制（与范本管理文件树一一对应）
+const boxTwoTplItems = computed(() => {
+  const staticBox2 = (ARCHIVE_CATALOG[cargoType.value] || [])[1]
+  const seen = new Set((staticBox2?.items || []).map((i) => i.name))
+  const out = []
+  tplList.value.filter((t) => t.boxNo === 2).forEach((t) => {
+    const n = t.archiveItem || t.name
+    if (!n || seen.has(n)) return
+    seen.add(n)
+    out.push({ name: n, tplDriven: true })
+  })
+  return out
+})
 
 const cargoType = ref('普货')
-const boxes = computed(() => ARCHIVE_CATALOG[cargoType.value] || [])
+const boxes = computed(() => {
+  const base = ARCHIVE_CATALOG[cargoType.value] || []
+  return base.map((b, idx) => idx === 1
+    ? { ...b, items: [...b.items, ...boxTwoTplItems.value] }
+    : b)
+})
 const selectedNo = ref('一')
 const selectedBox = computed(() => boxes.value.find((b) => b.no === selectedNo.value) || boxes.value[0])
-
-// 盒号（数字，对齐后端 BOX_CATALOG_BASE + boxNo）
 const boxNoNum = (no) => boxes.value.findIndex((b) => b.no === no) + 1
 const selBoxNo = computed(() => boxNoNum(selectedNo.value))
 
@@ -19,42 +73,33 @@ const currentYear = new Date().getFullYear()
 const years = [currentYear, currentYear - 1, currentYear - 2]
 const selYear = ref(currentYear)
 
-const realItems = ref([])   // 系统生成（责任制等）
-const uploadItems = ref([]) // 上传留存
+const archiveItems = ref([])  // 后端归档项：上传留存(genMode=3) 与 按范本生成(genMode=2)
 const loading = ref(false)
 const generating = ref(false)
-const checked = ref(new Set())     // 逐条勾选：key = `${boxNo}-${idx}`
-const boxChecked = ref(new Set())  // 盒级勾选：盒中文号
+const checked = ref(new Set())
+const boxChecked = ref(new Set())
 
-// 把选中盒目录子项，与真实后端数据合并成渲染行
+// 把目录子项与后端真实归档状态、当前应用范本合并成渲染行
 const rows = computed(() => {
-  const realMap = {}
-  realItems.value.forEach((it) => { realMap[realTitle(it.title)] = it })
-  const upMap = {}
-  uploadItems.value.forEach((it) => { upMap[it.title] = it })
+  const recMap = {}
+  archiveItems.value.forEach((it) => { recMap[it.title] = it })
   const bno = selBoxNo.value
   return selectedBox.value.items.map((it, idx) => {
     const key = `${bno}-${idx}`
-    const isReal = !!it.real
+    const rec = recMap[it.name]
+    const pdfId = rec?.pdfId || null
+    const isUploaded = rec?.genMode === 3
+    const tplOptions = matchTpl(it.name)
+    const tplCode = tplOptions.length ? tplOptions[0].code : ''
     let status = STATUS.MISS
-    let pdfId = null
-    let isUp = false
-    if (isReal) {
-      const real = realMap[realTitle(it.real)]
-      if (real) { status = real.status === 1 ? STATUS.DONE : STATUS.WAIT; pdfId = real.pdfId }
-    } else {
-      isUp = true
-      const up = upMap[it.name]
-      if (up && up.pdfId) { status = STATUS.DONE; pdfId = up.pdfId }
+    if (pdfId) status = STATUS.DONE
+    else if (tplOptions.length) status = STATUS.WAIT
+    return {
+      key, name: it.name, freq: it.freq || '', tplDriven: !!it.tplDriven,
+      isUploaded, tplOptions, tplCode, status, pdfId,
     }
-    return { key, name: it.name, freq: it.freq || '', isReal, isUp, status, pdfId }
   })
 })
-
-function realTitle(kind) {
-  if (kind === 'responsibility') return '安全生产责任制'
-  return kind
-}
 
 // 四色统计
 const summary = computed(() => {
@@ -73,30 +118,34 @@ const renewItems = computed(() =>
   rows.value.filter((r) => r.freq === 'yearly' && r.status !== STATUS.DONE && r.status !== STATUS.PRINT)
 )
 
-async function loadReal() {
-  const hasReal = selectedBox.value.items.some((i) => i.real)
-  if (!hasReal) { realItems.value = []; return }
+async function loadArchiveItems() {
   loading.value = true
   try {
-    const res = await request.get('/archive/responsibility/items')
-    realItems.value = res.data || []
+    const res = await request.get(`/archive/items?boxNo=${selBoxNo.value}&year=${selYear.value}`)
+    archiveItems.value = res.data || []
   } catch (e) {
-    realItems.value = []
+    archiveItems.value = []
   } finally {
     loading.value = false
   }
 }
-async function loadUpload() {
+async function loadTplLibrary() {
   try {
-    const res = await request.get(`/archive/items?boxNo=${selBoxNo.value}&year=${selYear.value}`)
-    uploadItems.value = res.data || []
-  } catch (e) {
-    uploadItems.value = []
-  }
+    const [list, cssRes, curRes] = await Promise.all([
+      request.get('/tpl/library'),
+      request.get('/tpl/library/css'),
+      request.get('/tpl/ent/current').catch(() => ({ data: null })),
+    ])
+    tplList.value = list.data || []
+    pageCss.value = cssRes.data || ''
+    currentSetName.value = curRes.data?.name || '普货通用范本（内置）'
+  } catch (e) { /* 范本库不可用时退化为纯上传模式 */ }
 }
 
-watch([selectedNo, cargoType, selYear], () => { checked.value = new Set(); boxChecked.value = new Set(); loadReal(); loadUpload() })
-onMounted(() => { loadReal(); loadUpload() })
+watch([selectedNo, cargoType, selYear], () => {
+  checked.value = new Set(); boxChecked.value = new Set(); tplChoice.value = {}; loadArchiveItems()
+})
+onMounted(() => { loadTplLibrary(); loadArchiveItems() })
 
 // ---- 三级勾选 ----
 function toggleItem(key, val) {
@@ -129,33 +178,52 @@ const allChecked = computed(() => {
     selectedBox.value.items.every((_, idx) => checked.value.has(`${bno}-${idx}`))
 })
 
-// ---- 生成（系统生成类）----
+// ---- 生成：一律按「台账范本管理」当前应用范本渲染 PDF ----
+function currentTpl(item) {
+  if (!item?.tplOptions?.length) return null
+  const code = tplChoice.value[item.key] || item.tplCode
+  return item.tplOptions.find((t) => t.code === code) || item.tplOptions[0]
+}
+
+async function generateOne(item, silent = false) {
+  const tpl = currentTpl(item)
+  if (!tpl) return false
+  await request.post('/archive/template/generate', {
+    code: tpl.code,
+    itemName: item.name,
+    boxNo: selBoxNo.value,
+    year: selYear.value,
+    post: previewPost.value,
+  })
+  if (!silent) ElMessage.success(`已按「${tpl.name}」生成并归档`)
+  return true
+}
+
 async function doGenerate(item) {
   generating.value = true
   try {
-    if (!item.isReal) { ElMessage.info('该归档项请使用「上传」留存佐证材料'); return }
-    await request.post('/archive/responsibility/generate')
-    ElMessage.success('已生成并归档（安全生产责任制）')
-    await loadReal()
+    const ok = await generateOne(item)
+    if (!ok) { ElMessage.info('该归档项暂无台账范本，请使用「上传」留存'); return }
+    await loadArchiveItems()
   } finally {
     generating.value = false
   }
 }
+
 async function batchGenerate(scope) {
-  const bno = selBoxNo.value
-  const targets = scope === 'checked'
+  const targets = (scope === 'checked'
     ? rows.value.filter((r) => checked.value.has(r.key))
-    : rows.value
-  const real = targets.filter((r) => r.isReal)
-  if (!real.length) {
-    ElMessage.info('当前选择无可系统生成的真实归档项（其余请使用「上传」按钮留存）')
+    : rows.value).filter((r) => r.tplOptions.length)
+  if (!targets.length) {
+    ElMessage.info('当前选择没有可按范本生成的归档项（其余请使用「上传」按钮留存）')
     return
   }
   generating.value = true
   try {
-    for (const _ of real) await request.post('/archive/responsibility/generate')
-    ElMessage.success(`已生成 ${real.length} 项责任制 PDF`)
-    await loadReal()
+    let n = 0
+    for (const r of targets) if (await generateOne(r, true)) n++
+    ElMessage.success(`已按当前应用范本生成 ${n} 份台账`)
+    await loadArchiveItems()
   } finally {
     generating.value = false
   }
@@ -173,8 +241,10 @@ async function download(item) {
   if (!res.ok) { ElMessage.error('下载失败'); return }
   const blob = await res.blob()
   // 取后端返回的真实文件名（含正确扩展名：pdf / png / jpg ...），避免图片被错存为 .pdf
+  // 优先取 RFC 5987 filename*（中文原名），否则取 ASCII filename 兜底
   const cd = res.headers.get('Content-Disposition') || ''
-  const m = cd.match(/filename\*?=(?:UTF-8'')?"?([^";]+)"?/i)
+  let m = cd.match(/filename\*\s*=\s*UTF-8''([^;]+)/i)
+  if (!m) m = cd.match(/filename\s*=\s*"?([^";]+)"?/i)
   let fname = m ? decodeURIComponent(m[1].trim()) : `${item.name}_${selYear.value}.pdf`
   const url = URL.createObjectURL(blob)
   const a = document.createElement('a')
@@ -229,7 +299,7 @@ async function doUpload() {
     const json = await res.json()
     if (json.code !== 0) throw new Error(json.msg || '上传失败')
     ElMessage.success('上传成功，已留存至档案盒')
-    await loadUpload()
+    await loadArchiveItems()
     closeUpload()
   } catch (e) {
     ElMessage.error(e.message || '上传失败')
@@ -239,10 +309,16 @@ async function doUpload() {
 }
 
 // ---- PDF 预览 ----
+// 上传留存类 → 嵌入真实文件；按范本生成类 → 渲染「当前应用范本」正文（与台账范本管理同一份 CSS）
 const preview = ref(null)
-const previewSections = ref([])
 const previewBlobUrl = ref('')
 const previewFileKind = ref('') // '' | 'pdf' | 'image'
+const previewDoc = ref('')
+
+function srcdoc(body) {
+  const screenFont = "body{font-family:'PingFang SC','Microsoft YaHei','Noto Sans CJK SC',sans-serif !important;padding:44px 50px;margin:0;}"
+  return `<!DOCTYPE html><html lang="zh"><head><meta charset="UTF-8"><style>${pageCss.value}${screenFont}</style></head><body>${body}</body></html>`
+}
 
 function clearPreviewBlob() {
   if (previewBlobUrl.value) { URL.revokeObjectURL(previewBlobUrl.value); previewBlobUrl.value = '' }
@@ -250,10 +326,12 @@ function clearPreviewBlob() {
 }
 
 function openPreview(item) {
-  if (!item.pdfId) { ElMessage.warning('尚未生成/上传，无法预览'); return }
   preview.value = item
-  // 上传留存且已有真实文件：直接嵌入原文件（扫描件/PDF）
-  if (item.isUp) {
+  clearPreviewBlob()
+  previewDoc.value = ''
+
+  // 上传留存的真实文件（PDF / 图片扫描件）：直接嵌入原文件
+  if (item.isUploaded && item.pdfId) {
     fetch(`/api/archive/pdf/${item.pdfId}/download`, {
       headers: {
         Authorization: `Bearer ${localStorage.getItem('token')}`,
@@ -265,23 +343,37 @@ function openPreview(item) {
       clearPreviewBlob()
       previewBlobUrl.value = URL.createObjectURL(blob)
       previewFileKind.value = blob.type.startsWith('image/') ? 'image' : 'pdf'
-      previewSections.value = []
     }).catch(() => {
-      // 取不到真实文件则回退到模板正文
-      clearPreviewBlob()
-      previewSections.value = getArchiveDoc(item.name)
+      previewDoc.value = srcdoc('<div class="doc-p">原文件读取失败，请尝试下载查看。</div>')
     })
     return
   }
-  // 系统生成类：渲染可打印正文模板
-  clearPreviewBlob()
-  previewSections.value = getArchiveDoc(item.name)
+
+  // 按当前应用范本渲染 A4 正文：未生成也能预览，改了范本这里立刻变
+  const tpl = currentTpl(item)
+  if (!tpl) {
+    previewDoc.value = srcdoc(
+      '<div class="doc-h0">暂无台账范本</div><div class="doc-p">该归档项尚未配置台账范本，请使用「上传」留存佐证材料，或到台账范本管理中新增。</div>')
+    return
+  }
+  previewDoc.value = srcdoc('<div class="doc-p">正在按当前应用范本渲染…</div>')
+  request.get(`/tpl/library/render/${encodeURIComponent(tpl.code)}`, {
+    params: { itemName: item.name, year: selYear.value, post: previewPost.value },
+  }).then((res) => {
+    previewDoc.value = srcdoc(res.data || '')
+  }).catch(() => {
+    previewDoc.value = srcdoc('<div class="doc-p">范本渲染失败，请稍后重试。</div>')
+  })
 }
+
 function closePreview() {
   preview.value = null
-  previewSections.value = []
+  previewDoc.value = ''
   clearPreviewBlob()
 }
+
+function goTplManager() { router.push('/template-manager') }
+function refreshTpl() { loadTplLibrary(); loadArchiveItems() }
 </script>
 
 <template>
@@ -305,6 +397,21 @@ function closePreview() {
       <b>企业</b>与<b>服务商</b>均可选盒一键下载整套台账；服务商额外拥有「代录台账」能力。
       <b>责任书/承诺书一年一签</b>，跨年度自动预警重签。　<b>档案按自然年度归档</b>，可切换上方「归档年度」查看各年度状态。
       可<b>勾选左侧档案盒或逐条勾选</b>后批量处理；证照/保单/台账扫描件等请使用<b>「上传」</b>按钮留存。
+    </div>
+
+    <!-- 同源联动条：明确告知当前台账由哪套范本生成 -->
+    <div class="tpl-linkbar">
+      <div class="lb-left">
+        <Icon name="bookOpen" :size="19" />
+        <div>
+          <div class="lb-t">当前应用范本：<b>{{ currentSetName }}</b> · 已加载 {{ tplList.length }} 份台账范本</div>
+          <div class="lb-d">本柜「生成 / 重新生成 / 预览」均取自该范本；在台账范本管理中修改并保存后，点右侧刷新即可生效</div>
+        </div>
+      </div>
+      <div class="lb-ops">
+        <el-button size="small" @click="refreshTpl"><Icon name="refresh" :size="13" /> 刷新范本</el-button>
+        <el-button size="small" type="primary" plain @click="goTplManager"><Icon name="edit" :size="13" /> 去台账范本管理</el-button>
+      </div>
     </div>
 
     <div class="year-bar">
@@ -387,10 +494,23 @@ function closePreview() {
             <div class="nm">
               <span class="n clickable" @click="openPreview(r)">{{ r.name }}</span>
               <div class="d">
-                <span v-if="r.isReal" class="src src-auto">系统生成</span>
+                <span v-if="r.tplOptions.length" class="src src-auto">按范本生成</span>
                 <span v-else class="src src-up">上传留存</span>
+                <span v-if="r.tplDriven" class="src src-tpl">范本目录项</span>
                 <span v-if="r.freq" class="freq" :class="`freq-${r.freq}`">{{ FREQ_LABEL[r.freq] }}</span>
+                <span v-if="r.tplOptions.length" class="tpl-name" :title="currentTpl(r)?.name">
+                  当前范本：{{ currentTpl(r)?.name || '—' }}
+                </span>
               </div>
+              <select
+                v-if="r.tplOptions.length > 1"
+                class="tpl-sel"
+                :value="tplChoice[r.key] || r.tplCode"
+                @click.stop
+                @change="setTplChoice(r.key, $event.target.value)"
+              >
+                <option v-for="t in r.tplOptions" :key="t.code" :value="t.code">{{ t.name }}</option>
+              </select>
             </div>
             <span class="st" :class="{
               'st-miss': r.status === STATUS.MISS,
@@ -399,13 +519,13 @@ function closePreview() {
               'st-print': r.status === STATUS.PRINT,
             }">{{ ['待上传/缺失', '待生成', '已生成/已上传', '已归档'][r.status] }}</span>
             <div class="ops">
+              <el-button v-if="r.tplOptions.length" size="small" @click="doGenerate(r)">
+                <Icon name="plus" :size="13" /> {{ r.pdfId ? '重新生成' : '生成' }}
+              </el-button>
               <el-button v-if="r.pdfId" size="small" type="primary" @click="download(r)">
                 <Icon name="download" :size="13" /> 下载
               </el-button>
-              <el-button v-else-if="r.isReal" size="small" @click="doGenerate(r)">
-                <Icon name="plus" :size="13" /> 生成
-              </el-button>
-              <el-button v-else size="small" type="primary" plain @click="openUpload(r)">
+              <el-button size="small" plain @click="openUpload(r)">
                 <Icon name="upload" :size="13" /> 上传
               </el-button>
             </div>
@@ -445,64 +565,28 @@ function closePreview() {
       </div>
     </div>
 
-    <!-- PDF 预览（A4 仿真） -->
+    <!-- PDF 预览：上传留存嵌入原文件；按范本生成类渲染「当前应用范本」正文 -->
     <div class="pdf-mask" :class="{ show: preview }" @click.self="closePreview">
       <div class="pdf-wrap">
         <div class="pdf-toolbar">
           <span class="t">{{ preview?.name }} · {{ selYear }} 年度</span>
-          <el-button size="small" type="primary" @click="download(preview)"><Icon name="download" :size="13" /> 下载 PDF</el-button>
+          <span v-if="currentTpl(preview)?.name" class="tb-tpl">
+            当前范本：{{ currentTpl(preview).name }}（{{ currentTpl(preview).versionLabel || '内置' }}）
+          </span>
+          <select v-model="previewPost" class="tb-sel" @change="openPreview(preview)">
+            <option value="">默认岗位</option>
+            <option v-for="p in previewPosts" :key="p" :value="p">{{ p }}</option>
+          </select>
+          <el-button v-if="preview?.pdfId" size="small" type="primary" @click="download(preview)">
+            <Icon name="download" :size="13" /> 下载 PDF
+          </el-button>
           <button class="x" @click="closePreview">×</button>
         </div>
         <div class="pdf-body">
-          <!-- 上传留存且已有真实文件：直接展示原文件 -->
           <iframe v-if="previewBlobUrl && previewFileKind === 'pdf'" :src="previewBlobUrl" class="pdf-embed" />
           <img v-else-if="previewBlobUrl && previewFileKind === 'image'" :src="previewBlobUrl" class="pdf-embed-img" alt="扫描件" />
-          <!-- 系统生成类 / 模板正文 -->
-          <div v-else class="pdf-page">
-            <div class="ph">
-              <div class="org">道路运输安全生产管理平台</div>
-              <div class="meta">{{ preview?.name }}（{{ selYear }} 年度）</div>
-            </div>
-            <div class="ptitle">{{ preview?.name }}</div>
-            <template v-for="(s, i) in previewSections" :key="i">
-              <h1 v-if="s.type === 'h1'" class="sec-h1">{{ s.text }}</h1>
-              <h2 v-else-if="s.type === 'h2'" class="sec-h2">{{ s.text }}</h2>
-              <p v-else-if="s.type === 'p'" class="sec-p">{{ s.text }}</p>
-              <ol v-else-if="s.type === 'ol'" class="sec-ol">
-                <li v-for="(it, j) in s.items" :key="j">{{ it }}</li>
-              </ol>
-              <ul v-else-if="s.type === 'ul'" class="sec-ul">
-                <li v-for="(it, j) in s.items" :key="j">{{ it }}</li>
-              </ul>
-              <table v-else-if="s.type === 'table'" class="sec-tbl">
-                <thead><tr><th v-for="(h, j) in s.head" :key="j">{{ h }}</th></tr></thead>
-                <tbody>
-                  <tr v-for="(r, ri) in s.rows" :key="ri">
-                    <td v-for="(c, ci) in r" :key="ci">{{ c }}</td>
-                  </tr>
-                </tbody>
-              </table>
-              <div v-else-if="s.type === 'sign'" class="sec-sign">
-                <div class="sg-org">{{ s.org }}</div>
-                <div v-for="(r, j) in s.rows" :key="j" class="sg-row">
-                  <span class="sg-role">{{ r.role }}</span>
-                  <span class="sg-name">{{ r.name }}</span>
-                  <span class="sg-date">{{ r.date }}</span>
-                </div>
-              </div>
-              <div v-else-if="s.type === 'cert'" class="sec-cert">
-                <div class="cert-kind">{{ s.kind }}（证照扫描件粘贴页）</div>
-                <div class="cert-frame">
-                  <div class="cert-tip">此处粘贴 / 打印{{ s.kind }}扫描件</div>
-                </div>
-                <table class="cert-fields">
-                  <tr v-for="(f, j) in s.fields" :key="j">
-                    <td class="cf-k">{{ f[0] }}</td>
-                    <td class="cf-v">{{ f[1] }}</td>
-                  </tr>
-                </table>
-              </div>
-            </template>
+          <div v-else class="pdf-page-frame">
+            <iframe :srcdoc="previewDoc" class="pdf-doc-frame" />
           </div>
         </div>
       </div>
@@ -635,4 +719,24 @@ function closePreview() {
 .cert-fields td { border: 1px solid #bbb; padding: 8px 10px; }
 .cert-fields .cf-k { width: 150px; background: #f6f8fa; font-weight: 600; text-align: right; padding-right: 12px; }
 .cert-fields .cf-v { text-align: left; }
+
+/* 台账范本同源联动 */
+.tpl-linkbar { display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap;
+  background: var(--brand-50); border: 1px solid var(--brand-200, #BFDBFE); border-radius: var(--r-lg, 12px);
+  padding: 12px 16px; margin-bottom: 16px; }
+.lb-left { display: flex; align-items: center; gap: 11px; color: var(--brand-700); }
+.lb-t { font-size: 14px; font-weight: 700; }
+.lb-d { font-size: 12px; color: var(--text-3); margin-top: 3px; }
+.lb-ops { display: flex; gap: 8px; flex-shrink: 0; }
+.src-tpl { background: #F0FDF4; color: #15803D; }
+.tpl-name { font-size: 11.5px; color: var(--brand-600); background: var(--brand-50); padding: 2px 8px;
+  border-radius: 8px; max-width: 260px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tpl-sel { margin-top: 6px; max-width: 300px; font-size: 12px; border: 1px solid var(--border);
+  border-radius: 6px; padding: 3px 6px; background: #fff; color: var(--text-2); cursor: pointer; }
+.pdf-toolbar .tb-tpl { flex-shrink: 0; font-size: 12px; color: var(--brand-700); background: var(--brand-50);
+  padding: 3px 9px; border-radius: 8px; max-width: 320px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pdf-toolbar .tb-sel { flex-shrink: 0; font-size: 12px; border: 1px solid var(--border); border-radius: 6px;
+  padding: 4px 6px; background: #fff; cursor: pointer; }
+.pdf-page-frame { width: 700px; min-height: 900px; background: #fff; box-shadow: 0 2px 12px rgba(0,0,0,.15); }
+.pdf-doc-frame { width: 100%; min-height: 900px; border: none; display: block; background: #fff; }
 </style>

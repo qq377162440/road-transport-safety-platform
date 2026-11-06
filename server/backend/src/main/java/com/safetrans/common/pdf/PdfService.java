@@ -43,7 +43,9 @@ public class PdfService {
         try {
             PdfRendererBuilder builder = new PdfRendererBuilder();
             builder.useFastMode();
-            builder.withHtmlContent(html, null);
+            // openhtmltopdf 用 XML(SAX) 解析 HTML，HTML 命名实体（&nbsp; 等）未声明会直接抛
+            // SAXParseException，必须转换为 XML 合法的数值字符引用后再交给渲染器。
+            builder.withHtmlContent(toXhtml(html), null);
             registerFonts(builder);
 
             ByteArrayOutputStream out = new ByteArrayOutputStream();
@@ -54,6 +56,17 @@ public class PdfService {
             log.error("PDF 渲染失败", e);
             throw new IllegalStateException("PDF 生成失败：" + e.getMessage(), e);
         }
+    }
+
+    /** 把 HTML 命名实体转成 XML 合法的数值字符引用（amp/lt/gt/quot/apos 为 XML 预定义，保持原样） */
+    private String toXhtml(String html) {
+        if (html == null) return "";
+        return html.replace("&nbsp;", "&#160;")
+                .replace("&ensp;", "&#8194;")
+                .replace("&emsp;", "&#8195;")
+                .replace("&mdash;", "&#8212;")
+                .replace("&ndash;", "&#8211;")
+                .replace("&hellip;", "&#8230;");
     }
 
     /** 注册中文字体（从 classpath 提取 TTF 到临时文件并注册） */

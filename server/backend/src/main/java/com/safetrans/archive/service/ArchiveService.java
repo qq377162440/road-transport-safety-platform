@@ -9,7 +9,9 @@ import com.safetrans.common.pdf.PdfService;
 import com.safetrans.common.storage.StorageService;
 import com.safetrans.common.tenant.TenantContextHolder;
 import com.safetrans.common.web.BizException;
+import com.safetrans.tpl.entity.TplTemplate;
 import com.safetrans.tpl.service.ResponsibilityService;
+import com.safetrans.tpl.service.TplLibraryService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
@@ -37,15 +39,18 @@ public class ArchiveService {
     private final ArchiveItemMapper itemMapper;
     private final ArchivePdfMapper pdfMapper;
     private final ResponsibilityService responsibilityService;
+    private final TplLibraryService tplLibraryService;
     private final PdfService pdfService;
     private final StorageService storageService;
 
     public ArchiveService(ArchiveItemMapper itemMapper, ArchivePdfMapper pdfMapper,
                           ResponsibilityService responsibilityService,
+                          TplLibraryService tplLibraryService,
                           PdfService pdfService, StorageService storageService) {
         this.itemMapper = itemMapper;
         this.pdfMapper = pdfMapper;
         this.responsibilityService = responsibilityService;
+        this.tplLibraryService = tplLibraryService;
         this.pdfService = pdfService;
         this.storageService = storageService;
     }
@@ -122,6 +127,86 @@ public class ArchiveService {
     public ArchivePdf registerAndGenerate() {
         ArchiveItem item = registerResponsibility();
         return generateResponsibility(item.getId());
+    }
+
+    /**
+     * 按「台账范本」生成 PDF 并归档 —— 电子档案柜 与 台账范本管理 的联动核心。
+     *
+     * <p>范本正文取自 tpl_template 当前生效版本（企业定制优先、服务商全局兜底）。
+     * 因此在范本管理里保存修改后，档案柜「生成 / 重新生成」会立即产出新内容，
+     * 不再使用任何手写范文或占位文本。
+     *
+     * @param code     指定范本编码；为空时按归档项名称自动匹配
+     * @param itemName 档案柜归档项名称（同时作为 PDF 标题）
+     * @param boxNo    档案盒序号
+     * @param year     归档年度
+     * @param post     岗位（决定责任书类范本 {% if post %} 条件段走向）
+     */
+    @Transactional
+    public ArchivePdf generateByTemplate(String code, String itemName, int boxNo, int year, String post) {
+        TplTemplate tpl = (code != null && !code.isBlank()) ? tplLibraryService.effective(code) : null;
+        if (tpl == null) {
+            List<TplTemplate> matched = tplLibraryService.forItem(itemName, boxNo);
+            if (matched.isEmpty()) {
+                throw new BizException("该归档项暂无可用台账范本，请使用「上传」留存佐证材料");
+            }
+            tpl = matched.get(0);
+        }
+        String title = (itemName == null || itemName.isBlank()) ? tpl.getName() : itemName;
+        String tplCode = tpl.getCode();
+
+        // 1. 用当前应用范本渲染 PDF（变量 + 条件段 + 统一 A4 版式）
+        byte[] pdfBytes = tplLibraryService.renderPdf(tplCode, title, year, post);
+        String hash = sha256(pdfBytes);
+
+        // 2. 存 MinIO
+        Long tenant = tid();
+        String safeTitle = title.replaceAll("[\\\\/?:*\"<>|]", "_");
+        String objectName = String.format("%d/%d/%d/%s_%s.pdf",
+                tenant, year, boxNo, hash.substring(0, 12), safeTitle);
+        storageService.upload(objectName, pdfBytes, "application/pdf");
+
+        // 3. 写 archive_pdf（记录实际使用的范本编码，便于追溯是哪版范本生成的）
+        ArchivePdf pdf = new ArchivePdf();
+        pdf.setTenantId(tenant);
+        pdf.setArchiveYear(year);
+        pdf.setFileName(safeTitle + "_" + year + ".pdf");
+        pdf.setFilePath(objectName);
+        pdf.setFileSize((long) pdfBytes.length);
+        pdf.setTemplateCode(tplCode);
+        pdf.setGenTime(LocalDateTime.now());
+        pdf.setHash(hash);
+        pdfMapper.insert(pdf);
+
+        // 4. 登记/更新归档项：同盒同年度同标题只保留一条，重新生成即刷新 pdfId
+        Long catalogId = BOX_CATALOG_BASE + boxNo;
+        ArchiveItem item = itemMapper.selectOne(new LambdaQueryWrapper<ArchiveItem>()
+                .eq(ArchiveItem::getTenantId, tenant)
+                .eq(ArchiveItem::getCatalogId, catalogId)
+                .eq(ArchiveItem::getTitle, title)
+                .eq(ArchiveItem::getArchiveYear, year)
+                .last("limit 1"));
+        if (item == null) {
+            item = new ArchiveItem();
+            item.setTenantId(tenant);
+            item.setCatalogId(catalogId);
+            item.setDataType(1);      // 静态资料
+            item.setGenMode(2);       // 按台账范本生成
+            item.setBizModule("tpl");
+            item.setTitle(title);
+            item.setArchiveYear(year);
+            item.setSignedYear(year);
+            item.setStatus(1);
+            item.setPdfId(pdf.getId());
+            itemMapper.insert(item);
+        } else {
+            item.setStatus(1);
+            item.setPdfId(pdf.getId());
+            itemMapper.updateById(item);
+        }
+        pdf.setItemId(item.getId());
+        pdfMapper.updateById(pdf);
+        return pdf;
     }
 
     /** 当前年度责任制归档项列表 */

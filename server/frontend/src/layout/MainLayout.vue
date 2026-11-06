@@ -41,7 +41,7 @@ const staticGroups = [
     { name: '岗位信息管理', path: '/post', icon: 'user' },
   ] },
   { group: '制度档案管理', roles: ['enterprise', 'provider', 'admin'], items: [
-    { name: '范本套管理', path: '/template-manager', icon: 'book' },
+    { name: '台账范本管理', path: '/template-manager', icon: 'book' },
     { name: '安全生产责任制', path: '/responsibility', roles: ['enterprise', 'admin'], icon: 'shieldCheck' },
   ] },
   { group: '专用业务闭环', items: [

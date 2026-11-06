@@ -11,7 +11,10 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.util.List;
+import java.util.Map;
 
 /**
  * 归档接口（盒二安全生产责任制）。
@@ -33,10 +36,25 @@ public class ArchiveController {
         return Result.ok(archiveService.listResponsibilityItems());
     }
 
-    /** 登记 + 生成责任制 PDF（一步完成） */
+    /** 登记 + 生成责任制 PDF（一步完成，旧链路保留兼容） */
     @PostMapping("/responsibility/generate")
     public Result<ArchivePdf> generate() {
         return Result.ok(archiveService.registerAndGenerate());
+    }
+
+    /**
+     * 按「台账范本管理」当前应用范本生成/重新生成台账 PDF。
+     * 改了范本后再次调用本接口，产出的 PDF 即为新范本内容。
+     */
+    @PostMapping("/template/generate")
+    public Result<ArchivePdf> generateByTemplate(@RequestBody Map<String, Object> body) {
+        String code = body.get("code") == null ? "" : String.valueOf(body.get("code"));
+        String itemName = body.get("itemName") == null ? "" : String.valueOf(body.get("itemName"));
+        String post = body.get("post") == null ? "" : String.valueOf(body.get("post"));
+        int boxNo = body.get("boxNo") == null ? 1 : Integer.parseInt(String.valueOf(body.get("boxNo")));
+        int year = body.get("year") == null ? java.time.Year.now().getValue()
+                : Integer.parseInt(String.valueOf(body.get("year")));
+        return Result.ok(archiveService.generateByTemplate(code, itemName, boxNo, year, post));
     }
 
     /** 下载 PDF / 上传留存文件（图片、扫描件等）：按文件名后缀返回正确 Content-Type */
@@ -45,9 +63,13 @@ public class ArchiveController {
         ArchivePdf pdf = archiveService.pdfMeta(pdfId);
         byte[] bytes = archiveService.download(pdfId);
         String fileName = pdf.getFileName() == null ? "download" : pdf.getFileName();
+        // 中文原名不能直接放进 HTTP header（ISO-8859-1），会被容器丢弃导致前端拿不到文件名。
+        // 用 RFC 5987 filename* 传 UTF-8 原名，同时保留纯 ASCII 的 filename 兜底。
+        String encoded = URLEncoder.encode(fileName, StandardCharsets.UTF_8).replace("+", "%20");
+        String ascii = fileName.replaceAll("[^\\x20-\\x7E]", "_");
         return ResponseEntity.ok()
                 .header(HttpHeaders.CONTENT_DISPOSITION,
-                        "attachment; filename=\"" + fileName + "\"")
+                        "attachment; filename=\"" + ascii + "\"; filename*=UTF-8''" + encoded)
                 .contentType(resolveMediaType(fileName))
                 .body(bytes);
     }

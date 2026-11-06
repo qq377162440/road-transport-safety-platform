@@ -35,6 +35,15 @@ public class TplTemplate {
     /** 归属档案盒 code（对齐 archive_catalog） */
     private String archiveCode;
 
+    /** 归属档案盒序号（对齐电子档案柜 BOX1~BOX11） */
+    private Integer boxNo;
+
+    /** 对应档案柜归档项名称（生成时按此匹配范本，两模块同源映射键） */
+    private String archiveItem;
+
+    /** 版本说明（如 v1.0 内置 / 2026 修订版） */
+    private String versionLabel;
+
     /** 适用岗位（逗号分隔，空=不区分岗位） */
     private String postScope;
 

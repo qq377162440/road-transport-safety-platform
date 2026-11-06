@@ -1,0 +1,157 @@
+[
+  {
+    "name": "自动登录取得 token",
+    "ok": true,
+    "detail": "eyJhbGciOiJIUzM4NC"
+  },
+  {
+    "name": "台账范本管理页面标题",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "联动提示条",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "范本库条数 = 50",
+    "ok": true,
+    "detail": "实际 50"
+  },
+  {
+    "name": "覆盖 10 个档案盒",
+    "ok": true,
+    "detail": "[1, 2, 3, 4, 5, 6, 7, 8, 9, 10]"
+  },
+  {
+    "name": "责任书条件段已解析（无 {% 残留）",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "不同岗位产出不同正文",
+    "ok": true,
+    "detail": "len 3065 / 2907"
+  },
+  {
+    "name": "变量已填充（无 {{ 残留）",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "主要负责人分支专属内容",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "驾驶员分支专属内容",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "ZD01 为用户真实制度正文",
+    "ok": true,
+    "detail": "len 16057"
+  },
+  {
+    "name": "保存本范本成功",
+    "ok": true,
+    "detail": "ok"
+  },
+  {
+    "name": "渲染结果同步出现新内容",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "按范本生成 PDF 成功",
+    "ok": true,
+    "detail": "ok"
+  },
+  {
+    "name": "PDF 可下载且为 PDF",
+    "ok": true,
+    "detail": "129834 bytes"
+  },
+  {
+    "name": "生成的 PDF 正文含新范本内容",
+    "ok": true,
+    "detail": "pdf text len 9415"
+  },
+  {
+    "name": "档案柜联动条",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "盒二动态注入 24 项制度",
+    "ok": true,
+    "detail": "rows=27"
+  },
+  {
+    "name": "显示当前范本名",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "提供重新生成/生成按钮",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "档案柜预览显示同源范本正文",
+    "ok": true,
+    "detail": "iframe len 9283"
+  },
+  {
+    "name": "档案柜预览无占位/变量残留",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "管理页显示已定制标记",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "恢复内置后新内容消失",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "联动编辑接口成功",
+    "ok": true,
+    "detail": "ok"
+  },
+  {
+    "name": "责任制含联动内容",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "责任书同步含联动内容",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "图片上传成功",
+    "ok": true,
+    "detail": "ok"
+  },
+  {
+    "name": "上传项 genMode=3（UI 走原文件嵌入）",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "图片下载 Content-Type / 中文文件名正确",
+    "ok": true,
+    "detail": "image/png | attachment; filename=\"____.png\"; filename*=UTF-8''%E5%9B%9E%E5%BD%92%E6%B5%8B%E8%AF%95.png"
+  },
+  {
+    "name": "无控制台错误",
+    "ok": true,
+    "detail": ""
+  }
+]
