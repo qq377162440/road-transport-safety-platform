@@ -101,6 +101,23 @@ public class BizFlowController {
     // ==================================================================
     @PostMapping("/check/task")
     public Result<Map<String, Object>> createCheckTask(@RequestBody Map<String, Object> b) {
+        // 幂等（E3 试运行实测）：check_task 有唯一键 (tenant_id, vehicle_id, is_trailer, start_date)。
+        // 司机重复点击 / 断网重试 / 演练脚本重跑时，直接返回已有任务，
+        // 不再插入触发 DuplicateKeyException → HTTP 500。
+        Object vehicleId = b.get("vehicle_id");
+        Object startDate = b.get("start_date");
+        if (vehicleId != null && startDate != null) {
+            Long tid = TenantContextHolder.tenantId();
+            List<Map<String, Object>> existing = jdbc.queryForList(
+                    "SELECT `id` FROM `check_task` WHERE `tenant_id`=? AND `vehicle_id`=? " +
+                            "AND `is_trailer`=? AND `start_date`=? AND `deleted`=0 LIMIT 1",
+                    tid == null ? 0L : tid, vehicleId,
+                    b.get("is_trailer") == null ? 0 : b.get("is_trailer"), startDate);
+            if (!existing.isEmpty()) {
+                return Result.ok(Map.of("id", existing.get(0).get("id"),
+                        "status", "existing", "idempotent", true));
+            }
+        }
         long id = insert("check_task", row(b, "vehicle_id", "driver_id", "escort_id", "is_trailer",
                 "start_date", "end_date", "status", "mileage", "mileage_start", "mileage_end",
                 "cargo_name", "cargo_qty", "origin", "stopover", "destination"));
@@ -125,6 +142,29 @@ public class BizFlowController {
         r.put("abnormal_note", b.get("abnormal_note"));
         r.put("abnormal_voice", b.get("abnormal_voice"));
         r.put("abnormal_photos", b.get("abnormal_photos"));
+
+        // 幂等（E3 上线质量修复）：同一任务、同一时段、同一天重复提交
+        // （司机误触、断网重试）只保留一次结果，避免重复三检记录与重复隐患。
+        List<Map<String, Object>> existing = jdbc.queryForList(
+                "SELECT `id` FROM `check_record` WHERE `task_id`=? AND `phase`=? " +
+                        "AND `check_day`=? AND `deleted`=0 LIMIT 1",
+                taskId, phase, r.get("check_day"));
+        if (!existing.isEmpty()) {
+            long rid = ((Number) existing.get(0).get("id")).longValue();
+            // 幂等返回也必须带回已联动生成的隐患 ID，否则「三检异常 → 隐患整改验收」
+            // 链路在重跑/重复点击场景下会被切断。
+            List<Long> ds = jdbc.queryForList(
+                    "SELECT `id` FROM `danger_record` WHERE `ref_id`=? " +
+                            "AND `check_type`='check_daily' AND `deleted`=0 ORDER BY `id` DESC LIMIT 1",
+                    Long.class, rid);
+            Map<String, Object> dup = new LinkedHashMap<>();
+            dup.put("id", rid);
+            dup.put("phase", phase);
+            dup.put("result", result);
+            dup.put("dangerId", ds.isEmpty() ? null : ds.get(0));
+            dup.put("idempotent", true);
+            return Result.ok(dup);
+        }
         long id = insert("check_record", r);
 
         // 异常自动转隐患（B4 → B5 联动）

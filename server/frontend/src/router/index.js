@@ -15,6 +15,7 @@ const staticChildren = [
   { path: 'collect', name: 'Collect', component: () => import('@/views/Collect.vue'), meta: { title: '服务商代录工作台', roles: ['provider', 'admin'] } },
   { path: 'flow-tools', name: 'FlowTools', component: () => import('@/views/FlowTools.vue'), meta: { title: '业务闭环工具箱' } },
   { path: 'onboarding', name: 'Onboarding', component: () => import('@/views/Onboarding.vue'), meta: { title: '新企业接入引导', roles: ['provider', 'admin'] } },
+  { path: 'feedback', name: 'Feedback', component: () => import('@/views/Feedback.vue'), meta: { title: '试运行反馈' } },
 ]
 
 // 由元数据驱动：新增模块只改 tools/gen_biz_meta.py，路由自动出现

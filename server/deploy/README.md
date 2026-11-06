@@ -212,7 +212,11 @@ curl -k  https://localhost/health    # UP
 | `e2e_test.sh` | 原有 9 项垂直切片闭环回归 |
 | `e2e_phase_test.sh` | A/B/C 阶段 38 项全链路验收 |
 | `stress_test.py` | C1 1000 并发压测 |
+| `trial_run.sh` | E3 种子客户试运行演练（反馈闭环 + 四条标准计时，幂等可重跑） |
+| `trial_report.py` | E3 试运行报告生成器（读反馈接口真实数据，输出 Markdown） |
 | `go_live_check.sh` / `rollback.sh` | E4 上线复测与回滚演练 |
+
+用户手册见 `docs/用户手册-企业版.md`、`docs/用户手册-服务商版.md`、`docs/培训材料与试运行方案.md`；演练报告见 `docs/试运行演练报告.md`。
 
 ```bash
 # 开户后企业主账号（用户名=企业全称，初始密码 888888）从 /m/onboard 完成三步填报

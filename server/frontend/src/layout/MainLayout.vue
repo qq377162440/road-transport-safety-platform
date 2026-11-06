@@ -14,6 +14,7 @@ const staticGroups = [
   { group: '首页', items: [
     { name: '企业安全管理驾驶舱', path: '/dashboard' },
     { name: '风险可视驾驶舱', path: '/risk-dashboard' },
+    { name: '试运行反馈', path: '/feedback' },
   ] },
   { group: '电子档案柜（核心）', items: [
     { name: '电子档案柜', path: '/archive' },
