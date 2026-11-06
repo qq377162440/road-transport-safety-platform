@@ -133,12 +133,16 @@ FBC=$(echo "$FORB" | jget "import sys,json; print(json.load(sys.stdin)['code'])"
 check "三角色越权拦截（企业→服务商接口）" "$FBC" "403"
 
 # 14. 限流（独立伪造 IP，避免影响主流程）
+# 循环次数跟随实际阈值：默认 60，硬编码 22 次会在阈值调高后误报「限流未触发」。
+# 阈值由 compose 通过 RATE_LIMIT_MAX 传入，与后端配置保持一致。
+RATE_MAX=${RATE_LIMIT_MAX:-60}
 RATE=0
-for i in $(seq 1 22); do
+RATE_HIT=0
+for i in $(seq 1 $((RATE_MAX + 2))); do
   BODY=$(curl -s -H "X-Forwarded-For: 203.0.113.99" "$BASE/api/auth/captcha")
-  echo "$BODY" | grep -q '"code":429' && RATE=1 && break
+  if echo "$BODY" | grep -q '"code":429'; then RATE=1; RATE_HIT=$i; break; fi
 done
-[ "$RATE" = "1" ] && ok "匿名接口限流生效（code=429）" || bad "限流未触发"
+[ "$RATE" = "1" ] && ok "匿名接口限流生效（第 $RATE_HIT 次触发 429，阈值 $RATE_MAX）" || bad "限流未触发（阈值 $RATE_MAX）"
 
 echo "----- B 阶段业务闭环 -----"
 
@@ -187,12 +191,24 @@ check "B7 普货 10 盒目录树" "$BOX" "10"
 OVD=$(curl -fsS "$BASE/api/flow/archive/overview?bizType=DANGER" -H "$AE")
 BOXD=$(echo "$OVD" | jget "import sys,json; print(json.load(sys.stdin)['data']['boxCount'])")
 check "B7 危货 11 盒目录树" "$BOXD" "11"
+# 可重跑断言：批量生成为「幂等补齐」，首次 generated>0、补齐后为 0，两种状态都正确。
+# 旧断言硬编码 >0，导致验收脚本重复运行时误报失败。
 MIS=$(curl -fsS "$BASE/api/flow/archive/missing?bizType=GENERAL" -H "$AE")
+MISOK=$(echo "$MIS" | jget "import sys,json; d=json.load(sys.stdin); print('ok' if d.get('code')==0 and isinstance(d.get('data'),list) else 'bad')")
 MISN=$(echo "$MIS" | jget "import sys,json; print(len(json.load(sys.stdin)['data']))")
-[ "${MISN:-0}" -gt 0 ] && ok "B7 缺项提示（$MISN 项）" || bad "缺项提示异常"
+check "B7 缺项提示接口可用（当前 $MISN 项）" "$MISOK" "ok"
 BG=$(curl -fsS -X POST "$BASE/api/flow/archive/batch-generate?bizType=GENERAL" -H "$AE")
+BGC=$(echo "$BG" | jget "import sys,json; print(json.load(sys.stdin)['code'])")
 BGN=$(echo "$BG" | jget "import sys,json; print(json.load(sys.stdin)['data']['generated'])")
-[ "${BGN:-0}" -gt 0 ] && ok "B7 批量生成待归档项（$BGN 项）" || bad "批量生成失败"
+BG2=$(curl -fsS -X POST "$BASE/api/flow/archive/batch-generate?bizType=GENERAL" -H "$AE")
+BG2N=$(echo "$BG2" | jget "import sys,json; print(json.load(sys.stdin)['data']['generated'])")
+# code=0 + generated 为非负整数且不超过缺项数 + 二次调用不重复生成
+if [ "$BGC" = "0" ] && echo "$BGN" | grep -qE '^[0-9]+$' \
+   && [ "${BGN:-9999}" -le "${MISN:-0}" ] && [ "$BG2N" = "0" ]; then
+  ok "B7 批量生成待归档项（generated=$BGN / 缺项=$MISN，二次幂等=0）"
+else
+  bad "批量生成失败（generated=$BGN / 缺项=$MISN / 二次=$BG2N / code=$BGC）"
+fi
 
 # 21. B8 服务商代录（provider 角色）
 CLT=$(curl -fsS -X POST "$BASE/api/biz/collect_task" -H "$AP" -H 'Content-Type: application/json' \

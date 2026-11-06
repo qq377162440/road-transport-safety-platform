@@ -38,5 +38,8 @@ server/deploy/backups/
 server/deploy/nginx.prod.conf
 server/deploy/monitor/
 
+# E4 回滚演练日志（含环境信息与操作记录，不入库）
+server/deploy/rollback/
+
 # 说明：src/main/resources/fonts/ 下的中文字体是 PDF 渲染的运行时资产，
 # Docker 构建时会打包进 jar，必须入库，不要忽略。

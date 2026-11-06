@@ -64,7 +64,9 @@ LSTN=$(echo "$LST" | jget "import sys,json; print(len(json.load(sys.stdin)['data
 
 # ---------- 3. 服务商签约开户 ----------
 CODE="91$(python3 -c 'import random;print("".join(random.choice("0123456789") for _ in range(16)))')"
-ENAME="验收测试运输有限公司"
+# 主账号用户名 = 企业全称，固定名称会让验收脚本重跑时报 3002「登录账号已存在」，
+# 因此用信用代码后 6 位做后缀，保证每次运行都是新企业（不改动任何断言语义）。
+ENAME="验收测试运输有限公司${CODE: -6}"
 OPEN=$(curl -fsS -X POST "$BASE/api/onboarding/open" -H "$AA" -H 'Content-Type: application/json' \
   -d "{\"name\":\"$ENAME\",\"credit_code\":\"$CODE\",\"biz_type\":\"GENERAL\",\"region\":\"佛山市\",\"contact\":\"测试负责人\",\"phone\":\"13800000000\",\"contract_start\":\"2026-01-01\",\"contract_end\":\"2027-01-01\"}")
 TID=$(echo "$OPEN" | jget "import sys,json; print(json.load(sys.stdin)['data']['tenantId'])")

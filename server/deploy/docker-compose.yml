@@ -77,6 +77,9 @@ services:
       MINIO_ENDPOINT: http://minio:9000
       MINIO_ACCESS_KEY: ${MINIO_ROOT_USER:-minioadmin}
       MINIO_SECRET_KEY: ${MINIO_ROOT_PASSWORD:-minioadmin}
+      # 匿名接口限流（按 IP+端点分桶），压测/批量验收可调高
+      RATE_LIMIT_MAX: ${RATE_LIMIT_MAX:-60}
+      RATE_LIMIT_WINDOW: ${RATE_LIMIT_WINDOW:-60}
       TZ: Asia/Shanghai
     ports:
       - "8080:8080"
@@ -125,6 +128,8 @@ services:
       BASE_URL: http://backend:8080
       REDIS_HOST: redis
       FRONTEND_URL: http://frontend
+      # 限流断言的循环次数需跟随实际阈值，避免阈值调整后误报
+      RATE_LIMIT_MAX: ${RATE_LIMIT_MAX:-60}
     depends_on:
       backend:
         condition: service_healthy

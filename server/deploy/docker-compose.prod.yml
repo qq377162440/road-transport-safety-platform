@@ -110,6 +110,9 @@ services:
       MINIO_ACCESS_KEY: ${MINIO_ACCESS_KEY:?必须在 .env 设置 MINIO_ACCESS_KEY}
       MINIO_SECRET_KEY: ${MINIO_SECRET_KEY:?必须在 .env 设置 MINIO_SECRET_KEY}
       JWT_SECRET: ${JWT_SECRET:?必须在 .env 设置 JWT_SECRET（≥32 字节随机串）}
+      # 匿名接口限流（按 IP+端点分桶），生产可按并发规模调整
+      RATE_LIMIT_MAX: ${RATE_LIMIT_MAX:-60}
+      RATE_LIMIT_WINDOW: ${RATE_LIMIT_WINDOW:-60}
       TZ: Asia/Shanghai
     depends_on:
       mysql: { condition: service_healthy }

@@ -54,6 +54,11 @@ safetrans:
     secret: ${JWT_SECRET:safetrans-dev-secret-key-please-change-in-prod-0123456789}
     access-token-ttl: 7200   # 秒，2 小时
     refresh-token-ttl: 604800 # 秒，7 天
+  # 匿名接口限流：按「IP + 端点」分桶，60 秒内单端点最多 60 次
+  # 阈值按企业办公室共享出口 IP、早高峰集中登录的场景设定，可按部署规模调整
+  rate-limit:
+    max: ${RATE_LIMIT_MAX:60}
+    window-seconds: ${RATE_LIMIT_WINDOW:60}
   pdf:
     font-dir: ${PDF_FONT_DIR:classpath:fonts}
   storage:

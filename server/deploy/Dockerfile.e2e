@@ -3,7 +3,7 @@
 FROM alpine:3.20
 RUN apk add --no-cache bash curl python3 redis
 WORKDIR /e2e
-COPY e2e_test.sh e2e_phase_test.sh e2e_onboarding_test.sh ./
+COPY e2e_test.sh e2e_phase_test.sh e2e_onboarding_test.sh go_live_check.sh ./
 RUN chmod +x *.sh
 # 用 CMD 而非 ENTRYPOINT，便于 `docker compose run --rm e2e ./e2e_phase_test.sh` 覆盖
 CMD ["./e2e_test.sh"]
