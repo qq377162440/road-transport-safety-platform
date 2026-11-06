@@ -57,10 +57,10 @@ AP="Authorization: Bearer $PT"
 
 echo "----- A2/A4/A5 基建 -----"
 
-# 1. 元数据 13 模块
+# 1. 元数据 18 模块（A/B/C 13 个 + 三期 D1~D5 5 个）
 META=$(curl -fsS "$BASE/api/biz/meta" -H "$AE")
 MC=$(echo "$META" | jget "import sys,json; print(len(json.load(sys.stdin)['data']))")
-check "元数据模块数" "$MC" "13"
+check "元数据模块数" "$MC" "18"
 
 # 2. 字段元数据
 FLD=$(curl -fsS "$BASE/api/biz/person/fields" -H "$AE")
@@ -241,9 +241,9 @@ check "C1 考试留痕" "$EXR" "pass"
 # 24. C2/C3/C4/C6 表可读写（通用引擎已覆盖，验证元数据可见）
 HC=$(curl -fsS "$BASE/api/flow/health/modules" -H "$AE")
 HM=$(echo "$HC" | jget "import sys,json; print(json.load(sys.stdin)['data']['moduleCount'])")
-check "C2/C3/C4/C6 模块注册" "$HM" "13"
+check "C2/C3/C4/C6 + D 模块注册" "$HM" "18"
 HT=$(echo "$HC" | jget "import sys,json; print(json.load(sys.stdin)['data']['tables'])")
-[ "${HT:-0}" -ge 83 ] && ok "全量业务表可访问（$HT 表）" || bad "表数量异常"
+[ "${HT:-0}" -ge 99 ] && ok "全量业务表可访问（$HT 表）" || bad "表数量异常"
 
 # 25. C5 驾驶舱
 DR=$(curl -fsS "$BASE/api/flow/dashboard/risk" -H "$AE")
@@ -259,8 +259,10 @@ SS=$(echo "$SR" | jget "import sys,json; print(json.load(sys.stdin)['data']['siz
 [ "${SS:-0}" -gt 1000 ] && ok "C6 签署凭证 PDF 合成（$SS bytes）" || bad "签署 PDF 生成失败"
 
 # 27. 归档归属完整性（B10/C7 收口）
+# common（系统运维）与 platform（D5 平台配置）不产生企业档案盒资料，按设计豁免；
+# 其余业务模块必须配置 catalog，否则铁律 6 的自动归档会漏项。
 FIN=$(curl -fsS "$BASE/api/flow/health/modules" -H "$AE")
-NOARC=$(echo "$FIN" | jget "import sys,json; d=json.load(sys.stdin)['data']['modules']; print(len([m for m in d if not m['catalog'] and m['code']!='common']))")
+NOARC=$(echo "$FIN" | jget "import sys,json; d=json.load(sys.stdin)['data']['modules']; print(len([m for m in d if not m['catalog'] and m['code'] not in ('common','platform')]))")
 [ "${NOARC:-99}" -eq 0 ] && ok "归档归属完整性：所有业务模块均配置了归属档案盒" || bad "有 $NOARC 个模块未配置归档归属"
 
 # 28. 清理测试记录（逻辑删除，保持种子状态可复现）
