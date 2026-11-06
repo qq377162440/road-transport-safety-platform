@@ -12,7 +12,9 @@ import com.safetrans.common.web.BizException;
 import com.safetrans.tpl.service.ResponsibilityService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 
+import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.time.LocalDateTime;
@@ -28,6 +30,9 @@ public class ArchiveService {
 
     /** 安全生产责任制子项 catalog_id（V5 统一目录后的固定 id，见 gen_biz_meta.py） */
     private static final Long CATALOG_RESPONSIBILITY = 40099L;
+
+    /** 上传留存归档项使用的 catalog 基址（盒号 boxNo 映射到 50000 + boxNo，避免与 40099 冲突） */
+    private static final long BOX_CATALOG_BASE = 50000L;
 
     private final ArchiveItemMapper itemMapper;
     private final ArchivePdfMapper pdfMapper;
@@ -158,5 +163,57 @@ public class ArchiveService {
         } catch (Exception e) {
             throw new IllegalStateException("哈希计算失败", e);
         }
+    }
+
+    /** 上传留存：存 MinIO → 写 archive_pdf + archive_item(genMode=3)，返回 PDF 记录 */
+    @Transactional
+    public ArchivePdf uploadFile(MultipartFile file, int boxNo, String itemTitle, int year) {
+        if (file == null || file.isEmpty()) throw new BizException("请选择要上传的文件");
+        Long tid = tid();
+        byte[] bytes;
+        try {
+            bytes = file.getBytes();
+        } catch (IOException e) {
+            throw new BizException("读取上传文件失败");
+        }
+        if (bytes.length == 0) throw new BizException("上传文件为空");
+
+        String hash = sha256(bytes);
+        String safeTitle = itemTitle.replaceAll("[\\\\/?:*\"<>|]", "_");
+        String objectName = String.format("%d/%d/%d/%s_%s", tid, year, boxNo, hash.substring(0, 12), safeTitle);
+        String contentType = file.getContentType() == null ? "application/octet-stream" : file.getContentType();
+        storageService.upload(objectName, bytes, contentType);
+
+        ArchivePdf pdf = new ArchivePdf();
+        pdf.setTenantId(tid);
+        pdf.setArchiveYear(year);
+        pdf.setFileName(file.getOriginalFilename());
+        pdf.setFilePath(objectName);
+        pdf.setFileSize(file.getSize());
+        pdf.setTemplateCode("UPLOAD");
+        pdf.setGenTime(LocalDateTime.now());
+        pdf.setHash(hash);
+        pdfMapper.insert(pdf);
+
+        ArchiveItem item = new ArchiveItem();
+        item.setTenantId(tid);
+        item.setCatalogId(BOX_CATALOG_BASE + boxNo);
+        item.setDataType(3);       // 证件
+        item.setGenMode(3);        // 上传留存
+        item.setTitle(itemTitle);
+        item.setArchiveYear(year);
+        item.setStatus(1);         // 已生成
+        item.setPdfId(pdf.getId());
+        itemMapper.insert(item);
+
+        return pdf;
+    }
+
+    /** 查询某盒某年度的上传留存归档项（供前端合并状态展示） */
+    public List<ArchiveItem> listUploadItems(int boxNo, int year) {
+        return itemMapper.selectList(new LambdaQueryWrapper<ArchiveItem>()
+                .eq(ArchiveItem::getTenantId, tid())
+                .eq(ArchiveItem::getCatalogId, BOX_CATALOG_BASE + boxNo)
+                .eq(ArchiveItem::getArchiveYear, year));
     }
 }

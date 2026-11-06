@@ -9,6 +9,7 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 
@@ -48,5 +49,21 @@ public class ArchiveController {
                         "attachment; filename=\"" + pdf.getFileName() + "\"")
                 .contentType(MediaType.APPLICATION_PDF)
                 .body(bytes);
+    }
+
+    /** 上传留存：把证照/保单/台账扫描件等上传至档案盒（boxNo 为数字盒号，itemTitle 为归档项标题，year 为归档年度） */
+    @PostMapping("/upload")
+    public Result<ArchivePdf> upload(@RequestParam("file") MultipartFile file,
+                                    @RequestParam("boxNo") Integer boxNo,
+                                    @RequestParam("itemTitle") String itemTitle,
+                                    @RequestParam("year") Integer year) {
+        return Result.ok(archiveService.uploadFile(file, boxNo, itemTitle, year));
+    }
+
+    /** 某盒某年度的上传留存归档项列表 */
+    @GetMapping("/items")
+    public Result<List<ArchiveItem>> items(@RequestParam("boxNo") Integer boxNo,
+                                          @RequestParam("year") Integer year) {
+        return Result.ok(archiveService.listUploadItems(boxNo, year));
     }
 }
