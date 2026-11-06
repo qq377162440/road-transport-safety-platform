@@ -172,10 +172,14 @@ async function download(item) {
   })
   if (!res.ok) { ElMessage.error('下载失败'); return }
   const blob = await res.blob()
+  // 取后端返回的真实文件名（含正确扩展名：pdf / png / jpg ...），避免图片被错存为 .pdf
+  const cd = res.headers.get('Content-Disposition') || ''
+  const m = cd.match(/filename\*?=(?:UTF-8'')?"?([^";]+)"?/i)
+  let fname = m ? decodeURIComponent(m[1].trim()) : `${item.name}_${selYear.value}.pdf`
   const url = URL.createObjectURL(blob)
   const a = document.createElement('a')
   a.href = url
-  a.download = `${item.name}_${selYear.value}.pdf`
+  a.download = fname
   a.click()
   URL.revokeObjectURL(url)
 }

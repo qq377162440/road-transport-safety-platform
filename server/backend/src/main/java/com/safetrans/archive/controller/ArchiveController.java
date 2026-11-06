@@ -39,16 +39,31 @@ public class ArchiveController {
         return Result.ok(archiveService.registerAndGenerate());
     }
 
-    /** 下载 PDF */
+    /** 下载 PDF / 上传留存文件（图片、扫描件等）：按文件名后缀返回正确 Content-Type */
     @GetMapping("/pdf/{pdfId}/download")
     public ResponseEntity<byte[]> download(@PathVariable Long pdfId) {
         ArchivePdf pdf = archiveService.pdfMeta(pdfId);
         byte[] bytes = archiveService.download(pdfId);
+        String fileName = pdf.getFileName() == null ? "download" : pdf.getFileName();
         return ResponseEntity.ok()
                 .header(HttpHeaders.CONTENT_DISPOSITION,
-                        "attachment; filename=\"" + pdf.getFileName() + "\"")
-                .contentType(MediaType.APPLICATION_PDF)
+                        "attachment; filename=\"" + fileName + "\"")
+                .contentType(resolveMediaType(fileName))
                 .body(bytes);
+    }
+
+    /** 依据文件名后缀推断响应 Content-Type（上传留存可能是图片/扫描件，不能一律当 PDF） */
+    private MediaType resolveMediaType(String fileName) {
+        if (fileName == null) return MediaType.APPLICATION_OCTET_STREAM;
+        String lower = fileName.toLowerCase();
+        if (lower.endsWith(".pdf")) return MediaType.APPLICATION_PDF;
+        if (lower.endsWith(".png")) return MediaType.IMAGE_PNG;
+        if (lower.endsWith(".jpg") || lower.endsWith(".jpeg")) return MediaType.IMAGE_JPEG;
+        if (lower.endsWith(".gif")) return MediaType.IMAGE_GIF;
+        if (lower.endsWith(".webp")) return MediaType.valueOf("image/webp");
+        if (lower.endsWith(".bmp")) return MediaType.valueOf("image/bmp");
+        if (lower.endsWith(".txt")) return MediaType.TEXT_PLAIN;
+        return MediaType.APPLICATION_OCTET_STREAM;
     }
 
     /** 上传留存：把证照/保单/台账扫描件等上传至档案盒（boxNo 为数字盒号，itemTitle 为归档项标题，year 为归档年度） */
