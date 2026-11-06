@@ -6,6 +6,7 @@ import { ElMessageBox } from 'element-plus'
 import request from '@/api/request'
 import { bizModules } from '@/config/modules.generated.js'
 import Icon from '@/components/Icon.vue'
+import DevMarker from '@/components/DevMarker.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -203,6 +204,7 @@ async function handleLogout() {
       </main>
     </div>
   </div>
+  <DevMarker />
 </template>
 
 <style scoped>
