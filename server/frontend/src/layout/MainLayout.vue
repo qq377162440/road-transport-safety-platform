@@ -1,13 +1,27 @@
 <script setup>
-import { computed, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '@/store/auth'
 import { ElMessageBox } from 'element-plus'
+import request from '@/api/request'
 import { bizModules } from '@/config/modules.generated.js'
 
 const route = useRoute()
 const router = useRouter()
 const auth = useAuthStore()
+
+// D5 模块授权：基础模块恒可用；增值（三期 D）模块需平台显式开通。
+// 试运行期企业尚无开通记录时后端返回 trialAllOpen=true，默认全量开放，避免存量租户上线即失能。
+const dAuth = ref(null)
+onMounted(async () => {
+  try { dAuth.value = (await request.get('/platform/my-modules')).data }
+  catch { dAuth.value = null }
+})
+function dModuleAllowed(code) {
+  const a = dAuth.value
+  if (!a || a.trialAllOpen) return true
+  return (a.enabled || []).includes(code)
+}
 
 // A5：菜单由配置驱动 —— 静态入口 + 业务模块元数据自动生成
 const staticGroups = [
@@ -36,6 +50,13 @@ const staticGroups = [
     { name: '新企业接入引导', path: '/onboarding' },
     { name: '代录工作台', path: '/collect' },
   ] },
+  { group: '三期业务闭环（v1.2）', items: [
+    { name: '动态监控台账 · D1', path: '/monitor', dModule: 'monitor' },
+    { name: '安全生产费用 · D2', path: '/budget', dModule: 'budget' },
+    { name: '风险分级管控 · D3', path: '/risk-control', dModule: 'risk' },
+    { name: '危货专项深化 · D4', path: '/danger-special', dModule: 'dangerspecial' },
+    { name: '平台侧能力 · D5', path: '/platform-admin', dModule: 'platform', roles: ['provider', 'admin'] },
+  ] },
 ]
 
 const menuGroups = computed(() => {
@@ -44,7 +65,13 @@ const menuGroups = computed(() => {
   for (const m of bizModules) {
     if (m.phase === 'A2' && ut !== 'admin') continue
     if (m.code === 'collect' && !['provider', 'admin'].includes(ut)) continue
-    ;(dyn[m.group] ||= []).push({ name: `${m.title} · ${m.phase}`, path: `/biz/${m.code}` })
+    // 三期增值模块受 D5 模块授权控制
+    if (m.phase.startsWith('D') && !dModuleAllowed(m.code)) continue
+    ;(dyn[m.group] ||= []).push({
+      name: `${m.title} · ${m.phase}`,
+      path: `/biz/${m.code}`,
+      dModule: m.phase.startsWith('D') ? m.code : null,
+    })
   }
   return [
     ...staticGroups,
@@ -59,7 +86,7 @@ const visibleGroups = computed(() => {
     .map((g) => ({
       ...g,
       items: (g.items || []).filter(
-        (it) => !it.roles || it.roles.includes(ut),
+        (it) => (!it.roles || it.roles.includes(ut)) && (!it.dModule || dModuleAllowed(it.dModule)),
       ),
     }))
     .filter((g) => (!g.roles || g.roles.includes(ut)) && g.items.length > 0)

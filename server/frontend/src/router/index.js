@@ -16,6 +16,12 @@ const staticChildren = [
   { path: 'flow-tools', name: 'FlowTools', component: () => import('@/views/FlowTools.vue'), meta: { title: '业务闭环工具箱' } },
   { path: 'onboarding', name: 'Onboarding', component: () => import('@/views/Onboarding.vue'), meta: { title: '新企业接入引导', roles: ['provider', 'admin'] } },
   { path: 'feedback', name: 'Feedback', component: () => import('@/views/Feedback.vue'), meta: { title: '试运行反馈' } },
+  // ===== 阶段 D：三期 v1.2 专用闭环（菜单由 MainLayout 按模块授权过滤）=====
+  { path: 'monitor', name: 'Monitor', component: () => import('@/views/Monitor.vue'), meta: { title: '动态监控台账', phase: 'D1' } },
+  { path: 'budget', name: 'Budget', component: () => import('@/views/Budget.vue'), meta: { title: '安全生产费用', phase: 'D2' } },
+  { path: 'risk-control', name: 'RiskControl', component: () => import('@/views/RiskControl.vue'), meta: { title: '风险分级管控', phase: 'D3' } },
+  { path: 'danger-special', name: 'DangerSpecial', component: () => import('@/views/DangerSpecial.vue'), meta: { title: '危货专项深化', phase: 'D4' } },
+  { path: 'platform-admin', name: 'PlatformAdmin', component: () => import('@/views/PlatformAdmin.vue'), meta: { title: '平台侧能力', phase: 'D5', roles: ['provider', 'admin'] } },
 ]
 
 // 由元数据驱动：新增模块只改 tools/gen_biz_meta.py，路由自动出现
