@@ -48,7 +48,9 @@ done
 cd "$REPO"
 CURRENT=$(git rev-parse --short HEAD)
 CURRENT_REF=$(git symbolic-ref --short HEAD 2>/dev/null || echo "detached")
-TARGET=$(git rev-parse --short "$REF" 2>/dev/null || echo "")
+# 附注标签（git tag -a）是独立 tag 对象，直接 rev-parse 得到的是 tag 对象 hash，
+# 不是它指向的 commit；回滚日志用于事故追溯，必须记录真实提交号，故显式解引用。
+TARGET=$(git rev-parse --short "$REF^{commit}" 2>/dev/null || echo "")
 [ -n "$TARGET" ] || { echo "❌ 目标版本不存在：$REF"; exit 1; }
 
 DIRTY=$(git status --porcelain | head -5)
@@ -60,7 +62,7 @@ DIRTY=$(git status --porcelain | head -5)
 
 # Flyway 跨版本警告
 CUR_MIG=$(git ls-tree -r --name-only HEAD -- server/backend/src/main/resources/db/migration | wc -l)
-TGT_MIG=$(git ls-tree -r --name-only "$REF" -- server/backend/src/main/resources/db/migration | wc -l)
+TGT_MIG=$(git ls-tree -r --name-only "$REF^{commit}" -- server/backend/src/main/resources/db/migration | wc -l)
 
 echo "===== 回滚计划 ====="
 echo "  当前版本   : $CURRENT ($CURRENT_REF)"
