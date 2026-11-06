@@ -157,6 +157,15 @@ docker compose --profile test run --rm e2e
 # 阶段 A/B/C 全链路验收（38 项）
 docker compose --profile test run --rm e2e ./e2e_phase_test.sh
 
+# E2 开户引导（29 项）
+docker compose --profile test run --rm e2e ./e2e_onboarding_test.sh
+
+# D 阶段三期 v1.2 全链路验收（96 项，可重复运行）
+docker compose --profile test run --rm e2e ./e2e_phase_d_test.sh
+
+# E4 上线正式复测（基线 + 四条标准 + 上述四套回归）
+docker compose --profile test run --rm e2e ./go_live_check.sh
+
 # C1 线上学习 1000 并发压测（宿主机）
 python3 stress_test.py
 
@@ -164,7 +173,7 @@ python3 stress_test.py
 cd ../backend && mvn test
 ```
 
-当前验收结果：闭环回归 **10/10**、全链路 **38/38**、E2 开户引导 **29/29**、E3 演练 **14/14**、E4 上线复测连续两轮 **14/14**、单元测试 **8/8**、并发压测 **1000/1000 成功（QPS 470，P95 394ms）**。
+当前验收结果：闭环回归 **10/10**、A/B/C 全链路 **38/38**、E2 开户引导 **29/29**、E3 演练 **14/14**、**D 阶段三期 96/96**、E4 上线复测 **15/15**、单元测试 **13/13**（含 `PhaseDTest` 5 项）、并发压测 **1000/1000 成功（QPS 470，P95 394ms）**、数据库 **119 张表 / 18 模块 / 99 张可 CRUD 业务表**。
 
 ## 十一、生产部署（E1）
 
@@ -211,6 +220,7 @@ curl -k  https://localhost/health    # UP
 | `e2e_onboarding_test.sh` | E2 开户引导 29 项全链路验收（容器内） |
 | `e2e_test.sh` | 原有 9 项垂直切片闭环回归 |
 | `e2e_phase_test.sh` | A/B/C 阶段 38 项全链路验收 |
+| `e2e_phase_d_test.sh` | D 阶段三期 v1.2 全链路验收（96 项，幂等可重跑） |
 | `stress_test.py` | C1 1000 并发压测 |
 | `trial_run.sh` | E3 种子客户试运行演练（反馈闭环 + 四条标准计时，幂等可重跑） |
 | `trial_report.py` | E3 试运行报告生成器（读反馈接口真实数据，输出 Markdown） |
@@ -233,7 +243,7 @@ docker compose --profile test run --rm e2e ./e2e_onboarding_test.sh
 ```bash
 cd server/deploy
 
-# ① 上线正式复测：基线 7 项 + 四条标准计时 + 三套全量回归，14 项全绿才返回 0
+# ① 上线正式复测：基线 7 项 + 四条标准计时 + 四套全量回归，15 项全绿才返回 0
 docker compose --profile test run --rm e2e ./go_live_check.sh
 
 # ② 回滚计划预览（只打印，不做任何变更；会检测跨 Flyway 版本并告警）
@@ -248,7 +258,7 @@ docker compose --profile test run --rm e2e ./go_live_check.sh
 
 | 脚本 | 作用 | 关键约束 |
 |---|---|---|
-| `go_live_check.sh` | 基线 7 项 + 四条标准计时 + 三套回归 | 启动前对齐限流窗口；全部通过才 `exit 0` |
+| `go_live_check.sh` | 基线 7 项 + 四条标准计时 + 四套回归 | 启动前对齐限流窗口；全部通过才 `exit 0` |
 | `rollback.sh` | 版本切换 + 数据恢复 + 冒烟 | 工作区必须干净；跨 Flyway 版本回滚须恢复同时点备份 |
 | `release.sh` | 版本/迁移/镜像/凭据校验/校验和清单 | 工作区必须干净；输出 `docs/发布清单.md` |
 
@@ -257,3 +267,41 @@ docker compose --profile test run --rm e2e ./go_live_check.sh
 **匿名接口限流**（A3 实现，E4 修正）：按「客户端 IP + 端点」分桶，`captcha` 刷新不再挤占 `login` 配额。默认 `RATE_LIMIT_MAX=60` / `RATE_LIMIT_WINDOW=60`，适配企业共享出口 IP 早高峰集中登录；独立 IP 或需更严防刷可下调，大规模批量验收可调高。开发编排、生产编排与 `.env.example` 均支持覆盖。
 
 **上线签字**：`docs/上线检查清单.md` 共 10 组检查项，明确区分 ✅ 沙箱实测项与 ⏳ 运营方阻断项；发布清单见 `docs/发布清单.md`。
+
+## 十四、D 阶段三期 v1.2（D1~D5）
+
+D 阶段是 v1.0.0 上线链路收口后的增强，五个任务全部完成，里程碑标签 `v1.2.0`。**不改动 V1~V7 已发布迁移**（Flyway 校验和不可变），只新增两个版本：
+
+| 迁移 | 内容 |
+|---|---|
+| `V8__phase3.sql` | 从 `database/schema.sql` 逐字提取 D1/D2/D3 的 10 张表 |
+| `V9__phase3_ext.sql` | D4/D5 的 6 张新表 + 11 类安全费用字典 / 21 条四色风险点 / 18 个平台模块字典 / 档案盒二级目录补充 |
+
+生成器 `tools/gen_biz_meta.py` 用 `built_tables()` 先读已发布迁移，保证 V8/V9 不重复建表；种子采用固定 id 区间先 `DELETE` 再 `INSERT`，可重复执行。重新生成后元数据为 **18 模块 / 99 张表**，前端菜单与路由由 `modules.generated.js` 自动扩展。
+
+| 模块 | 接口前缀 | 页面 | 归档盒 |
+|---|---|---|---|
+| D1 动态监控台账 | `/api/monitor` | `/monitor` | BOX6 |
+| D2 安全生产费用 | `/api/budget` | `/budget` | BOX5 |
+| D3 风险分级管控 | `/api/risk` | `/risk-control` | BOX8（危货运行时 BOX9） |
+| D4 危货专项深化 | `/api/danger` | `/danger-special` | BOX6 |
+| D5 平台侧能力 | `/api/platform` | `/platform-admin` | 不产生企业档案盒资料 |
+
+```bash
+# 重建后端让 Flyway 执行 V8/V9（日志应显示 Successfully applied 2 migrations，now at version v9）
+docker compose build backend && docker compose up -d backend
+docker logs safetrans-backend 2>&1 | grep -E 'Flyway|Migrating schema'
+
+# 前端镜像需一并重建，5 个新页面才会进入容器
+docker compose build frontend && docker compose up -d frontend
+
+# 验收（96 项，连续重跑同样全绿）
+docker compose --profile test build e2e
+docker compose --profile test run --rm e2e ./e2e_phase_d_test.sh
+```
+
+**归档 PDF 下载/打印**：D1/D2/D3/D4 的 `POST /archive/pdf` 统一走 `PhaseDSupport.archivePdf()`——渲染 PDF → 上传 MinIO → 写 `biz_file` → 返回 `downloadUrl`（`/api/file/{fileId}/download`）。该接口需要 JWT，前端 `src/utils/pdf.js` 用 axios blob 拉流后 `window.open` 打印或另存，不能用 `<a href>` 直链。
+
+**D5 模块授权**：`GET /api/platform/my-modules` 返回 `trialAllOpen` / `enabled` / `disabled`。基础模块（A/B/C）恒可用；三期增值模块需平台显式开通；试运行期企业无开通记录时默认全量开放，避免存量租户上线即失能。`e2e_phase_d_test.sh` 会在收尾把 18 个模块重新全量授权，不污染其他回归套件。
+
+**边界（诚实说明）**：D1 不做实时定位与超速/疲劳阈值监测（归外部动态监控平台）；客运全部冻结；危货应急预案不由本系统管；D5 SSO 仅配置登记 + 密钥脱敏，**未接入真实 IdP 登录跳转**；PDF 中文字体仍为文泉驿正黑 TTF，宋体需补专用 TTF。
