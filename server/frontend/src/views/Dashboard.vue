@@ -1,6 +1,8 @@
 <script setup>
+import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/store/auth'
 const auth = useAuthStore()
+const router = useRouter()
 </script>
 
 <template>
@@ -24,18 +26,10 @@ const auth = useAuthStore()
         <el-card shadow="never">
           <template #header>快速入口</template>
           <el-space direction="vertical" fill style="width: 100%">
-            <router-link to="/company">
-              <el-button style="width: 100%">企业信息管理</el-button>
-            </router-link>
-            <router-link to="/org">
-              <el-button style="width: 100%">安全管理架构</el-button>
-            </router-link>
-            <router-link to="/post">
-              <el-button style="width: 100%">岗位信息管理</el-button>
-            </router-link>
-            <router-link to="/archive">
-              <el-button style="width: 100%">电子档案柜</el-button>
-            </router-link>
+            <el-button style="width: 100%" @click="router.push('/company')">企业信息管理</el-button>
+            <el-button style="width: 100%" @click="router.push('/org')">安全管理架构</el-button>
+            <el-button style="width: 100%" @click="router.push('/post')">岗位信息管理</el-button>
+            <el-button style="width: 100%" @click="router.push('/archive')">电子档案柜</el-button>
           </el-space>
         </el-card>
       </el-col>
