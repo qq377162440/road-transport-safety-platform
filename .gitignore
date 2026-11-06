@@ -47,3 +47,4 @@ server/deploy/rollback/
 # 公网发布辅助（本地代理与平台生成目录）
 publish_proxy/
 .cloudstudio/
+.cloudstudio/
