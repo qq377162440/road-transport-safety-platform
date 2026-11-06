@@ -3,6 +3,7 @@ import { ref, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '@/store/auth'
 import { ElMessage } from 'element-plus'
+import Icon from '@/components/Icon.vue'
 
 const router = useRouter()
 const route = useRoute()
@@ -70,7 +71,7 @@ onMounted(() => {
 
     <div class="login-card">
       <div class="login-head">
-        <div class="logo">🚚</div>
+        <div class="logo"><Icon name="truck" :size="28" /></div>
         <h1>道路运输安全生产管理平台</h1>
         <div class="sub">安全生产 · 台账合规 · 服务商一体化运营</div>
       </div>

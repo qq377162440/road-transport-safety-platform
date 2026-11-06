@@ -1,0 +1,166 @@
+/* =====================================================================
+   Element Plus 主题覆盖 · 对齐 prototype 设计系统（MASTER.md）
+   引入顺序：style.css → prototype.css → 本文件（本文件最后加载，优先级最高）
+   ===================================================================== */
+
+:root {
+  /* 主色（与 prototype --blue-800 一致） */
+  --el-color-primary: #1E40AF;
+  --el-color-primary-light-3: #2563EB;  /* 主按钮 hover */
+  --el-color-primary-light-5: #4f6fce;
+  --el-color-primary-light-7: #9db4e8;
+  --el-color-primary-light-8: #c3d0f0;
+  --el-color-primary-light-9: #DBEAFE;  /* 主标签/浅底主色 */
+  --el-color-primary-dark-2: #1D4ED8;   /* 主按钮 active */
+
+  /* 语义色（安全状态：绿=正常 橙=注意 红=紧急 蓝=提示） */
+  --el-color-success: #15803D;  --el-color-success-light-9: #F0FDF4;
+  --el-color-warning: #B45309;  --el-color-warning-light-9: #FFFBEB;
+  --el-color-danger:  #B91C1C;  --el-color-danger-light-9:  #FEF2F2;
+  --el-color-error:   #B91C1C;  --el-color-error-light-9:    #FEF2F2;
+  --el-color-info:    #0369A1;  --el-color-info-light-9:    #F0F9FF;
+
+  /* 中性色对齐 Slate */
+  --el-bg-color: #FFFFFF;
+  --el-bg-color-page: #F8FAFC;
+  --el-bg-color-overlay: #FFFFFF;
+  --el-text-color-primary: #1E293B;
+  --el-text-color-regular: #475569;
+  --el-text-color-secondary: #64748B;
+  --el-text-color-placeholder: #94A3B8;
+  --el-border-color: #E2E8F0;
+  --el-border-color-light: #E2E8F0;
+  --el-border-color-lighter: #E2E8F0;
+  --el-border-color-extra-light: #F1F5F9;
+  --el-fill-color-blank: #FFFFFF;
+  --el-fill-color-light: #F1F5F9;
+  --el-fill-color: #F1F5F9;
+  --el-fill-color-lighter: #F8FAFC;
+
+  /* 圆角：原型 radius-sm=6px，卡片=12px */
+  --el-border-radius-base: 6px;
+  --el-border-radius-small: 4px;
+  --el-border-radius-round: 20px;
+
+  --el-font-size-base: 14px;
+  --el-font-family: "Source Han Sans SC","PingFang SC","HarmonyOS Sans SC","Microsoft YaHei",system-ui,-apple-system,sans-serif;
+}
+
+/* ── 按钮：大、清晰、状态完整 ── */
+.el-button {
+  min-height: 40px;
+  font-weight: 600;
+  border-radius: var(--el-border-radius-base);
+  transition: background-color .18s ease, border-color .18s ease, color .18s ease, box-shadow .18s ease;
+}
+.el-button--small { min-height: 32px; padding: 5px 13px; font-size: 13px; }
+.el-button--large { min-height: 48px; padding: 13px 30px; font-size: 17px; }
+/* 仅色变，不位移（MASTER 反模式：禁止 translateY/scale） */
+.el-button:active { transform: none; }
+
+/* ── 卡片 ── */
+.el-card {
+  border-radius: 12px;
+  border: 1px solid var(--el-border-color);
+  box-shadow: 0 1px 2px 0 rgba(15,23,42,.05);
+  --el-card-padding: 20px;
+}
+.el-card__header {
+  font-weight: 700;
+  font-size: 16px;
+  color: var(--el-text-color-primary);
+  border-bottom: 1px solid var(--el-border-color);
+  padding: 16px 20px;
+}
+.el-card__body { padding: 20px; }
+
+/* ── 表格：数据密集、行高足、hover 高亮 ── */
+.el-table { font-size: 14.5px; --el-table-border-color: var(--el-border-color); }
+.el-table thead th.el-table__cell {
+  background: #F8FAFC;
+  color: #475569;
+  font-weight: 600;
+  font-size: 14px;
+}
+.el-table th.el-table__cell.is-leaf, .el-table td.el-table__cell { border-bottom: 1px solid var(--el-border-color); }
+.el-table .cell { padding: 12px 14px; line-height: 1.5; }
+.el-table--striped .el-table__body tr.el-table__row--striped td.el-table__cell { background: #FCFDFE; }
+.el-table .el-table__row:hover > td.el-table__cell { background: #F1F5F9 !important; }
+.el-table .el-table__row.current-row > td.el-table__cell { background: #E8F1FC !important; }
+.el-table__inner-wrapper::before { display: none; } /* 去掉底部重线 */
+.el-table .el-button.is-link { font-weight: 600; }
+
+/* ── 标签：浅底 + 深字（对比度达标）── */
+.el-tag {
+  border: none;
+  font-weight: 600;
+  --el-tag-bg-color: var(--el-color-primary-light-9);
+  --el-tag-text-color: #1E3A8A;
+  --el-tag-border-color: transparent;
+  height: 24px;
+  padding: 0 10px;
+}
+.el-tag--success { --el-tag-bg-color:#F0FDF4; --el-tag-text-color:#15803D; }
+.el-tag--warning { --el-tag-bg-color:#FFFBEB; --el-tag-text-color:#B45309; }
+.el-tag--danger, .el-tag--error { --el-tag-bg-color:#FEF2F2; --el-tag-text-color:#B91C1C; }
+.el-tag--info { --el-tag-bg-color:#F0F9FF; --el-tag-text-color:#0369A1; }
+.el-tag--primary { --el-tag-bg-color:#DBEAFE; --el-tag-text-color:#1E3A8A; }
+.el-tag--plain { background: var(--el-tag-bg-color); border: none; }
+
+/* ── 输入框 / 选择 / 文本域 ── */
+.el-input__wrapper, .el-textarea__inner, .el-select__wrapper {
+  background: #fff;
+  box-shadow: 0 0 0 1px var(--border-strong, #CBD5E1) inset !important;
+  border-radius: var(--el-border-radius-base);
+  font-size: 15px;
+  min-height: 40px;
+  transition: box-shadow .18s ease;
+}
+.el-input__wrapper.is-focus, .el-select__wrapper.is-focused {
+  box-shadow: 0 0 0 1px #1E40AF inset, 0 0 0 3px rgba(37,99,235,.15) !important;
+}
+.el-textarea__inner:focus { box-shadow: 0 0 0 1px #1E40AF inset, 0 0 0 3px rgba(37,99,235,.15) !important; }
+.el-input__wrapper:hover, .el-select__wrapper:hover { box-shadow: 0 0 0 1px #94A3B8 inset !important; }
+.el-input.is-error .el-input__wrapper { box-shadow: 0 0 0 1px #DC2626 inset !important; background:#FEF2F2; }
+
+/* ── 表单 ── */
+.el-form-item__label { color: #475569; font-weight: 600; font-size: 14px; }
+.el-form-item { margin-bottom: 18px; }
+
+/* ── 分页 ── */
+.el-pagination { --el-pagination-button-bg-color: #fff; --el-pagination-hover-color: #1E40AF; }
+.el-pagination .el-pager li { border-radius: 6px; min-width: 32px; font-weight: 600; }
+.el-pagination .el-pager li.is-active { background: #1E40AF; color: #fff; }
+.el-pagination .btn-prev, .el-pagination .btn-next { border-radius: 6px; background: #fff; }
+
+/* ── 对话框 ── */
+.el-dialog { border-radius: 12px; }
+.el-dialog__title { font-weight: 700; font-size: 18px; }
+.el-dialog__header { padding: 18px 22px; margin-right: 0; border-bottom: 1px solid var(--el-border-color); }
+.el-dialog__body { padding: 22px; }
+.el-dialog__footer { padding: 14px 22px 20px; }
+
+/* ── 标签页 ── */
+.el-tabs__item { font-size: 15px; font-weight: 500; }
+.el-tabs__item.is-active { font-weight: 700; }
+.el-tabs__active-bar { background: #1E40AF; }
+.el-tabs__item.is-active, .el-tabs__item:hover { color: #1E40AF; }
+
+/* ── 步骤条 ── */
+.el-step__head.is-finish, .el-step__head.is-process { color: #1E40AF; border-color: #1E40AF; }
+.el-step__title.is-finish, .el-step__title.is-process { color: #1E40AF; }
+.el-step__head.is-finish .el-step__icon { background: #1E40AF; border-color: #1E40AF; color: #fff; }
+
+/* ── 告警 ── */
+.el-alert { border-radius: 8px; border: 1px solid transparent; }
+.el-alert--info.is-light { background: #F0F9FF; color: #0369A1; border-color: #DBEAFE; }
+.el-alert__title { font-weight: 600; }
+
+/* ── 进度条 ── */
+.el-progress-bar__inner { background: #1E40AF; }
+
+/* ── 空状态 ── */
+.el-empty__description { color: #64748B; }
+
+/* ── 头像/头像组等小修 ── */
+.el-divider__text { color: #64748B; }

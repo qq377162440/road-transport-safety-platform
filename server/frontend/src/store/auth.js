@@ -33,12 +33,14 @@ export const useAuthStore = defineStore('auth', {
         captcha,
       })
       const data = res.data
+      // LoginResp 结构：{ accessToken, refreshToken, userInfo: { username, userType, ... } }
+      const info = data.userInfo || data
       this.token = data.accessToken
-      this.userType = data.userType
-      this.username = data.username
+      this.userType = info.userType
+      this.username = info.username
       localStorage.setItem('token', data.accessToken)
-      localStorage.setItem('userType', data.userType)
-      localStorage.setItem('username', data.username)
+      localStorage.setItem('userType', info.userType || '')
+      localStorage.setItem('username', info.username || '')
       return data
     },
 

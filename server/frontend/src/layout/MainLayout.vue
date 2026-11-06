@@ -5,13 +5,13 @@ import { useAuthStore } from '@/store/auth'
 import { ElMessageBox } from 'element-plus'
 import request from '@/api/request'
 import { bizModules } from '@/config/modules.generated.js'
+import Icon from '@/components/Icon.vue'
 
 const route = useRoute()
 const router = useRouter()
 const auth = useAuthStore()
 
 // D5 模块授权：基础模块恒可用；增值（三期 D）模块需平台显式开通。
-// 试运行期企业尚无开通记录时后端返回 trialAllOpen=true，默认全量开放，避免存量租户上线即失能。
 const dAuth = ref(null)
 onMounted(async () => {
   try { dAuth.value = (await request.get('/platform/my-modules')).data }
@@ -23,39 +23,39 @@ function dModuleAllowed(code) {
   return (a.enabled || []).includes(code)
 }
 
-// A5：菜单由配置驱动 —— 静态入口 + 业务模块元数据自动生成
+// 菜单（含原型图标），结构与 prototype/index.html 对齐
 const staticGroups = [
   { group: '首页', items: [
-    { name: '企业安全管理驾驶舱', path: '/dashboard' },
-    { name: '风险可视驾驶舱', path: '/risk-dashboard' },
-    { name: '试运行反馈', path: '/feedback' },
+    { name: '企业安全管理驾驶舱', path: '/dashboard', icon: 'gauge' },
+    { name: '风险可视驾驶舱', path: '/risk-dashboard', icon: 'chart' },
+    { name: '试运行反馈', path: '/feedback', icon: 'megaphone' },
   ] },
   { group: '电子档案柜（核心）', items: [
-    { name: '电子档案柜', path: '/archive' },
-    { name: '全景与缺项', path: '/archive-overview' },
+    { name: '电子档案柜', path: '/archive', icon: 'archive' },
+    { name: '全景与缺项', path: '/archive-overview', icon: 'folder' },
   ] },
   { group: '基础档案管理', roles: ['enterprise', 'admin'], items: [
-    { name: '企业信息管理', path: '/company' },
-    { name: '安全管理架构', path: '/org' },
-    { name: '岗位信息管理', path: '/post' },
+    { name: '企业信息管理', path: '/company', icon: 'building' },
+    { name: '安全管理架构', path: '/org', icon: 'users' },
+    { name: '岗位信息管理', path: '/post', icon: 'user' },
   ] },
   { group: '制度档案管理', roles: ['enterprise', 'provider', 'admin'], items: [
-    { name: '范本套管理', path: '/template-manager' },
-    { name: '安全生产责任制', path: '/responsibility', roles: ['enterprise', 'admin'] },
+    { name: '范本套管理', path: '/template-manager', icon: 'book' },
+    { name: '安全生产责任制', path: '/responsibility', roles: ['enterprise', 'admin'], icon: 'shieldCheck' },
   ] },
   { group: '专用业务闭环', items: [
-    { name: '业务闭环工具箱', path: '/flow-tools' },
+    { name: '业务闭环工具箱', path: '/flow-tools', icon: 'wrench' },
   ] },
   { group: '服务商', roles: ['provider', 'admin'], items: [
-    { name: '新企业接入引导', path: '/onboarding' },
-    { name: '代录工作台', path: '/collect' },
+    { name: '新企业接入引导', path: '/onboarding', icon: 'map' },
+    { name: '代录工作台', path: '/collect', icon: 'clipboard' },
   ] },
   { group: '三期业务闭环（v1.2）', items: [
-    { name: '动态监控台账 · D1', path: '/monitor', dModule: 'monitor' },
-    { name: '安全生产费用 · D2', path: '/budget', dModule: 'budget' },
-    { name: '风险分级管控 · D3', path: '/risk-control', dModule: 'risk' },
-    { name: '危货专项深化 · D4', path: '/danger-special', dModule: 'dangerspecial' },
-    { name: '平台侧能力 · D5', path: '/platform-admin', dModule: 'platform', roles: ['provider', 'admin'] },
+    { name: '动态监控台账 · D1', path: '/monitor', dModule: 'monitor', icon: 'monitor' },
+    { name: '安全生产费用 · D2', path: '/budget', dModule: 'budget', icon: 'trend' },
+    { name: '风险分级管控 · D3', path: '/risk-control', dModule: 'risk', icon: 'shield' },
+    { name: '危货专项深化 · D4', path: '/danger-special', dModule: 'dangerspecial', icon: 'truck' },
+    { name: '平台侧能力 · D5', path: '/platform-admin', dModule: 'platform', roles: ['provider', 'admin'], icon: 'setting' },
   ] },
 ]
 
@@ -65,11 +65,11 @@ const menuGroups = computed(() => {
   for (const m of bizModules) {
     if (m.phase === 'A2' && ut !== 'admin') continue
     if (m.code === 'collect' && !['provider', 'admin'].includes(ut)) continue
-    // 三期增值模块受 D5 模块授权控制
     if (m.phase.startsWith('D') && !dModuleAllowed(m.code)) continue
     ;(dyn[m.group] ||= []).push({
       name: `${m.title} · ${m.phase}`,
       path: `/biz/${m.code}`,
+      icon: 'table',
       dModule: m.phase.startsWith('D') ? m.code : null,
     })
   }
@@ -79,7 +79,6 @@ const menuGroups = computed(() => {
   ]
 })
 
-// 按当前角色过滤菜单
 const visibleGroups = computed(() => {
   const ut = auth.userType
   return menuGroups.value
@@ -92,7 +91,40 @@ const visibleGroups = computed(() => {
     .filter((g) => (!g.roles || g.roles.includes(ut)) && g.items.length > 0)
 })
 
-const collapsed = ref(false)
+// 角色切换（与登录账号一致：切换即切换账号）
+const roleOptions = [
+  { key: 'enterprise', label: '企业' },
+  { key: 'provider', label: '服务商' },
+  { key: 'admin', label: '超管' },
+]
+function onRole(role) {
+  if (role === auth.userType) return
+  ElMessageBox.confirm(`切换为「${roleOptions.find(r => r.key === role).label}」账号将退出当前登录，是否继续？`, '切换账号', {
+    type: 'warning',
+  }).then(async () => {
+    await auth.logout()
+    router.push('/login')
+  }).catch(() => {})
+}
+
+// 客户类型切换（演示态，持久化到 localStorage）
+const cargoOptions = ['普货', '危货', '客运']
+const cargoType = ref(localStorage.getItem('cargoType') || '普货')
+function onCargo(c) {
+  if (c === '客运') { ElMessageInfo('客运已暂缓，以后再说'); return }
+  cargoType.value = c
+  localStorage.setItem('cargoType', c)
+}
+function ElMessageInfo(msg) {
+  // 轻量提示，避免额外 import ElMessage 命名冲突
+  import('element-plus').then(({ ElMessage }) => ElMessage(msg))
+}
+
+const tabMode = ref('pc')
+function onMode(mode) {
+  tabMode.value = mode
+  if (mode === 'mini') router.push('/m/check')
+}
 
 async function handleLogout() {
   await ElMessageBox.confirm('确认退出登录？', '提示', { type: 'warning' })
@@ -102,146 +134,124 @@ async function handleLogout() {
 </script>
 
 <template>
-  <el-container class="layout">
-    <!-- 侧边栏 -->
-    <el-aside :width="collapsed ? '64px' : '220px'" class="aside">
+  <div class="app-shell">
+    <!-- 顶栏 -->
+    <header class="topbar">
       <div class="logo">
-        <span class="logo-ico">运</span>
-        <span v-if="!collapsed" class="logo-text">道路运输安全管理</span>
+        <span class="mark"><Icon name="truck" :size="17" /></span>
+        道路运输安全生产管理平台
       </div>
-      <el-menu
-        :default-active="route.path"
-        :collapse="collapsed"
-        :collapse-transition="false"
-        router
-        background-color="#0f1c3f"
-        text-color="#cbd5e1"
-        active-text-color="#ffffff"
-        class="menu"
-      >
+      <div class="sub">安全生产 · 台账合规 · 服务商一体化运营</div>
+
+      <div class="cargo-switch" id="roleSwitch">
+        <span class="cs-label">角色</span>
+        <button
+          v-for="r in roleOptions"
+          :key="r.key"
+          class="cs-btn"
+          :class="{ on: auth.userType === r.key }"
+          @click="onRole(r.key)"
+        >{{ r.label }}</button>
+      </div>
+
+      <div class="cargo-switch" id="cargoSwitch">
+        <span class="cs-label">客户类型</span>
+        <button
+          v-for="c in cargoOptions"
+          :key="c"
+          class="cs-btn"
+          :class="{ on: cargoType === c }"
+          @click="onCargo(c)"
+        >{{ c }}</button>
+      </div>
+
+      <div class="tag-demo">Demo v1.2</div>
+      <button class="logout-btn" @click="handleLogout" title="退出登录">
+        <Icon name="logOut" :size="15" /> 退出
+      </button>
+    </header>
+
+    <!-- PC / 小程序 切换 -->
+    <nav class="tabs">
+      <div class="tab" :class="{ active: tabMode === 'pc' }" @click="onMode('pc')">
+        <Icon name="monitor" :size="16" /> 网页端（PC）
+      </div>
+      <div class="tab" :class="{ active: tabMode === 'mini' }" @click="onMode('mini')">
+        <Icon name="smartphone" :size="16" /> 小程序端
+      </div>
+    </nav>
+
+    <!-- 主体 -->
+    <div class="layout">
+      <aside class="sidebar">
         <template v-for="g in visibleGroups" :key="g.group">
-          <el-menu-item-group v-if="!collapsed" :title="g.group">
-            <el-menu-item v-for="it in g.items" :key="it.path" :index="it.path">
-              {{ it.name }}
-            </el-menu-item>
-          </el-menu-item-group>
-          <template v-else>
-            <el-menu-item v-for="it in g.items" :key="it.path" :index="it.path">
-              {{ it.name.slice(0, 2) }}
-            </el-menu-item>
-          </template>
+          <div class="group">{{ g.group }}</div>
+          <router-link
+            v-for="it in g.items"
+            :key="it.path"
+            :to="it.path"
+            class="item"
+            :class="{ active: route.path === it.path }"
+          >
+            <Icon :name="it.icon" :size="16" /> {{ it.name }}
+          </router-link>
         </template>
-      </el-menu>
-    </el-aside>
+      </aside>
 
-    <!-- 主区域 -->
-    <el-container>
-      <el-header class="header">
-        <div class="header-left">
-          <el-button text @click="collapsed = !collapsed">
-            <el-icon><Expand v-if="collapsed" /><Fold v-else /></el-icon>
-          </el-button>
-          <span class="page-title">{{ route.meta.title }}</span>
-        </div>
-        <div class="header-right">
-          <el-tag size="small" type="primary" effect="plain">{{ auth.roleLabel }}</el-tag>
-          <span v-if="auth.tenantName" class="tenant">{{ auth.tenantName }}</span>
-          <el-dropdown @command="(c) => c === 'logout' && handleLogout()">
-            <span class="user">
-              {{ auth.username || '未登录' }}
-              <el-icon><ArrowDown /></el-icon>
-            </span>
-            <template #dropdown>
-              <el-dropdown-menu>
-                <el-dropdown-item command="logout">退出登录</el-dropdown-item>
-              </el-dropdown-menu>
-            </template>
-          </el-dropdown>
-        </div>
-      </el-header>
-
-      <el-main class="main">
+      <main class="content">
         <router-view />
-      </el-main>
-    </el-container>
-  </el-container>
+      </main>
+    </div>
+  </div>
 </template>
 
 <style scoped>
-.layout {
-  height: 100vh;
+.app-shell { height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
+
+/* ── 顶栏（对齐 prototype 蓝顶栏）── */
+.topbar {
+  height: 56px; background: var(--blue-900); display: flex; align-items: center;
+  padding: 0 20px; color: #fff; box-shadow: 0 2px 8px rgba(0,0,0,.15); position: relative; z-index: 10;
+  flex-shrink: 0;
 }
-.aside {
-  background: #0f1c3f;
-  transition: width 0.2s;
-  overflow: hidden;
-  display: flex;
-  flex-direction: column;
+.topbar .logo { font-size: 17px; font-weight: 700; letter-spacing: .5px; display: flex; align-items: center; gap: 10px; }
+.topbar .logo .mark { width: 30px; height: 30px; border-radius: 8px; background: var(--blue-800); display: flex; align-items: center; justify-content: center; }
+.topbar .logo .mark :deep(.ico) { font-size: 17px; color: #fff; }
+.topbar .sub { font-size: 12.5px; opacity: .75; margin-left: 14px; white-space: nowrap; }
+.topbar .tag-demo { background: rgba(255,255,255,.14); padding: 5px 14px; border-radius: 20px; font-size: 12.5px; margin-left: 14px; }
+.topbar .logout-btn {
+  margin-left: 14px; border: none; background: rgba(255,255,255,.14); color: #fff; padding: 7px 14px;
+  border-radius: 8px; font-size: 13px; cursor: pointer; display: flex; align-items: center; gap: 6px;
 }
-.logo {
-  height: 60px;
-  display: flex;
-  align-items: center;
-  padding: 0 16px;
-  color: #fff;
-  gap: 10px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+.topbar .logout-btn:hover { background: rgba(255,255,255,.24); }
+
+.cargo-switch { margin-left: auto; display: flex; align-items: center; gap: 4px; background: rgba(255,255,255,.12); padding: 4px; border-radius: 10px; margin-right: 0; }
+.cargo-switch + .cargo-switch { margin-left: 14px; }
+.cs-label { font-size: 12px; opacity: .8; padding: 0 8px; white-space: nowrap; }
+.cs-btn { border: none; background: transparent; color: #fff; font-size: 12.5px; font-weight: 600; padding: 5px 12px; border-radius: 7px; cursor: pointer; transition: .12s; }
+.cs-btn.on { background: #fff; color: var(--blue-900); }
+
+/* ── PC / 小程序 tabs ── */
+.tabs { height: 46px; background: #fff; border-bottom: 1px solid var(--border); display: flex; align-items: center; padding: 0 16px; gap: 6px; flex-shrink: 0; }
+.tabs .tab { padding: 8px 16px; border-radius: 8px; cursor: pointer; font-size: 14.5px; color: var(--text); transition: .15s; white-space: nowrap; font-weight: 500; display: flex; align-items: center; gap: 7px; }
+.tabs .tab:hover { background: #f3f4f6; }
+.tabs .tab.active { background: var(--blue-800); color: #fff; }
+
+/* ── 布局 ── */
+.layout { display: flex; flex: 1; min-height: 0; }
+
+/* ── 白色分组侧栏 ── */
+.sidebar { width: 240px; background: #fff; border-right: 1px solid var(--border); overflow-y: auto; padding: 10px 0; flex-shrink: 0; }
+.sidebar .group { font-size: 12px; color: var(--text-3); padding: 12px 20px 6px; font-weight: 600; letter-spacing: .5px; }
+.sidebar .item {
+  display: flex; align-items: center; gap: 10px; padding: 10px 20px; font-size: 14px; color: var(--text-2);
+  cursor: pointer; transition: .12s; border-left: 3px solid transparent;
 }
-.logo-ico {
-  width: 26px; height: 26px; flex: 0 0 26px;
-  display: inline-flex; align-items: center; justify-content: center;
-  background: #2563eb; color: #fff; border-radius: 6px;
-  font-size: 15px; font-weight: 700;
-}
-.logo-text {
-  font-size: 15px;
-  font-weight: 700;
-  white-space: nowrap;
-}
-.menu {
-  border-right: none;
-  flex: 1;
-  overflow-y: auto;
-}
-.menu::-webkit-scrollbar { width: 4px; }
-.menu::-webkit-scrollbar-thumb { background: rgba(255,255,255,.2); border-radius: 2px; }
-.header {
-  background: #fff;
-  border-bottom: 1px solid var(--border);
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  height: 60px;
-  padding: 0 20px;
-}
-.header-left {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-.page-title {
-  font-size: 16px;
-  font-weight: 600;
-}
-.header-right {
-  display: flex;
-  align-items: center;
-  gap: 14px;
-}
-.tenant {
-  font-size: 13px;
-  color: var(--text-2);
-}
-.user {
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  font-size: 14px;
-}
-.main {
-  background: var(--bg);
-  padding: 20px;
-  overflow: auto;
-}
+.sidebar .item :deep(.ico) { font-size: 16px; width: 18px; text-align: center; flex-shrink: 0; }
+.sidebar .item:hover { background: #f3f4f6; color: var(--blue-800); }
+.sidebar .item.active { background: #e8f1fc; color: var(--blue-800); border-left-color: var(--blue-800); font-weight: 600; }
+.sidebar .item.router-link-active { background: #e8f1fc; color: var(--blue-800); border-left-color: var(--blue-800); font-weight: 600; }
+
+/* ── 内容区 ── */
+.content { flex: 1; min-width: 0; padding: 22px 26px; overflow-y: auto; background: var(--bg); }
 </style>

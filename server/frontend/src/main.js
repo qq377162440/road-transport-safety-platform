@@ -5,6 +5,9 @@ import * as ElementPlusIconsVue from '@element-plus/icons-vue'
 import App from './App.vue'
 import router from './router'
 import './style.css'
+// 原型设计系统（对齐 design-system/MASTER.md 与 prototype 视觉）
+import './styles/prototype.css'
+import './styles/element-overrides.css'
 
 const app = createApp(App)
 

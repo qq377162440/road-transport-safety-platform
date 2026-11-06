@@ -33,14 +33,19 @@ onMounted(load)
 </script>
 
 <template>
-  <div class="archive-overview">
-    <div class="bar">
-      <el-radio-group v-model="bizType" @change="load">
-        <el-radio-button value="GENERAL">普货 10 盒</el-radio-button>
-        <el-radio-button value="DANGER">危货 11 盒</el-radio-button>
-      </el-radio-group>
-      <span class="spacer" />
-      <el-button type="primary" :loading="busy" @click="batchGenerate">批量生成缺项</el-button>
+  <div>
+    <div class="pc-header">
+      <div>
+        <h1>电子档案柜 · 全景与缺项</h1>
+        <div class="desc">按档案盒目录树查看归档全景，红标为政府检查前必须补齐的缺项。</div>
+      </div>
+      <div class="actions">
+        <el-radio-group v-model="bizType" @change="load">
+          <el-radio-button value="GENERAL">普货 10 盒</el-radio-button>
+          <el-radio-button value="DANGER">危货 11 盒</el-radio-button>
+        </el-radio-group>
+        <el-button type="primary" :loading="busy" @click="batchGenerate">批量生成缺项</el-button>
+      </div>
     </div>
 
     <el-row :gutter="12" class="stats">

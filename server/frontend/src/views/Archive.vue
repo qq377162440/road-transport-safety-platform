@@ -2,6 +2,7 @@
 import { ref, onMounted } from 'vue'
 import request from '@/api/request'
 import { ElMessage } from 'element-plus'
+import Icon from '@/components/Icon.vue'
 
 const items = ref([])
 const loading = ref(false)
@@ -55,30 +56,33 @@ onMounted(load)
 </script>
 
 <template>
-  <el-card shadow="never" v-loading="loading">
-    <template #header>
-      <div style="display: flex; justify-content: space-between; align-items: center">
-        <span style="font-weight: 700">电子档案柜 · 盒二安全生产责任制</span>
+  <div>
+    <div class="pc-header">
+      <div>
+        <h1>电子档案柜 · 盒二 安全生产责任制</h1>
+        <div class="desc">归档项按自然年度隔离；生成后存 MinIO，可下载 PDF 打印装盒。</div>
+      </div>
+      <div class="actions">
         <el-button type="primary" :loading="generating" @click="generate">
-          生成责任制 PDF
+          <Icon name="plus" :size="16" /> 生成责任制 PDF
         </el-button>
       </div>
-    </template>
+    </div>
 
     <el-alert
       type="info"
       :closable="false"
       show-icon
       style="margin-bottom: 16px"
-      title="归档项按自然年度隔离；生成后存 MinIO，可下载 PDF 打印装盒。"
+      title="本盒收录安全生产责任制相关归档项，政府检查前请确认 PDF 已生成并归档。"
     />
 
-    <el-table :data="items" stripe>
-      <el-table-column prop="title" label="归档项" min-width="160" />
-      <el-table-column prop="archiveYear" label="归档年度" width="100" />
-      <el-table-column label="状态" width="110">
+    <el-table :data="items" stripe v-loading="loading" empty-text="暂无归档项，点击右上角生成">
+      <el-table-column prop="title" label="归档项" min-width="200" />
+      <el-table-column prop="archiveYear" label="归档年度" width="110" />
+      <el-table-column label="状态" width="120">
         <template #default="{ row }">
-          <el-tag :type="row.status === 1 ? 'success' : 'warning'" size="small">
+          <el-tag :type="['warning', 'success', 'success', 'success'][row.status] || 'info'" size="small">
             {{ ['待生成', '已生成', '已打印', '已归档'][row.status] || '未知' }}
           </el-tag>
         </template>
@@ -91,12 +95,15 @@ onMounted(load)
             type="primary"
             @click="download(row)"
           >
-            下载 PDF
+            <Icon name="download" :size="14" /> 下载
           </el-button>
+          <span v-else class="text-3">—</span>
         </template>
       </el-table-column>
     </el-table>
-
-    <el-empty v-if="!items.length" description="暂无归档项，点击右上角生成" />
-  </el-card>
+  </div>
 </template>
+
+<style scoped>
+.text-3 { color: var(--text-3); font-size: 14px; }
+</style>
