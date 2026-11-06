@@ -69,8 +69,13 @@ public class AuthService {
             throw new BizException("账号已禁用");
         }
 
-        // 账号前缀识别身份：aa=企业 / bb=服务商 / cc=超管
-        String userType = detectUserType(user.getUsername());
+        // 身份以数据库 user_type 为准（E2 开户生成的账号不遵循 aa/bb/cc 前缀，
+        // 且人员手机号开通的 driver 账号需要按岗位差异化）；老数据无 user_type
+        // 时回退到账号前缀识别，保证向后兼容。
+        String userType = user.getUserType();
+        if (userType == null || userType.isBlank()) {
+            userType = detectUserType(user.getUsername());
+        }
 
         String access = jwtUtil.genAccessToken(user.getId(), user.getTenantId(), user.getUsername(), userType);
         String refresh = jwtUtil.genRefreshToken(user.getId(), user.getTenantId(), user.getUsername(), userType);

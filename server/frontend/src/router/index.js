@@ -14,6 +14,7 @@ const staticChildren = [
   { path: 'archive-overview', name: 'ArchiveOverview', component: () => import('@/views/ArchiveOverview.vue'), meta: { title: '档案柜全景与缺项' } },
   { path: 'collect', name: 'Collect', component: () => import('@/views/Collect.vue'), meta: { title: '服务商代录工作台', roles: ['provider', 'admin'] } },
   { path: 'flow-tools', name: 'FlowTools', component: () => import('@/views/FlowTools.vue'), meta: { title: '业务闭环工具箱' } },
+  { path: 'onboarding', name: 'Onboarding', component: () => import('@/views/Onboarding.vue'), meta: { title: '新企业接入引导', roles: ['provider', 'admin'] } },
 ]
 
 // 由元数据驱动：新增模块只改 tools/gen_biz_meta.py，路由自动出现
@@ -28,6 +29,8 @@ const routes = [
   { path: '/login', name: 'Login', component: () => import('@/views/Login.vue'), meta: { title: '登录', public: true } },
   // B9 小程序端：独立 H5 页面，不套后台框架，适老化大字号
   { path: '/m/check', name: 'MobileCheck', component: () => import('@/views/MobileCheck.vue'), meta: { title: '一日三检', public: true } },
+  // E2 企业侧三步接入填报（适老化 H5）
+  { path: '/m/onboard', name: 'MobileOnboard', component: () => import('@/views/MobileOnboard.vue'), meta: { title: '企业接入登记', public: true } },
   {
     path: '/',
     component: () => import('@/layout/MainLayout.vue'),

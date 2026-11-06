@@ -32,6 +32,7 @@ const staticGroups = [
     { name: '业务闭环工具箱', path: '/flow-tools' },
   ] },
   { group: '服务商', roles: ['provider', 'admin'], items: [
+    { name: '新企业接入引导', path: '/onboarding' },
     { name: '代录工作台', path: '/collect' },
   ] },
 ]

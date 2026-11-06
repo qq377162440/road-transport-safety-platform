@@ -202,3 +202,22 @@ curl -k  https://localhost/health    # UP
 | `rollback.sh` / `go_live_check.sh` | E4 回滚与上线复测 |
 
 > 生产必备但沙箱无法提供的真实资源：域名与 ICP 备案、CA 签发证书、生产服务器、告警 webhook、异地备份目标。这些是 E4《上线检查清单》的前置阻断项。
+
+## 十二、开户引导与验收脚本（E2 / E3 / E4）
+
+| 脚本 | 用途 |
+|---|---|
+| `open_account.sh` | 命令行签约开户：`./open_account.sh "企业全称" "信用代码" [GENERAL\|DANGER] [地区] [负责人] [电话]` |
+| `e2e_onboarding_test.sh` | E2 开户引导 29 项全链路验收（容器内） |
+| `e2e_test.sh` | 原有 9 项垂直切片闭环回归 |
+| `e2e_phase_test.sh` | A/B/C 阶段 38 项全链路验收 |
+| `stress_test.py` | C1 1000 并发压测 |
+| `go_live_check.sh` / `rollback.sh` | E4 上线复测与回滚演练 |
+
+```bash
+# 开户后企业主账号（用户名=企业全称，初始密码 888888）从 /m/onboard 完成三步填报
+# 服务商在「新企业接入引导」页查看六阶段进度、逐项勾选、做归档就位自检
+docker compose --profile test run --rm e2e ./e2e_onboarding_test.sh
+```
+
+> 开户生成的账号身份由 `sys_user.user_type` 决定（不再是 `aa/bb/cc` 前缀），人员手机号自动开通的驾驶员账号为 `driver`，前端菜单按角色自动收敛。归档项由 `ArchiveRegistrar` 显式指定租户，服务商代录不会挂到平台名下。

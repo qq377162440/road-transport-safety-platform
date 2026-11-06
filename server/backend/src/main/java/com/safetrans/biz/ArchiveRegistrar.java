@@ -25,9 +25,18 @@ public class ArchiveRegistrar {
     }
 
     public void register(String moduleCode, String catalog, long bizId, String title) {
-        if (catalog == null || catalog.isBlank()) return;
         Long tid = TenantContextHolder.tenantId();
-        if (tid == null) tid = 0L;
+        register(moduleCode, catalog, bizId, title, tid == null ? 0L : tid);
+    }
+
+    /**
+     * 显式指定租户归档（E2）：开户引导中服务商代新企业录入人车档案时，
+     * 当前登录上下文是平台账号（tenant_id=0），必须指定目标租户，
+     * 否则归档项会错误地挂到平台名下，破坏铁律 6 的租户隔离。
+     */
+    public void register(String moduleCode, String catalog, long bizId, String title, long tenantId) {
+        if (catalog == null || catalog.isBlank()) return;
+        Long tid = tenantId;
         Integer cnt = jdbc.queryForObject(
                 "SELECT COUNT(*) FROM `archive_item` WHERE `biz_module`=? AND `biz_id`=? AND `tenant_id`=? AND `deleted`=0",
                 Integer.class, moduleCode, bizId, tid);
