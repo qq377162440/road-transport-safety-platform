@@ -29,3 +29,7 @@ logging:
   level:
     com.safetrans: info
     org.flywaydb: warn
+
+# 生产环境强制关闭开发免密登录
+app:
+  dev-login-enabled: false

@@ -88,3 +88,7 @@ logging:
   level:
     com.safetrans: debug
     org.flywaydb: info
+
+# 开发环境免验证码登录（前端 AUTO_LOGIN 跳过登录界面用）。生产 prod profile 中强制为 false。
+app:
+  dev-login-enabled: true

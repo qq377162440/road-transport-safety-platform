@@ -1,5 +1,7 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import { bizModules } from '@/config/modules.generated.js'
+import { AUTO_LOGIN, DEV_DEMO_USER, DEV_DEMO_PWD } from '@/config/devFlag'
+import { useAuthStore } from '@/store/auth'
 
 // A5：路由表 = 静态页面 + 由 modules.generated.js 动态生成的业务模块路由
 const staticChildren = [
@@ -49,7 +51,7 @@ const routes = [
 
 const router = createRouter({ history: createWebHistory(), routes })
 
-router.beforeEach((to, from, next) => {
+router.beforeEach(async (to, from, next) => {
   // 移动端允许 URL 携带 token（由主站登录态透传），便于司机扫码直接进入
   if (to.path.startsWith('/m/') && to.query.token) {
     localStorage.setItem('token', String(to.query.token))
@@ -57,6 +59,29 @@ router.beforeEach((to, from, next) => {
   }
   const token = localStorage.getItem('token')
   const userType = localStorage.getItem('userType')
+
+  // AUTO_LOGIN：登录页直接进系统（已登录去驾驶舱；未登录静默自动登录）
+  if (AUTO_LOGIN && to.path === '/login') {
+    if (token) return next({ path: '/dashboard' })
+    try {
+      const auth = useAuthStore()
+      await auth.devLogin({ username: DEV_DEMO_USER, password: DEV_DEMO_PWD })
+      return next({ path: '/dashboard' })
+    } catch (e) {
+      return next()
+    }
+  }
+
+  // AUTO_LOGIN：未登录访问受保护页，静默用演示账号登录（后续关开关即恢复）
+  if (AUTO_LOGIN && !token && !to.meta.public) {
+    try {
+      const auth = useAuthStore()
+      await auth.devLogin({ username: DEV_DEMO_USER, password: DEV_DEMO_PWD })
+      return next()
+    } catch (e) {
+      return next({ path: '/login' })
+    }
+  }
 
   if (to.meta.public) { next(); return }
   if (!token) { next({ path: '/login', query: { redirect: to.fullPath } }); return }

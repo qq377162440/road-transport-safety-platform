@@ -6,7 +6,9 @@ import com.safetrans.auth.dto.LoginResp;
 import com.safetrans.auth.service.AuthService;
 import com.safetrans.common.auth.Anonymous;
 import com.safetrans.common.tenant.TenantContextHolder;
+import com.safetrans.common.web.BizException;
 import com.safetrans.common.web.Result;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.web.bind.annotation.*;
 
 /**
@@ -32,6 +34,22 @@ public class AuthController {
     @PostMapping("/login")
     public Result<LoginResp> login(@RequestBody LoginReq req) {
         return Result.ok(authService.login(req));
+    }
+
+    /**
+     * 开发环境免验证码登录：仅当 app.dev-login-enabled=true 时可用，生产环境（prod profile）强制关闭。
+     * 用于前端 AUTO_LOGIN 模式跳过登录界面直接进系统，提升逐项测试效率。
+     */
+    @Value("${app.dev-login-enabled:false}")
+    private boolean devLoginEnabled;
+
+    @Anonymous
+    @PostMapping("/dev-login")
+    public Result<LoginResp> devLogin(@RequestBody LoginReq req) {
+        if (!devLoginEnabled) {
+            throw new BizException(403, "开发免密登录已关闭");
+        }
+        return Result.ok(authService.devLogin(req));
     }
 
     /** A3：刷新 access token（匿名，凭 refresh token） */

@@ -87,6 +87,31 @@ public class AuthService {
         return new LoginResp(access, refresh, info);
     }
 
+    /**
+     * 开发环境免验证码登录（仅当 app.dev-login-enabled=true 时由 controller 放开）。
+     * 直接校验用户名/密码，跳过图形验证码，便于前端 AUTO_LOGIN 模式一键进入系统。
+     */
+    public LoginResp devLogin(LoginReq req) {
+        SysUser user = userMapper.selectOne(new LambdaQueryWrapper<SysUser>()
+                .eq(SysUser::getUsername, req.getUsername()));
+        if (user == null || !passwordEncoder.matches(req.getPassword(), user.getPassword())) {
+            throw new BizException("账号或密码错误");
+        }
+        if (user.getStatus() != null && user.getStatus() == 0) {
+            throw new BizException("账号已禁用");
+        }
+        String userType = user.getUserType();
+        if (userType == null || userType.isBlank()) {
+            userType = detectUserType(user.getUsername());
+        }
+        String access = jwtUtil.genAccessToken(user.getId(), user.getTenantId(), user.getUsername(), userType);
+        String refresh = jwtUtil.genRefreshToken(user.getId(), user.getTenantId(), user.getUsername(), userType);
+        redis.opsForValue().set(AuthInterceptor.WHITELIST_KEY + user.getId(), access, Duration.ofSeconds(7200));
+        LoginResp.UserInfo info = new LoginResp.UserInfo(
+                user.getId(), user.getTenantId(), user.getUsername(), user.getRealName(), userType);
+        return new LoginResp(access, refresh, info);
+    }
+
     /** A3：用 refresh token 换取新的 access token；refresh 不可当 access 使用 */
     public LoginResp refresh(String refreshToken) {
         io.jsonwebtoken.Claims c;

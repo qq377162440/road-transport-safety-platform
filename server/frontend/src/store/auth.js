@@ -44,6 +44,20 @@ export const useAuthStore = defineStore('auth', {
       return data
     },
 
+    // 开发免验证码登录（AUTO_LOGIN 模式）：跳过图形验证码，直接用演示账号进入系统
+    async devLogin({ username, password }) {
+      const res = await request.post('/auth/dev-login', { username, password })
+      const data = res.data
+      const info = data.userInfo || data
+      this.token = data.accessToken
+      this.userType = info.userType
+      this.username = info.username
+      localStorage.setItem('token', data.accessToken)
+      localStorage.setItem('userType', info.userType || '')
+      localStorage.setItem('username', info.username || '')
+      return data
+    },
+
     // 加载企业名称（进入主框架后）
     async loadTenantName() {
       try {
