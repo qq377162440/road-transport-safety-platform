@@ -1,0 +1,15 @@
+# crontab 样例（E1 生产运维）
+# 部署到生产机后：crontab -e 粘贴以下内容，并把路径改为实际部署目录。
+# 建议把 stdout/stderr 重定向到日志，由 logrotate 或 docker json-file 轮转。
+SHELL=/bin/bash
+PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+DEPLOY=/opt/safetrans/server/deploy
+
+# 每日 02:30 业务低峰执行冷备 + 异地同步 + 过期清理
+30 2 * * * cd $DEPLOY && ./backup_cron.sh >> backups/cron.log 2>&1
+
+# 每 5 分钟巡检：容器健康 / HTTPS / 磁盘 / 备份新鲜度 / 证书有效期，异常推告警
+*/5 * * * * cd $DEPLOY && ./monitor.sh >> monitor/cron.log 2>&1
+
+# 每周一 08:00 输出一次巡检汇总（便于人工周检，失败也会有告警记录）
+0 8 * * 1 cd $DEPLOY && ./monitor.sh >> monitor/weekly.log 2>&1 || true

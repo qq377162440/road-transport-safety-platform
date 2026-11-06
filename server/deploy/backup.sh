@@ -7,6 +7,11 @@
 set -euo pipefail
 cd "$(dirname "$0")"
 
+# 从 .env 读取生产凭据；开发栈无 .env 时用 compose 开发默认值。
+# COMPOSE_FILE 由 .env 指定（生产为 docker-compose.prod.yml），保证同一套脚本通吃两套编排。
+if [ -f .env ]; then set -a; . ./.env; set +a; fi
+COMPOSE_FILE=${COMPOSE_FILE:-docker-compose.yml}
+COMPOSE="docker compose -f $COMPOSE_FILE"
 MYSQL_ROOT_PASSWORD=${MYSQL_ROOT_PASSWORD:-root123}
 COLD=${1:-}
 TS=$(date +%Y%m%d_%H%M%S)
@@ -15,18 +20,21 @@ mkdir -p "$OUT"
 
 if [ "$COLD" = "--cold" ]; then
   echo "[0/3] 冷备模式：暂停 frontend / backend 写入"
-  docker compose stop frontend backend
+  $COMPOSE stop frontend backend
 fi
 
 echo "[1/3] 备份 MySQL ..."
-docker compose exec -T mysql \
+$COMPOSE exec -T mysql \
   mysqldump -uroot -p"$MYSQL_ROOT_PASSWORD" \
   --single-transaction --routines --triggers \
   --add-drop-database --default-character-set=utf8mb4 \
   --databases safetrans | gzip > "$OUT/mysql.sql.gz"
 
 echo "[2/3] 备份 Redis（SAVE 后打包 RDB） ..."
-docker compose exec -T redis redis-cli SAVE >/dev/null
+# 生产 Redis 启用 requirepass，通过 REDISCLI_AUTH 传密码（开发无密码时数组为空）
+REDIS_AUTH=()
+if [ -n "${REDIS_PASSWORD:-}" ]; then REDIS_AUTH=(-e "REDISCLI_AUTH=${REDIS_PASSWORD}"); fi
+$COMPOSE exec -T "${REDIS_AUTH[@]}" redis redis-cli SAVE >/dev/null
 docker run --rm \
   -v safetrans-redis-data:/data:ro \
   -v "$PWD/$OUT":/out \
@@ -40,7 +48,7 @@ docker run --rm \
 
 if [ "$COLD" = "--cold" ]; then
   echo "[*] 恢复 frontend / backend"
-  docker compose start frontend backend
+  $COMPOSE start frontend backend
 fi
 
 GIT_COMMIT=$(git rev-parse --short HEAD 2>/dev/null || echo "unknown")

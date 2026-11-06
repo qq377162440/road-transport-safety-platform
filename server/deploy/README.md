@@ -165,3 +165,40 @@ cd ../backend && mvn test
 ```
 
 当前验收结果：闭环回归 **10/10**、全链路 **38/38**、单元测试 **6/6**、并发压测 **1000/1000 成功（QPS 470，P95 394ms）**。
+
+## 十一、生产部署（E1）
+
+生产环境使用**独立编排** `docker-compose.prod.yml`，与开发编排互不继承：启用 `prod` profile（所有凭据无默认值，缺失即启动失败）、仅 frontend 暴露 80/443、强制 HTTPS、逐服务资源限制、json-file 日志轮转。完整流程见 **[生产部署与运维手册](生产部署与运维手册.md)**。
+
+```bash
+cd server/deploy
+cp .env.example .env && vi .env                      # 全部必填凭据
+# 放入真实证书到 certs/fullchain.pem + certs/privkey.pem
+DOMAIN=your.domain ./render_nginx_conf.sh
+docker compose -f docker-compose.prod.yml config --quiet
+docker compose -f docker-compose.prod.yml pull       # CI 预构建镜像
+docker compose -f docker-compose.prod.yml up -d --no-build
+```
+
+本地 HTTPS 演练（自签证书，仅演练）：
+
+```bash
+DOMAIN=localhost ./certs/gen_selfsigned_cert.sh
+DOMAIN=localhost ./render_nginx_conf.sh
+docker tag deploy-frontend:latest safetrans/frontend:latest
+docker tag deploy-backend:latest  safetrans/backend:latest
+docker compose -f docker-compose.prod.yml up -d --no-build
+curl -I http://localhost/            # 301
+curl -k  https://localhost/health    # UP
+```
+
+运维脚本（`crontab.example` 已给出定时任务样例）：
+
+| 脚本 | 用途 |
+|---|---|
+| `backup_cron.sh` | 每日冷备 + gzip/tar 完整性校验 + 异地同步钩子 + 14 天保留清理 |
+| `monitor.sh` | 每 5 分钟巡检 6 类指标（容器/入口/健康/磁盘/备份/证书），异常经 `alert.sh` 推送 |
+| `restore.sh` | 覆盖式恢复（支持生产编排与 Redis 密码，健康探测经 HTTPS） |
+| `rollback.sh` / `go_live_check.sh` | E4 回滚与上线复测 |
+
+> 生产必备但沙箱无法提供的真实资源：域名与 ICP 备案、CA 签发证书、生产服务器、告警 webhook、异地备份目标。这些是 E4《上线检查清单》的前置阻断项。

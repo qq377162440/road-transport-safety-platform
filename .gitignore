@@ -34,5 +34,9 @@ __pycache__/
 # 运行期数据备份（可能含真实业务数据，禁止入库）
 server/deploy/backups/
 
+# E1 生产运维产物：渲染后的 nginx 配置（含实际域名）、巡检报告与告警日志
+server/deploy/nginx.prod.conf
+server/deploy/monitor/
+
 # 说明：src/main/resources/fonts/ 下的中文字体是 PDF 渲染的运行时资产，
 # Docker 构建时会打包进 jar，必须入库，不要忽略。

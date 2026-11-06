@@ -106,8 +106,10 @@ services:
     depends_on:
       backend:
         condition: service_healthy
+    # 容器只监听 IPv4（0.0.0.0:80），busybox wget 会把 localhost 解析到 ::1 而误报失败，
+    # 因此必须显式用 127.0.0.1；/healthz 由 nginx 直接返回，不依赖后端。
     healthcheck:
-      test: ["CMD", "wget", "-qO-", "http://localhost/"]
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1/healthz"]
       interval: 10s
       timeout: 5s
       retries: 10
@@ -129,7 +131,7 @@ services:
       redis:
         condition: service_healthy
       frontend:
-        condition: service_started
+        condition: service_healthy
 
 volumes:
   mysql-data:

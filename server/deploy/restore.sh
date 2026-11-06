@@ -14,7 +14,13 @@ for f in mysql.sql.gz redis.tar.gz minio.tar.gz; do
 done
 BACKUP=$(cd "$BACKUP" && pwd)
 
+if [ -f .env ]; then set -a; . ./.env; set +a; fi
+COMPOSE_FILE=${COMPOSE_FILE:-docker-compose.yml}
+COMPOSE="docker compose -f $COMPOSE_FILE"
 MYSQL_ROOT_PASSWORD=${MYSQL_ROOT_PASSWORD:-root123}
+# 生产栈 backend 不暴露 8080，健康探测改经 frontend 的 HTTPS（由 .env 指定）
+HEALTH_URL=${HEALTH_URL:-http://localhost:8080/health}
+HEALTH_CURL_OPTS=${HEALTH_CURL_OPTS:-}
 ASSUME=${2:-${ASSUME_YES:-}}
 
 if [ "$ASSUME" != "-y" ] && [ "$ASSUME" != "1" ]; then
@@ -29,28 +35,28 @@ wipe_volume() {
 }
 
 echo "[1/5] 暂停写入方（backend / frontend / redis / minio）..."
-docker compose stop backend frontend redis minio >/dev/null
+$COMPOSE stop backend frontend redis minio >/dev/null
 
 echo "[2/5] 恢复 MySQL ..."
 gunzip -c "$BACKUP/mysql.sql.gz" | \
-  docker compose exec -T mysql mysql -uroot -p"$MYSQL_ROOT_PASSWORD"
+  $COMPOSE exec -T mysql mysql -uroot -p"$MYSQL_ROOT_PASSWORD"
 
 echo "[3/5] 恢复 Redis 数据卷 ..."
 wipe_volume safetrans-redis-data
 docker run --rm -v safetrans-redis-data:/data -v "$BACKUP":/backup:ro \
   alpine:3.20 tar xzf /backup/redis.tar.gz -C /data
-docker compose start redis >/dev/null
+$COMPOSE start redis >/dev/null
 
 echo "[4/5] 恢复 MinIO 数据卷 ..."
 wipe_volume safetrans-minio-data
 docker run --rm -v safetrans-minio-data:/data -v "$BACKUP":/backup:ro \
   alpine:3.20 tar xzf /backup/minio.tar.gz -C /data
-docker compose start minio >/dev/null
+$COMPOSE start minio >/dev/null
 
 echo "[5/5] 拉起 backend / frontend 并等待健康 ..."
-docker compose start backend frontend >/dev/null
+$COMPOSE start backend frontend >/dev/null
 for i in $(seq 1 60); do
-  if curl -fsS --max-time 3 http://localhost:8080/health 2>/dev/null | grep -q '"status":"UP"'; then
+  if curl -fsS $HEALTH_CURL_OPTS --max-time 3 "$HEALTH_URL" 2>/dev/null | grep -q '"status":"UP"'; then
     echo "✅ 恢复完成，后端已就绪（/health = UP）"
     exit 0
   fi
