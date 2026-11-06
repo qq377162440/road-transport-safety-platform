@@ -4,6 +4,7 @@ import request from '@/api/request'
 import { ElMessage } from 'element-plus'
 import Icon from '@/components/Icon.vue'
 import { ARCHIVE_CATALOG, FREQ_LABEL, STATUS } from '@/config/archiveCatalog'
+import { getArchiveDoc, isCertPage } from '@/config/archiveDocs'
 
 const cargoType = ref('普货')
 const boxes = computed(() => ARCHIVE_CATALOG[cargoType.value] || [])
@@ -235,9 +236,47 @@ async function doUpload() {
 
 // ---- PDF 预览 ----
 const preview = ref(null)
+const previewSections = ref([])
+const previewBlobUrl = ref('')
+const previewFileKind = ref('') // '' | 'pdf' | 'image'
+
+function clearPreviewBlob() {
+  if (previewBlobUrl.value) { URL.revokeObjectURL(previewBlobUrl.value); previewBlobUrl.value = '' }
+  previewFileKind.value = ''
+}
+
 function openPreview(item) {
   if (!item.pdfId) { ElMessage.warning('尚未生成/上传，无法预览'); return }
   preview.value = item
+  // 上传留存且已有真实文件：直接嵌入原文件（扫描件/PDF）
+  if (item.isUp) {
+    fetch(`/api/archive/pdf/${item.pdfId}/download`, {
+      headers: {
+        Authorization: `Bearer ${localStorage.getItem('token')}`,
+        'X-Token': `Bearer ${localStorage.getItem('token')}`,
+      },
+    }).then(async (res) => {
+      if (!res.ok) throw new Error('fetch failed')
+      const blob = await res.blob()
+      clearPreviewBlob()
+      previewBlobUrl.value = URL.createObjectURL(blob)
+      previewFileKind.value = blob.type.startsWith('image/') ? 'image' : 'pdf'
+      previewSections.value = []
+    }).catch(() => {
+      // 取不到真实文件则回退到模板正文
+      clearPreviewBlob()
+      previewSections.value = getArchiveDoc(item.name)
+    })
+    return
+  }
+  // 系统生成类：渲染可打印正文模板
+  clearPreviewBlob()
+  previewSections.value = getArchiveDoc(item.name)
+}
+function closePreview() {
+  preview.value = null
+  previewSections.value = []
+  clearPreviewBlob()
 }
 </script>
 
@@ -403,22 +442,63 @@ function openPreview(item) {
     </div>
 
     <!-- PDF 预览（A4 仿真） -->
-    <div class="pdf-mask" :class="{ show: preview }" @click.self="preview = null">
+    <div class="pdf-mask" :class="{ show: preview }" @click.self="closePreview">
       <div class="pdf-wrap">
         <div class="pdf-toolbar">
           <span class="t">{{ preview?.name }} · {{ selYear }} 年度</span>
           <el-button size="small" type="primary" @click="download(preview)"><Icon name="download" :size="13" /> 下载 PDF</el-button>
-          <button class="x" @click="preview = null">×</button>
+          <button class="x" @click="closePreview">×</button>
         </div>
         <div class="pdf-body">
-          <div class="pdf-page">
+          <!-- 上传留存且已有真实文件：直接展示原文件 -->
+          <iframe v-if="previewBlobUrl && previewFileKind === 'pdf'" :src="previewBlobUrl" class="pdf-embed" />
+          <img v-else-if="previewBlobUrl && previewFileKind === 'image'" :src="previewBlobUrl" class="pdf-embed-img" alt="扫描件" />
+          <!-- 系统生成类 / 模板正文 -->
+          <div v-else class="pdf-page">
             <div class="ph">
               <div class="org">道路运输安全生产管理平台</div>
               <div class="meta">{{ preview?.name }}（{{ selYear }} 年度）</div>
             </div>
             <div class="ptitle">{{ preview?.name }}</div>
-            <p class="ni">本文档由系统自动生成或上传留存，供打印装盒、接受政府检查。</p>
-            <p class="ni" style="color:#B91C1C">（测试中 DEV：正式版此处为完整 PDF 正文/扫描件，当前为预览占位）</p>
+            <template v-for="(s, i) in previewSections" :key="i">
+              <h1 v-if="s.type === 'h1'" class="sec-h1">{{ s.text }}</h1>
+              <h2 v-else-if="s.type === 'h2'" class="sec-h2">{{ s.text }}</h2>
+              <p v-else-if="s.type === 'p'" class="sec-p">{{ s.text }}</p>
+              <ol v-else-if="s.type === 'ol'" class="sec-ol">
+                <li v-for="(it, j) in s.items" :key="j">{{ it }}</li>
+              </ol>
+              <ul v-else-if="s.type === 'ul'" class="sec-ul">
+                <li v-for="(it, j) in s.items" :key="j">{{ it }}</li>
+              </ul>
+              <table v-else-if="s.type === 'table'" class="sec-tbl">
+                <thead><tr><th v-for="(h, j) in s.head" :key="j">{{ h }}</th></tr></thead>
+                <tbody>
+                  <tr v-for="(r, ri) in s.rows" :key="ri">
+                    <td v-for="(c, ci) in r" :key="ci">{{ c }}</td>
+                  </tr>
+                </tbody>
+              </table>
+              <div v-else-if="s.type === 'sign'" class="sec-sign">
+                <div class="sg-org">{{ s.org }}</div>
+                <div v-for="(r, j) in s.rows" :key="j" class="sg-row">
+                  <span class="sg-role">{{ r.role }}</span>
+                  <span class="sg-name">{{ r.name }}</span>
+                  <span class="sg-date">{{ r.date }}</span>
+                </div>
+              </div>
+              <div v-else-if="s.type === 'cert'" class="sec-cert">
+                <div class="cert-kind">{{ s.kind }}（证照扫描件粘贴页）</div>
+                <div class="cert-frame">
+                  <div class="cert-tip">此处粘贴 / 打印{{ s.kind }}扫描件</div>
+                </div>
+                <table class="cert-fields">
+                  <tr v-for="(f, j) in s.fields" :key="j">
+                    <td class="cf-k">{{ f[0] }}</td>
+                    <td class="cf-v">{{ f[1] }}</td>
+                  </tr>
+                </table>
+              </div>
+            </template>
           </div>
         </div>
       </div>
@@ -524,5 +604,31 @@ function openPreview(item) {
 .pdf-page .ph { text-align: center; font-size: 13px; color: #333; border-bottom: 2px solid #000; padding-bottom: 8px; margin-bottom: 6px; }
 .pdf-page .ph .org { font-size: 17px; font-weight: bold; letter-spacing: 1px; }
 .pdf-page .ph .meta { font-size: 11px; color: #555; }
-.pdf-page .ptitle { text-align: center; font-size: 20px; font-weight: bold; letter-spacing: 3px; margin: 18px 0 4px; }
+.pdf-page .ptitle { text-align: center; font-size: 20px; font-weight: bold; letter-spacing: 3px; margin: 18px 0 14px; }
+.pdf-embed { width: 700px; height: 900px; border: none; background: #fff; box-shadow: 0 2px 12px rgba(0,0,0,.15); }
+.pdf-embed-img { max-width: 700px; max-height: 880px; background: #fff; box-shadow: 0 2px 12px rgba(0,0,0,.15); display: block; }
+
+.sec-h1 { font-size: 19px; font-weight: bold; text-align: center; letter-spacing: 2px; margin: 4px 0 16px; }
+.sec-h2 { font-size: 15px; font-weight: bold; margin: 16px 0 6px; }
+.sec-p { font-size: 14px; text-indent: 2em; margin: 6px 0; text-align: justify; }
+.sec-ol, .sec-ul { font-size: 13.5px; padding-left: 2.4em; margin: 6px 0; line-height: 1.9; }
+.sec-ol li, .sec-ul li { margin: 3px 0; text-align: justify; }
+.sec-tbl { width: 100%; border-collapse: collapse; font-size: 12.5px; margin: 10px 0; }
+.sec-tbl th, .sec-tbl td { border: 1px solid #999; padding: 6px 8px; text-align: left; vertical-align: top; }
+.sec-tbl th { background: #f2f2f2; font-weight: bold; }
+.sec-sign { margin-top: 28px; font-size: 14px; }
+.sec-sign .sg-org { font-weight: bold; margin-bottom: 10px; }
+.sec-sign .sg-row { display: flex; gap: 10px; align-items: baseline; margin: 8px 0; flex-wrap: wrap; }
+.sec-sign .sg-role { white-space: nowrap; }
+.sec-sign .sg-name { min-width: 120px; border-bottom: 1px solid #000; }
+.sec-sign .sg-date { color: #333; }
+
+.sec-cert { text-align: center; }
+.cert-kind { font-size: 16px; font-weight: bold; margin: 14px 0 12px; }
+.cert-frame { border: 2px dashed #cbd5e1; border-radius: 8px; height: 420px; display: flex; align-items: center; justify-content: center; color: #94a3b8; font-size: 14px; background: #fafbfc; }
+.cert-tip { letter-spacing: 2px; }
+.cert-fields { width: 100%; border-collapse: collapse; font-size: 13.5px; margin-top: 18px; }
+.cert-fields td { border: 1px solid #bbb; padding: 8px 10px; }
+.cert-fields .cf-k { width: 150px; background: #f6f8fa; font-weight: 600; text-align: right; padding-right: 12px; }
+.cert-fields .cf-v { text-align: left; }
 </style>
