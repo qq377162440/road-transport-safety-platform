@@ -8802,5 +8802,1831 @@
         ]
       }
     ]
+  },
+  {
+    "code": "monitor",
+    "title": "动态监控台账",
+    "phase": "D1",
+    "group": "三期业务",
+    "main": "monitor_ledger",
+    "catalog": "BOX6",
+    "tables": [
+      {
+        "name": "monitor_ledger",
+        "title": "动态监控台账留存",
+        "fields": [
+          {
+            "name": "id",
+            "type": "BIGINT",
+            "label": "雪花ID",
+            "required": false,
+            "control": "hidden",
+            "javaType": "Long"
+          },
+          {
+            "name": "tenant_id",
+            "type": "BIGINT",
+            "label": "租户ID",
+            "required": false,
+            "control": "hidden",
+            "javaType": "Long"
+          },
+          {
+            "name": "ledger_name",
+            "type": "VARCHAR(200)",
+            "label": "台账名称",
+            "required": true,
+            "control": "input",
+            "javaType": "String"
+          },
+          {
+            "name": "ledger_type",
+            "type": "VARCHAR(30)",
+            "label": "类型：工作记录/设备故障/在线率/月报/交警抄报",
+            "required": false,
+            "control": "select",
+            "javaType": "String"
+          },
+          {
+            "name": "source",
+            "type": "VARCHAR(30)",
+            "label": "来源：动态监控平台/交警抄报/人工录入",
+            "required": false,
+            "control": "input",
+            "javaType": "String"
+          },
+          {
+            "name": "period",
+            "type": "VARCHAR(20)",
+            "label": "周期（如 2026-10）",
+            "required": false,
+            "control": "input",
+            "javaType": "String"
+          },
+          {
+            "name": "file_url",
+            "type": "VARCHAR(500)",
+            "label": "附件/文件留存地址",
+            "required": false,
+            "control": "upload",
+            "javaType": "String"
+          },
+          {
+            "name": "uploader_id",
+            "type": "BIGINT",
+            "label": "上传人",
+            "required": false,
+            "control": "number",
+            "javaType": "Long"
+          },
+          {
+            "name": "uploaded_at",
+            "type": "DATETIME",
+            "label": "上传时间",
+            "required": false,
+            "control": "datetime",
+            "javaType": "LocalDateTime"
+          },
+          {
+            "name": "violation_count",
+            "type": "INT",
+            "label": "识别出的违规车辆数（冗余统计）",
+            "required": false,
+            "control": "number",
+            "javaType": "Integer"
+          },
+          {
+            "name": "created_at",
+            "type": "DATETIME",
+            "label": "创建时间",
+            "required": false,
+            "control": "hidden",
+            "javaType": "LocalDateTime"
+          },
+          {
+            "name": "updated_at",
+            "type": "DATETIME",
+            "label": "更新时间",
+            "required": false,
+            "control": "hidden",
+            "javaType": "LocalDateTime"
+          },
+          {
+            "name": "created_by",
+            "type": "BIGINT",
+            "label": "创建人ID",
+            "required": false,
+            "control": "hidden",
+            "javaType": "Long"
+          },
+          {
+            "name": "deleted",
+            "type": "TINYINT",
+            "label": "逻辑删除 0否1是",
+            "required": false,
+            "control": "hidden",
+            "javaType": "Integer"
+          }
+        ]
+      },
+      {
+        "name": "org_outsource",
+        "title": "委托第三方监控标记",
+        "fields": [
+          {
+            "name": "id",
+            "type": "BIGINT",
+            "label": "雪花ID",
+            "required": false,
+            "control": "hidden",
+            "javaType": "Long"
+          },
+          {
+            "name": "tenant_id",
+            "type": "BIGINT",
+            "label": "租户ID",
+            "required": false,
+            "control": "hidden",
+            "javaType": "Long"
+          },
+          {
+            "name": "outsource_type",
+            "type": "VARCHAR(30)",
+            "label": "委托类型：monitor=监控",
+            "required": true,
+            "control": "select",
+            "javaType": "String"
+          },
+          {
+            "name": "outsource_org",
+            "type": "VARCHAR(100)",
+            "label": "第三方机构名称",
+            "required": false,
+            "control": "input",
+            "javaType": "String"
+          },
+          {
+            "name": "enabled",
+            "type": "TINYINT",
+            "label": "是否已委托",
+            "required": false,
+            "control": "switch",
+            "javaType": "Integer"
+          },
+          {
+            "name": "created_at",
+            "type": "DATETIME",
+            "label": "创建时间",
+            "required": false,
+            "control": "hidden",
+            "javaType": "LocalDateTime"
+          },
+          {
+            "name": "updated_at",
+            "type": "DATETIME",
+            "label": "更新时间",
+            "required": false,
+            "control": "hidden",
+            "javaType": "LocalDateTime"
+          },
+          {
+            "name": "created_by",
+            "type": "BIGINT",
+            "label": "创建人ID",
+            "required": false,
+            "control": "hidden",
+            "javaType": "Long"
+          },
+          {
+            "name": "deleted",
+            "type": "TINYINT",
+            "label": "逻辑删除 0否1是",
+            "required": false,
+            "control": "hidden",
+            "javaType": "Integer"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "code": "budget",
+    "title": "安全生产费用",
+    "phase": "D2",
+    "group": "三期业务",
+    "main": "budget_plan",
+    "catalog": "BOX5",
+    "tables": [
+      {
+        "name": "budget_plan",
+        "title": "安全费用计提计划",
+        "fields": [
+          {
+            "name": "id",
+            "type": "BIGINT",
+            "label": "雪花ID",
+            "required": false,
+            "control": "hidden",
+            "javaType": "Long"
+          },
+          {
+            "name": "tenant_id",
+            "type": "BIGINT",
+            "label": "租户ID",
+            "required": false,
+            "control": "hidden",
+            "javaType": "Long"
+          },
+          {
+            "name": "year",
+            "type": "INT",
+            "label": "计提年度",
+            "required": true,
+            "control": "number",
+            "javaType": "Integer"
+          },
+          {
+            "name": "cargo_type",
+            "type": "VARCHAR(10)",
+            "label": "general普货/danger危货",
+            "required": false,
+            "control": "select",
+            "javaType": "String"
+          },
+          {
+            "name": "revenue",
+            "type": "DECIMAL(14,2)",
+            "label": "上年度营业收入（元）",
+            "required": false,
+            "control": "number",
+            "javaType": "BigDecimal"
+          },
+          {
+            "name": "revenue_file",
+            "type": "VARCHAR(500)",
+            "label": "营收证明文件（B7）",
+            "required": false,
+            "control": "upload",
+            "javaType": "String"
+          },
+          {
+            "name": "rate",
+            "type": "DECIMAL(5,4)",
+            "label": "计提比例（普货0.01/危货0.015，B2）",
+            "required": false,
+            "control": "number",
+            "javaType": "BigDecimal"
+          },
+          {
+            "name": "plan_amount",
+            "type": "DECIMAL(14,2)",
+            "label": "应提金额 = revenue × rate（B3）",
+            "required": false,
+            "control": "number",
+            "javaType": "BigDecimal"
+          },
+          {
+            "name": "used_amount",
+            "type": "DECIMAL(14,2)",
+            "label": "已用金额（支出台账汇总）",
+            "required": false,
+            "control": "number",
+            "javaType": "BigDecimal"
+          },
+          {
+            "name": "balance",
+            "type": "DECIMAL(14,2)",
+            "label": "结余 = plan_amount - used_amount",
+            "required": false,
+            "control": "number",
+            "javaType": "BigDecimal"
+          },
+          {
+            "name": "status",
+            "type": "VARCHAR(20)",
+            "label": "draft/confirmed",
+            "required": false,
+            "control": "select",
+            "javaType": "String"
+          },
+          {
+            "name": "created_at",
+            "type": "DATETIME",
+            "label": "创建时间",
+            "required": false,
+            "control": "hidden",
+            "javaType": "LocalDateTime"
+          },
+          {
+            "name": "updated_at",
+            "type": "DATETIME",
+            "label": "更新时间",
+            "required": false,
+            "control": "hidden",
+            "javaType": "LocalDateTime"
+          },
+          {
+            "name": "created_by",
+            "type": "BIGINT",
+            "label": "创建人ID",
+            "required": false,
+            "control": "hidden",
+            "javaType": "Long"
+          },
+          {
+            "name": "deleted",
+            "type": "TINYINT",
+            "label": "逻辑删除 0否1是",
+            "required": false,
+            "control": "hidden",
+            "javaType": "Integer"
+          }
+        ]
+      },
+      {
+        "name": "budget_expense",
+        "title": "安全费用支出",
+        "fields": [
+          {
+            "name": "id",
+            "type": "BIGINT",
+            "label": "雪花ID",
+            "required": false,
+            "control": "hidden",
+            "javaType": "Long"
+          },
+          {
+            "name": "tenant_id",
+            "type": "BIGINT",
+            "label": "租户ID",
+            "required": false,
+            "control": "hidden",
+            "javaType": "Long"
+          },
+          {
+            "name": "plan_id",
+            "type": "BIGINT",
+            "label": "关联年度计提",
+            "required": true,
+            "control": "number",
+            "javaType": "Long"
+          },
+          {
+            "name": "category_id",
+            "type": "BIGINT",
+            "label": "费用类别（B5）",
+            "required": false,
+            "control": "number",
+            "javaType": "Long"
+          },
+          {
+            "name": "expense_date",
+            "type": "DATE",
+            "label": "支出日期",
+            "required": true,
+            "control": "date",
+            "javaType": "LocalDate"
+          },
+          {
+            "name": "expense_desc",
+            "type": "VARCHAR(500)",
+            "label": "事由/摘要",
+            "required": false,
+            "control": "input",
+            "javaType": "String"
+          },
+          {
+            "name": "amount",
+            "type": "DECIMAL(12,2)",
+            "label": "金额（元）",
+            "required": true,
+            "control": "number",
+            "javaType": "BigDecimal"
+          },
+          {
+            "name": "receipt_file",
+            "type": "VARCHAR(500)",
+            "label": "发票/收据（B6）",
+            "required": false,
+            "control": "upload",
+            "javaType": "String"
+          },
+          {
+            "name": "created_at",
+            "type": "DATETIME",
+            "label": "创建时间",
+            "required": false,
+            "control": "hidden",
+            "javaType": "LocalDateTime"
+          },
+          {
+            "name": "updated_at",
+            "type": "DATETIME",
+            "label": "更新时间",
+            "required": false,
+            "control": "hidden",
+            "javaType": "LocalDateTime"
+          },
+          {
+            "name": "created_by",
+            "type": "BIGINT",
+            "label": "创建人ID",
+            "required": false,
+            "control": "hidden",
+            "javaType": "Long"
+          },
+          {
+            "name": "deleted",
+            "type": "TINYINT",
+            "label": "逻辑删除 0否1是",
+            "required": false,
+            "control": "hidden",
+            "javaType": "Integer"
+          }
+        ]
+      },
+      {
+        "name": "budget_category",
+        "title": "安全费用支出类别",
+        "fields": [
+          {
+            "name": "id",
+            "type": "BIGINT",
+            "label": "雪花ID",
+            "required": false,
+            "control": "hidden",
+            "javaType": "Long"
+          },
+          {
+            "name": "tenant_id",
+            "type": "BIGINT",
+            "label": "租户ID",
+            "required": false,
+            "control": "hidden",
+            "javaType": "Long"
+          },
+          {
+            "name": "category_name",
+            "type": "VARCHAR(100)",
+            "label": "费用类别名（财资136号11类全称）",
+            "required": true,
+            "control": "input",
+            "javaType": "String"
+          },
+          {
+            "name": "category_code",
+            "type": "VARCHAR(50)",
+            "label": "编码（FACILITY/LOCATION/RESCUE/HAZARD/CHECK/PPE/TRAIN/TECH/INSPECT/INSUR/OTHER）",
+            "required": false,
+            "control": "input",
+            "javaType": "String"
+          },
+          {
+            "name": "sort_order",
+            "type": "INT",
+            "label": "sort_order",
+            "required": false,
+            "control": "number",
+            "javaType": "Integer"
+          },
+          {
+            "name": "created_at",
+            "type": "DATETIME",
+            "label": "创建时间",
+            "required": false,
+            "control": "hidden",
+            "javaType": "LocalDateTime"
+          },
+          {
+            "name": "updated_at",
+            "type": "DATETIME",
+            "label": "更新时间",
+            "required": false,
+            "control": "hidden",
+            "javaType": "LocalDateTime"
+          },
+          {
+            "name": "created_by",
+            "type": "BIGINT",
+            "label": "创建人ID",
+            "required": false,
+            "control": "hidden",
+            "javaType": "Long"
+          },
+          {
+            "name": "deleted",
+            "type": "TINYINT",
+            "label": "逻辑删除 0否1是",
+            "required": false,
+            "control": "hidden",
+            "javaType": "Integer"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "code": "risk",
+    "title": "风险分级管控",
+    "phase": "D3",
+    "group": "三期业务",
+    "main": "risk_list",
+    "catalog": "BOX8",
+    "tables": [
+      {
+        "name": "risk_point_dict",
+        "title": "风险点字典",
+        "fields": [
+          {
+            "name": "id",
+            "type": "BIGINT",
+            "label": "雪花ID",
+            "required": false,
+            "control": "hidden",
+            "javaType": "Long"
+          },
+          {
+            "name": "tenant_id",
+            "type": "BIGINT",
+            "label": "租户ID",
+            "required": false,
+            "control": "hidden",
+            "javaType": "Long"
+          },
+          {
+            "name": "risk_name",
+            "type": "VARCHAR(200)",
+            "label": "风险点名称（如\"疲劳驾驶\"）",
+            "required": true,
+            "control": "input",
+            "javaType": "String"
+          },
+          {
+            "name": "risk_category",
+            "type": "VARCHAR(50)",
+            "label": "分类：driver驾驶员/vehicle车辆/cargo货物/env环境/manage管理",
+            "required": false,
+            "control": "input",
+            "javaType": "String"
+          },
+          {
+            "name": "risk_level",
+            "type": "VARCHAR(20)",
+            "label": "风险等级：红/橙/黄/蓝（重大/较大/一般/低）",
+            "required": false,
+            "control": "select",
+            "javaType": "String"
+          },
+          {
+            "name": "control_measure",
+            "type": "VARCHAR(1000)",
+            "label": "管控措施（模板默认）",
+            "required": false,
+            "control": "input",
+            "javaType": "String"
+          },
+          {
+            "name": "cargo_type",
+            "type": "VARCHAR(10)",
+            "label": "general普货/danger危货/all通用",
+            "required": false,
+            "control": "select",
+            "javaType": "String"
+          },
+          {
+            "name": "created_at",
+            "type": "DATETIME",
+            "label": "创建时间",
+            "required": false,
+            "control": "hidden",
+            "javaType": "LocalDateTime"
+          },
+          {
+            "name": "updated_at",
+            "type": "DATETIME",
+            "label": "更新时间",
+            "required": false,
+            "control": "hidden",
+            "javaType": "LocalDateTime"
+          },
+          {
+            "name": "created_by",
+            "type": "BIGINT",
+            "label": "创建人ID",
+            "required": false,
+            "control": "hidden",
+            "javaType": "Long"
+          },
+          {
+            "name": "deleted",
+            "type": "TINYINT",
+            "label": "逻辑删除 0否1是",
+            "required": false,
+            "control": "hidden",
+            "javaType": "Integer"
+          }
+        ]
+      },
+      {
+        "name": "risk_list",
+        "title": "风险清单",
+        "fields": [
+          {
+            "name": "id",
+            "type": "BIGINT",
+            "label": "雪花ID",
+            "required": false,
+            "control": "hidden",
+            "javaType": "Long"
+          },
+          {
+            "name": "tenant_id",
+            "type": "BIGINT",
+            "label": "租户ID",
+            "required": false,
+            "control": "hidden",
+            "javaType": "Long"
+          },
+          {
+            "name": "year",
+            "type": "INT",
+            "label": "年度",
+            "required": false,
+            "control": "number",
+            "javaType": "Integer"
+          },
+          {
+            "name": "risk_point_id",
+            "type": "BIGINT",
+            "label": "风险点（引用字典）",
+            "required": false,
+            "control": "number",
+            "javaType": "Long"
+          },
+          {
+            "name": "risk_source",
+            "type": "VARCHAR(200)",
+            "label": "风险源（如\"恶劣天气/道路条件\"，两级清单第二级）",
+            "required": false,
+            "control": "input",
+            "javaType": "String"
+          },
+          {
+            "name": "risk_desc",
+            "type": "VARCHAR(500)",
+            "label": "风险描述（企业可补充）",
+            "required": false,
+            "control": "input",
+            "javaType": "String"
+          },
+          {
+            "name": "consequence",
+            "type": "VARCHAR(500)",
+            "label": "事故后果（如\"人员伤亡、车辆损坏、财产损失\"）",
+            "required": false,
+            "control": "input",
+            "javaType": "String"
+          },
+          {
+            "name": "risk_level",
+            "type": "VARCHAR(20)",
+            "label": "风险等级",
+            "required": false,
+            "control": "select",
+            "javaType": "String"
+          },
+          {
+            "name": "control_engineering",
+            "type": "VARCHAR(1000)",
+            "label": "风险控制措施·工程技术",
+            "required": false,
+            "control": "input",
+            "javaType": "String"
+          },
+          {
+            "name": "control_manage",
+            "type": "VARCHAR(1000)",
+            "label": "风险控制措施·管理措施",
+            "required": false,
+            "control": "input",
+            "javaType": "String"
+          },
+          {
+            "name": "responsible_id",
+            "type": "BIGINT",
+            "label": "责任人（组织架构）",
+            "required": false,
+            "control": "number",
+            "javaType": "Long"
+          },
+          {
+            "name": "remark",
+            "type": "VARCHAR(500)",
+            "label": "remark",
+            "required": false,
+            "control": "input",
+            "javaType": "String"
+          },
+          {
+            "name": "created_at",
+            "type": "DATETIME",
+            "label": "创建时间",
+            "required": false,
+            "control": "hidden",
+            "javaType": "LocalDateTime"
+          },
+          {
+            "name": "updated_at",
+            "type": "DATETIME",
+            "label": "更新时间",
+            "required": false,
+            "control": "hidden",
+            "javaType": "LocalDateTime"
+          },
+          {
+            "name": "created_by",
+            "type": "BIGINT",
+            "label": "创建人ID",
+            "required": false,
+            "control": "hidden",
+            "javaType": "Long"
+          },
+          {
+            "name": "deleted",
+            "type": "TINYINT",
+            "label": "逻辑删除 0否1是",
+            "required": false,
+            "control": "hidden",
+            "javaType": "Integer"
+          }
+        ]
+      },
+      {
+        "name": "risk_card",
+        "title": "风险卡",
+        "fields": [
+          {
+            "name": "id",
+            "type": "BIGINT",
+            "label": "雪花ID",
+            "required": false,
+            "control": "hidden",
+            "javaType": "Long"
+          },
+          {
+            "name": "tenant_id",
+            "type": "BIGINT",
+            "label": "租户ID",
+            "required": false,
+            "control": "hidden",
+            "javaType": "Long"
+          },
+          {
+            "name": "year",
+            "type": "INT",
+            "label": "year",
+            "required": false,
+            "control": "number",
+            "javaType": "Integer"
+          },
+          {
+            "name": "post_id",
+            "type": "BIGINT",
+            "label": "岗位（组织架构）",
+            "required": true,
+            "control": "number",
+            "javaType": "Long"
+          },
+          {
+            "name": "post_name",
+            "type": "VARCHAR(50)",
+            "label": "岗位名（快照）",
+            "required": false,
+            "control": "input",
+            "javaType": "String"
+          },
+          {
+            "name": "risk_points",
+            "type": "TEXT",
+            "label": "该岗位风险点（JSON，引用风险点）",
+            "required": false,
+            "control": "textarea",
+            "javaType": "String"
+          },
+          {
+            "name": "content_html",
+            "type": "LONGTEXT",
+            "label": "告知卡正文（模板生成）",
+            "required": false,
+            "control": "textarea",
+            "javaType": "String"
+          },
+          {
+            "name": "created_at",
+            "type": "DATETIME",
+            "label": "创建时间",
+            "required": false,
+            "control": "hidden",
+            "javaType": "LocalDateTime"
+          },
+          {
+            "name": "updated_at",
+            "type": "DATETIME",
+            "label": "更新时间",
+            "required": false,
+            "control": "hidden",
+            "javaType": "LocalDateTime"
+          },
+          {
+            "name": "created_by",
+            "type": "BIGINT",
+            "label": "创建人ID",
+            "required": false,
+            "control": "hidden",
+            "javaType": "Long"
+          },
+          {
+            "name": "deleted",
+            "type": "TINYINT",
+            "label": "逻辑删除 0否1是",
+            "required": false,
+            "control": "hidden",
+            "javaType": "Integer"
+          }
+        ]
+      },
+      {
+        "name": "risk_manual",
+        "title": "风险手册",
+        "fields": [
+          {
+            "name": "id",
+            "type": "BIGINT",
+            "label": "雪花ID",
+            "required": false,
+            "control": "hidden",
+            "javaType": "Long"
+          },
+          {
+            "name": "tenant_id",
+            "type": "BIGINT",
+            "label": "租户ID",
+            "required": false,
+            "control": "hidden",
+            "javaType": "Long"
+          },
+          {
+            "name": "year",
+            "type": "INT",
+            "label": "year",
+            "required": false,
+            "control": "number",
+            "javaType": "Integer"
+          },
+          {
+            "name": "doc_type",
+            "type": "VARCHAR(30)",
+            "label": "manual手册/no_risk说明/safety_eval安全评估/no_hidden声明",
+            "required": false,
+            "control": "select",
+            "javaType": "String"
+          },
+          {
+            "name": "doc_name",
+            "type": "VARCHAR(200)",
+            "label": "doc_name",
+            "required": true,
+            "control": "input",
+            "javaType": "String"
+          },
+          {
+            "name": "content_html",
+            "type": "LONGTEXT",
+            "label": "正文（模板生成）",
+            "required": false,
+            "control": "textarea",
+            "javaType": "String"
+          },
+          {
+            "name": "created_at",
+            "type": "DATETIME",
+            "label": "创建时间",
+            "required": false,
+            "control": "hidden",
+            "javaType": "LocalDateTime"
+          },
+          {
+            "name": "updated_at",
+            "type": "DATETIME",
+            "label": "更新时间",
+            "required": false,
+            "control": "hidden",
+            "javaType": "LocalDateTime"
+          },
+          {
+            "name": "created_by",
+            "type": "BIGINT",
+            "label": "创建人ID",
+            "required": false,
+            "control": "hidden",
+            "javaType": "Long"
+          },
+          {
+            "name": "deleted",
+            "type": "TINYINT",
+            "label": "逻辑删除 0否1是",
+            "required": false,
+            "control": "hidden",
+            "javaType": "Integer"
+          }
+        ]
+      },
+      {
+        "name": "org_post_content",
+        "title": "org_post_content",
+        "fields": [
+          {
+            "name": "id",
+            "type": "BIGINT",
+            "label": "雪花ID",
+            "required": false,
+            "control": "hidden",
+            "javaType": "Long"
+          },
+          {
+            "name": "tenant_id",
+            "type": "BIGINT",
+            "label": "租户ID",
+            "required": false,
+            "control": "hidden",
+            "javaType": "Long"
+          },
+          {
+            "name": "post_code",
+            "type": "VARCHAR(50)",
+            "label": "岗位编码（对齐组织架构岗位）",
+            "required": false,
+            "control": "input",
+            "javaType": "String"
+          },
+          {
+            "name": "content_code",
+            "type": "VARCHAR(30)",
+            "label": "内容块：duty/target/hazard/prevent/commitment/post_desc",
+            "required": false,
+            "control": "input",
+            "javaType": "String"
+          },
+          {
+            "name": "content_val",
+            "type": "LONGTEXT",
+            "label": "内容（JSON，列表型存数组）",
+            "required": false,
+            "control": "textarea",
+            "javaType": "String"
+          },
+          {
+            "name": "created_at",
+            "type": "DATETIME",
+            "label": "创建时间",
+            "required": false,
+            "control": "hidden",
+            "javaType": "LocalDateTime"
+          },
+          {
+            "name": "updated_at",
+            "type": "DATETIME",
+            "label": "更新时间",
+            "required": false,
+            "control": "hidden",
+            "javaType": "LocalDateTime"
+          },
+          {
+            "name": "created_by",
+            "type": "BIGINT",
+            "label": "创建人ID",
+            "required": false,
+            "control": "hidden",
+            "javaType": "Long"
+          },
+          {
+            "name": "deleted",
+            "type": "TINYINT",
+            "label": "逻辑删除 0否1是",
+            "required": false,
+            "control": "hidden",
+            "javaType": "Integer"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "code": "dangerspecial",
+    "title": "危货专项深化",
+    "phase": "D4",
+    "group": "三期业务",
+    "main": "danger_special_ledger",
+    "catalog": "BOX6",
+    "tables": [
+      {
+        "name": "danger_special_ledger",
+        "title": "危货六项专项台账统一表（D4）",
+        "fields": [
+          {
+            "name": "id",
+            "type": "BIGINT",
+            "label": "雪花ID",
+            "required": false,
+            "control": "hidden",
+            "javaType": "Long"
+          },
+          {
+            "name": "tenant_id",
+            "type": "BIGINT",
+            "label": "租户ID",
+            "required": false,
+            "control": "hidden",
+            "javaType": "Long"
+          },
+          {
+            "name": "ledger_type",
+            "type": "VARCHAR(30)",
+            "label": "台账类型：waybill电子运单/load_check装卸查验/transport危险品运输台账/escort押运员在岗/long_line800公里线路/safety_card安全卡一书一签",
+            "required": true,
+            "control": "select",
+            "javaType": "String"
+          },
+          {
+            "name": "biz_date",
+            "type": "DATE",
+            "label": "台账日期",
+            "required": true,
+            "control": "date",
+            "javaType": "LocalDate"
+          },
+          {
+            "name": "waybill_no",
+            "type": "VARCHAR(50)",
+            "label": "关联电子运单号",
+            "required": false,
+            "control": "input",
+            "javaType": "String"
+          },
+          {
+            "name": "plate_no",
+            "type": "VARCHAR(20)",
+            "label": "车牌号",
+            "required": false,
+            "control": "input",
+            "javaType": "String"
+          },
+          {
+            "name": "cargo_name",
+            "type": "VARCHAR(100)",
+            "label": "货物品名",
+            "required": false,
+            "control": "input",
+            "javaType": "String"
+          },
+          {
+            "name": "vehicle_id",
+            "type": "BIGINT",
+            "label": "承运车辆",
+            "required": false,
+            "control": "number",
+            "javaType": "Long"
+          },
+          {
+            "name": "driver_id",
+            "type": "BIGINT",
+            "label": "驾驶员",
+            "required": false,
+            "control": "number",
+            "javaType": "Long"
+          },
+          {
+            "name": "escort_id",
+            "type": "BIGINT",
+            "label": "押运员",
+            "required": false,
+            "control": "number",
+            "javaType": "Long"
+          },
+          {
+            "name": "content",
+            "type": "TEXT",
+            "label": "台账内容/查验项（JSON 或文本）",
+            "required": false,
+            "control": "textarea",
+            "javaType": "String"
+          },
+          {
+            "name": "file_url",
+            "type": "VARCHAR(500)",
+            "label": "附件凭证（MinIO 对象键）",
+            "required": false,
+            "control": "upload",
+            "javaType": "String"
+          },
+          {
+            "name": "status",
+            "type": "VARCHAR(20)",
+            "label": "draft草稿/confirmed已确认/archived已归档",
+            "required": false,
+            "control": "select",
+            "javaType": "String"
+          },
+          {
+            "name": "remark",
+            "type": "VARCHAR(500)",
+            "label": "remark",
+            "required": false,
+            "control": "input",
+            "javaType": "String"
+          },
+          {
+            "name": "created_at",
+            "type": "DATETIME",
+            "label": "创建时间",
+            "required": false,
+            "control": "hidden",
+            "javaType": "LocalDateTime"
+          },
+          {
+            "name": "updated_at",
+            "type": "DATETIME",
+            "label": "更新时间",
+            "required": false,
+            "control": "hidden",
+            "javaType": "LocalDateTime"
+          },
+          {
+            "name": "created_by",
+            "type": "BIGINT",
+            "label": "创建人ID",
+            "required": false,
+            "control": "hidden",
+            "javaType": "Long"
+          },
+          {
+            "name": "deleted",
+            "type": "TINYINT",
+            "label": "逻辑删除 0否1是",
+            "required": false,
+            "control": "hidden",
+            "javaType": "Integer"
+          }
+        ]
+      },
+      {
+        "name": "danger_waybill",
+        "title": "危险货物电子运单（D4，法律法规强制）",
+        "fields": [
+          {
+            "name": "id",
+            "type": "BIGINT",
+            "label": "雪花ID",
+            "required": false,
+            "control": "hidden",
+            "javaType": "Long"
+          },
+          {
+            "name": "tenant_id",
+            "type": "BIGINT",
+            "label": "租户ID",
+            "required": false,
+            "control": "hidden",
+            "javaType": "Long"
+          },
+          {
+            "name": "waybill_no",
+            "type": "VARCHAR(50)",
+            "label": "电子运单号（对接监管平台）",
+            "required": true,
+            "control": "input",
+            "javaType": "String"
+          },
+          {
+            "name": "cargo_name",
+            "type": "VARCHAR(100)",
+            "label": "危险货物品名",
+            "required": true,
+            "control": "input",
+            "javaType": "String"
+          },
+          {
+            "name": "danger_class",
+            "type": "VARCHAR(50)",
+            "label": "危险类别：易燃/腐蚀/毒害/爆炸/放射性",
+            "required": false,
+            "control": "select",
+            "javaType": "String"
+          },
+          {
+            "name": "un_no",
+            "type": "VARCHAR(20)",
+            "label": "UN 编号",
+            "required": false,
+            "control": "input",
+            "javaType": "String"
+          },
+          {
+            "name": "quantity",
+            "type": "DECIMAL(12,2)",
+            "label": "数量",
+            "required": false,
+            "control": "number",
+            "javaType": "BigDecimal"
+          },
+          {
+            "name": "unit",
+            "type": "VARCHAR(10)",
+            "label": "计量单位",
+            "required": false,
+            "control": "input",
+            "javaType": "String"
+          },
+          {
+            "name": "origin",
+            "type": "VARCHAR(200)",
+            "label": "起运地",
+            "required": false,
+            "control": "input",
+            "javaType": "String"
+          },
+          {
+            "name": "destination",
+            "type": "VARCHAR(200)",
+            "label": "送达地",
+            "required": false,
+            "control": "input",
+            "javaType": "String"
+          },
+          {
+            "name": "vehicle_id",
+            "type": "BIGINT",
+            "label": "承运车辆",
+            "required": false,
+            "control": "number",
+            "javaType": "Long"
+          },
+          {
+            "name": "plate_no",
+            "type": "VARCHAR(20)",
+            "label": "车牌号（快照）",
+            "required": false,
+            "control": "input",
+            "javaType": "String"
+          },
+          {
+            "name": "driver_id",
+            "type": "BIGINT",
+            "label": "驾驶员",
+            "required": false,
+            "control": "number",
+            "javaType": "Long"
+          },
+          {
+            "name": "escort_id",
+            "type": "BIGINT",
+            "label": "押运员（危货强制全程在岗）",
+            "required": false,
+            "control": "number",
+            "javaType": "Long"
+          },
+          {
+            "name": "depart_at",
+            "type": "DATETIME",
+            "label": "发车时间",
+            "required": false,
+            "control": "datetime",
+            "javaType": "LocalDateTime"
+          },
+          {
+            "name": "arrive_at",
+            "type": "DATETIME",
+            "label": "送达时间",
+            "required": false,
+            "control": "datetime",
+            "javaType": "LocalDateTime"
+          },
+          {
+            "name": "distance_km",
+            "type": "INT",
+            "label": "线路里程（km）",
+            "required": false,
+            "control": "number",
+            "javaType": "Integer"
+          },
+          {
+            "name": "double_driver",
+            "type": "TINYINT",
+            "label": "800公里以上是否双押双驾",
+            "required": false,
+            "control": "switch",
+            "javaType": "Integer"
+          },
+          {
+            "name": "escort_on_duty",
+            "type": "TINYINT",
+            "label": "押运员在岗校验 1通过",
+            "required": false,
+            "control": "switch",
+            "javaType": "Integer"
+          },
+          {
+            "name": "vehicle_checked",
+            "type": "TINYINT",
+            "label": "车辆资质/罐体/标识查验 1通过",
+            "required": false,
+            "control": "switch",
+            "javaType": "Integer"
+          },
+          {
+            "name": "status",
+            "type": "VARCHAR(20)",
+            "label": "draft待发/transit在途/completed完成/archived已归档",
+            "required": false,
+            "control": "select",
+            "javaType": "String"
+          },
+          {
+            "name": "file_url",
+            "type": "VARCHAR(500)",
+            "label": "运单/安全卡附件",
+            "required": false,
+            "control": "upload",
+            "javaType": "String"
+          },
+          {
+            "name": "remark",
+            "type": "VARCHAR(500)",
+            "label": "remark",
+            "required": false,
+            "control": "input",
+            "javaType": "String"
+          },
+          {
+            "name": "created_at",
+            "type": "DATETIME",
+            "label": "创建时间",
+            "required": false,
+            "control": "hidden",
+            "javaType": "LocalDateTime"
+          },
+          {
+            "name": "updated_at",
+            "type": "DATETIME",
+            "label": "更新时间",
+            "required": false,
+            "control": "hidden",
+            "javaType": "LocalDateTime"
+          },
+          {
+            "name": "created_by",
+            "type": "BIGINT",
+            "label": "创建人ID",
+            "required": false,
+            "control": "hidden",
+            "javaType": "Long"
+          },
+          {
+            "name": "deleted",
+            "type": "TINYINT",
+            "label": "逻辑删除 0否1是",
+            "required": false,
+            "control": "hidden",
+            "javaType": "Integer"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "code": "platform",
+    "title": "平台侧能力",
+    "phase": "D5",
+    "group": "平台管理",
+    "main": "sys_module_config",
+    "catalog": "",
+    "tables": [
+      {
+        "name": "sys_module_config",
+        "title": "平台功能模块字典（D5，平台级无租户）",
+        "fields": [
+          {
+            "name": "id",
+            "type": "BIGINT",
+            "label": "雪花ID",
+            "required": false,
+            "control": "hidden",
+            "javaType": "Long"
+          },
+          {
+            "name": "module_code",
+            "type": "VARCHAR(50)",
+            "label": "模块编码（对齐 biz/modules.json）",
+            "required": true,
+            "control": "input",
+            "javaType": "String"
+          },
+          {
+            "name": "module_name",
+            "type": "VARCHAR(100)",
+            "label": "模块名称",
+            "required": true,
+            "control": "input",
+            "javaType": "String"
+          },
+          {
+            "name": "phase",
+            "type": "VARCHAR(10)",
+            "label": "所属阶段 A2/B1/C1/D1",
+            "required": false,
+            "control": "input",
+            "javaType": "String"
+          },
+          {
+            "name": "group_name",
+            "type": "VARCHAR(50)",
+            "label": "菜单分组",
+            "required": false,
+            "control": "input",
+            "javaType": "String"
+          },
+          {
+            "name": "is_base",
+            "type": "TINYINT",
+            "label": "1基础版包含 0增值模块",
+            "required": false,
+            "control": "switch",
+            "javaType": "Integer"
+          },
+          {
+            "name": "monthly_fee",
+            "type": "DECIMAL(10,2)",
+            "label": "增值模块月费（元）",
+            "required": false,
+            "control": "number",
+            "javaType": "BigDecimal"
+          },
+          {
+            "name": "sort_no",
+            "type": "INT",
+            "label": "排序",
+            "required": false,
+            "control": "number",
+            "javaType": "Integer"
+          },
+          {
+            "name": "enabled",
+            "type": "TINYINT",
+            "label": "平台是否上架",
+            "required": false,
+            "control": "switch",
+            "javaType": "Integer"
+          },
+          {
+            "name": "created_at",
+            "type": "DATETIME",
+            "label": "创建时间",
+            "required": false,
+            "control": "hidden",
+            "javaType": "LocalDateTime"
+          },
+          {
+            "name": "updated_at",
+            "type": "DATETIME",
+            "label": "更新时间",
+            "required": false,
+            "control": "hidden",
+            "javaType": "LocalDateTime"
+          },
+          {
+            "name": "created_by",
+            "type": "BIGINT",
+            "label": "创建人ID",
+            "required": false,
+            "control": "hidden",
+            "javaType": "Long"
+          },
+          {
+            "name": "deleted",
+            "type": "TINYINT",
+            "label": "逻辑删除 0否1是",
+            "required": false,
+            "control": "hidden",
+            "javaType": "Integer"
+          }
+        ]
+      },
+      {
+        "name": "tenant_module",
+        "title": "企业功能模块开通记录（D5）",
+        "fields": [
+          {
+            "name": "id",
+            "type": "BIGINT",
+            "label": "雪花ID",
+            "required": false,
+            "control": "hidden",
+            "javaType": "Long"
+          },
+          {
+            "name": "tenant_id",
+            "type": "BIGINT",
+            "label": "租户ID",
+            "required": false,
+            "control": "hidden",
+            "javaType": "Long"
+          },
+          {
+            "name": "module_code",
+            "type": "VARCHAR(50)",
+            "label": "模块编码",
+            "required": true,
+            "control": "input",
+            "javaType": "String"
+          },
+          {
+            "name": "enabled",
+            "type": "TINYINT",
+            "label": "1已开通 0已关闭",
+            "required": false,
+            "control": "switch",
+            "javaType": "Integer"
+          },
+          {
+            "name": "expire_at",
+            "type": "DATE",
+            "label": "授权到期日（空=长期）",
+            "required": false,
+            "control": "datetime",
+            "javaType": "LocalDate"
+          },
+          {
+            "name": "opened_by",
+            "type": "BIGINT",
+            "label": "开动人",
+            "required": false,
+            "control": "number",
+            "javaType": "Long"
+          },
+          {
+            "name": "opened_at",
+            "type": "DATETIME",
+            "label": "开通时间",
+            "required": false,
+            "control": "datetime",
+            "javaType": "LocalDateTime"
+          },
+          {
+            "name": "created_at",
+            "type": "DATETIME",
+            "label": "创建时间",
+            "required": false,
+            "control": "hidden",
+            "javaType": "LocalDateTime"
+          },
+          {
+            "name": "updated_at",
+            "type": "DATETIME",
+            "label": "更新时间",
+            "required": false,
+            "control": "hidden",
+            "javaType": "LocalDateTime"
+          },
+          {
+            "name": "created_by",
+            "type": "BIGINT",
+            "label": "创建人ID",
+            "required": false,
+            "control": "hidden",
+            "javaType": "Long"
+          },
+          {
+            "name": "deleted",
+            "type": "TINYINT",
+            "label": "逻辑删除 0否1是",
+            "required": false,
+            "control": "hidden",
+            "javaType": "Integer"
+          }
+        ]
+      },
+      {
+        "name": "sso_config",
+        "title": "企业 SSO 配置登记（D5）",
+        "fields": [
+          {
+            "name": "id",
+            "type": "BIGINT",
+            "label": "雪花ID",
+            "required": false,
+            "control": "hidden",
+            "javaType": "Long"
+          },
+          {
+            "name": "tenant_id",
+            "type": "BIGINT",
+            "label": "租户ID",
+            "required": false,
+            "control": "hidden",
+            "javaType": "Long"
+          },
+          {
+            "name": "protocol",
+            "type": "VARCHAR(20)",
+            "label": "协议：OIDC/SAML2/CAS",
+            "required": false,
+            "control": "input",
+            "javaType": "String"
+          },
+          {
+            "name": "idp_url",
+            "type": "VARCHAR(300)",
+            "label": "身份提供方地址",
+            "required": false,
+            "control": "upload",
+            "javaType": "String"
+          },
+          {
+            "name": "client_id",
+            "type": "VARCHAR(200)",
+            "label": "客户端 ID",
+            "required": false,
+            "control": "input",
+            "javaType": "String"
+          },
+          {
+            "name": "client_secret",
+            "type": "VARCHAR(500)",
+            "label": "客户端密钥（接口脱敏，不回显明文）",
+            "required": false,
+            "control": "input",
+            "javaType": "String"
+          },
+          {
+            "name": "enabled",
+            "type": "TINYINT",
+            "label": "1启用 0停用",
+            "required": false,
+            "control": "switch",
+            "javaType": "Integer"
+          },
+          {
+            "name": "remark",
+            "type": "VARCHAR(500)",
+            "label": "备注（对接范围说明）",
+            "required": false,
+            "control": "input",
+            "javaType": "String"
+          },
+          {
+            "name": "created_at",
+            "type": "DATETIME",
+            "label": "创建时间",
+            "required": false,
+            "control": "hidden",
+            "javaType": "LocalDateTime"
+          },
+          {
+            "name": "updated_at",
+            "type": "DATETIME",
+            "label": "更新时间",
+            "required": false,
+            "control": "hidden",
+            "javaType": "LocalDateTime"
+          },
+          {
+            "name": "created_by",
+            "type": "BIGINT",
+            "label": "创建人ID",
+            "required": false,
+            "control": "hidden",
+            "javaType": "Long"
+          },
+          {
+            "name": "deleted",
+            "type": "TINYINT",
+            "label": "逻辑删除 0否1是",
+            "required": false,
+            "control": "hidden",
+            "javaType": "Integer"
+          }
+        ]
+      },
+      {
+        "name": "service_billing",
+        "title": "增值服务计费账单（D5）",
+        "fields": [
+          {
+            "name": "id",
+            "type": "BIGINT",
+            "label": "雪花ID",
+            "required": false,
+            "control": "hidden",
+            "javaType": "Long"
+          },
+          {
+            "name": "tenant_id",
+            "type": "BIGINT",
+            "label": "租户ID",
+            "required": false,
+            "control": "hidden",
+            "javaType": "Long"
+          },
+          {
+            "name": "module_code",
+            "type": "VARCHAR(50)",
+            "label": "计费模块",
+            "required": true,
+            "control": "input",
+            "javaType": "String"
+          },
+          {
+            "name": "period",
+            "type": "VARCHAR(20)",
+            "label": "账期 YYYY-MM",
+            "required": true,
+            "control": "input",
+            "javaType": "String"
+          },
+          {
+            "name": "amount",
+            "type": "DECIMAL(12,2)",
+            "label": "账单金额（元）",
+            "required": true,
+            "control": "number",
+            "javaType": "BigDecimal"
+          },
+          {
+            "name": "status",
+            "type": "VARCHAR(20)",
+            "label": "unpaid待付/paid已结/waived已减免",
+            "required": false,
+            "control": "select",
+            "javaType": "String"
+          },
+          {
+            "name": "bill_no",
+            "type": "VARCHAR(50)",
+            "label": "账单号",
+            "required": false,
+            "control": "input",
+            "javaType": "String"
+          },
+          {
+            "name": "paid_at",
+            "type": "DATETIME",
+            "label": "结清时间",
+            "required": false,
+            "control": "datetime",
+            "javaType": "LocalDateTime"
+          },
+          {
+            "name": "remark",
+            "type": "VARCHAR(500)",
+            "label": "remark",
+            "required": false,
+            "control": "input",
+            "javaType": "String"
+          },
+          {
+            "name": "created_at",
+            "type": "DATETIME",
+            "label": "创建时间",
+            "required": false,
+            "control": "hidden",
+            "javaType": "LocalDateTime"
+          },
+          {
+            "name": "updated_at",
+            "type": "DATETIME",
+            "label": "更新时间",
+            "required": false,
+            "control": "hidden",
+            "javaType": "LocalDateTime"
+          },
+          {
+            "name": "created_by",
+            "type": "BIGINT",
+            "label": "创建人ID",
+            "required": false,
+            "control": "hidden",
+            "javaType": "Long"
+          },
+          {
+            "name": "deleted",
+            "type": "TINYINT",
+            "label": "逻辑删除 0否1是",
+            "required": false,
+            "control": "hidden",
+            "javaType": "Integer"
+          }
+        ]
+      }
+    ]
   }
 ]

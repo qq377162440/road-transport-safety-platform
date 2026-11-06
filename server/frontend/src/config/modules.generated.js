@@ -448,6 +448,115 @@ export const bizModules = [
         "title": "自定义文件签署任务（C6）"
       }
     ]
+  },
+  {
+    "code": "monitor",
+    "title": "动态监控台账",
+    "phase": "D1",
+    "group": "三期业务",
+    "catalog": "BOX6",
+    "tables": [
+      {
+        "name": "monitor_ledger",
+        "title": "动态监控台账留存"
+      },
+      {
+        "name": "org_outsource",
+        "title": "委托第三方监控标记"
+      }
+    ]
+  },
+  {
+    "code": "budget",
+    "title": "安全生产费用",
+    "phase": "D2",
+    "group": "三期业务",
+    "catalog": "BOX5",
+    "tables": [
+      {
+        "name": "budget_plan",
+        "title": "安全费用计提计划"
+      },
+      {
+        "name": "budget_expense",
+        "title": "安全费用支出"
+      },
+      {
+        "name": "budget_category",
+        "title": "安全费用支出类别"
+      }
+    ]
+  },
+  {
+    "code": "risk",
+    "title": "风险分级管控",
+    "phase": "D3",
+    "group": "三期业务",
+    "catalog": "BOX8",
+    "tables": [
+      {
+        "name": "risk_point_dict",
+        "title": "风险点字典"
+      },
+      {
+        "name": "risk_list",
+        "title": "风险清单"
+      },
+      {
+        "name": "risk_card",
+        "title": "风险卡"
+      },
+      {
+        "name": "risk_manual",
+        "title": "风险手册"
+      },
+      {
+        "name": "org_post_content",
+        "title": "org_post_content"
+      }
+    ]
+  },
+  {
+    "code": "dangerspecial",
+    "title": "危货专项深化",
+    "phase": "D4",
+    "group": "三期业务",
+    "catalog": "BOX6",
+    "tables": [
+      {
+        "name": "danger_special_ledger",
+        "title": "危货六项专项台账统一表（D4）"
+      },
+      {
+        "name": "danger_waybill",
+        "title": "危险货物电子运单（D4，法律法规强制）"
+      }
+    ]
+  },
+  {
+    "code": "platform",
+    "title": "平台侧能力",
+    "phase": "D5",
+    "group": "平台管理",
+    "catalog": "",
+    "tables": [
+      {
+        "name": "sys_module_config",
+        "title": "平台功能模块字典（D5，平台级无租户）"
+      },
+      {
+        "name": "tenant_module",
+        "title": "企业功能模块开通记录（D5）"
+      },
+      {
+        "name": "sso_config",
+        "title": "企业 SSO 配置登记（D5）"
+      },
+      {
+        "name": "service_billing",
+        "title": "增值服务计费账单（D5）"
+      }
+    ]
   }
 ]
 

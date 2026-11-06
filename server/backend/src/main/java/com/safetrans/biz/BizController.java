@@ -43,6 +43,13 @@ public class BizController {
     private final Map<String, TableMeta> tableIndex = new HashMap<>();
     private final Map<String, ModuleMeta> moduleByTable = new HashMap<>();
 
+    /**
+     * 系统预置字典表（D2 财资136号 11 类 / D3 通用风险点库）：tenant_id=0 的行
+     * 是平台预置口径，须对所有企业可见；企业自行增补的行 tenant_id>0。
+     * 仅放宽「读」，写入/删除仍严格按 tenant_id 隔离，企业无法篡改平台预置字典。
+     */
+    private static final Set<String> SHARED_DICT_TABLES = Set.of("budget_category", "risk_point_dict");
+
     public BizController(JdbcTemplate jdbc, ArchiveRegistrar registrar) {
         this.jdbc = jdbc;
         this.registrar = registrar;
@@ -103,7 +110,9 @@ public class BizController {
         if (t.hasField("deleted")) where.append(" AND `deleted` = 0 ");
         Long tid = TenantContextHolder.tenantId();
         if (t.hasField("tenant_id") && tid != null && !TenantContextHolder.isPlatform()) {
-            where.append(" AND `tenant_id` = ? ");
+            where.append(SHARED_DICT_TABLES.contains(table)
+                    ? " AND (`tenant_id` = ? OR `tenant_id` = 0) "
+                    : " AND `tenant_id` = ? ");
             args.add(tid);
         }
         // 精确字段过滤（仅白名单字段生效）
@@ -142,7 +151,7 @@ public class BizController {
     public Result<Map<String, Object>> detail(@PathVariable String table, @PathVariable long id) {
         TableMeta t = require(table);
         List<Map<String, Object>> rows = jdbc.queryForList(
-                "SELECT * FROM " + q(table) + " WHERE `id` = ?" + tenantCond(t), argsOf(t, id));
+                "SELECT * FROM " + q(table) + " WHERE `id` = ?" + readTenantCond(table, t), argsOf(t, id));
         if (rows.isEmpty()) throw ErrorCode.BIZ_NOT_FOUND.ex();
         return Result.ok(rows.get(0));
     }
@@ -254,6 +263,17 @@ public class BizController {
             if (v != null) row.put(f.getName(), v);
         }
         return row;
+    }
+
+    /** 读路径租户条件：共享字典表额外放行 tenant_id=0 的平台预置行。 */
+    private String readTenantCond(String table, TableMeta t) {
+        Long tid = TenantContextHolder.tenantId();
+        if (t.hasField("tenant_id") && tid != null && !TenantContextHolder.isPlatform()) {
+            return SHARED_DICT_TABLES.contains(table)
+                    ? " AND (`tenant_id` = ? OR `tenant_id` = 0)"
+                    : " AND `tenant_id` = ?";
+        }
+        return "";
     }
 
     private String tenantCond(TableMeta t) {

@@ -1,18 +1,25 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-业务元数据生成器（A4/A5 及 B/C 阶段共用）
+业务元数据生成器（A4/A5 及 B/C/D 阶段共用）
 ------------------------------------------------------------------
-输入：database/schema.sql（102 张表的权威 DDL）+ 下方模块配置
+输入：database/schema.sql（权威 DDL）+ 下方模块配置 + EXTRA_DDL（工程补齐表）
 输出：
   1) backend/src/main/resources/biz/modules.json   模块/表/字段元数据（驱动通用 CRUD 引擎与前端菜单/表单）
-  2) backend/src/main/resources/db/migration/V3__phase1.sql  一期表 DDL
-  3) backend/src/main/resources/db/migration/V4__phase2.sql  二期表 DDL
+  2) backend/src/main/resources/db/migration/V3__phase1.sql  一期表 DDL（A/B）
+  3) backend/src/main/resources/db/migration/V4__phase2.sql  二期表 DDL（C）
   4) backend/src/main/resources/db/migration/V5__archive_catalog.sql  10/11 盒目录种子（B7）
-  5) frontend/src/config/modules.generated.js      前端菜单配置（构建期生成，A5）
+  5) backend/src/main/resources/db/migration/V8__phase3.sql  三期 D1/D2/D3 表 DDL
+  6) backend/src/main/resources/db/migration/V9__phase3_ext.sql  D4/D5 新增表 + 字典种子 + 目录补充
+  7) frontend/src/config/modules.generated.js      前端菜单配置（构建期生成，A5）
 
 设计原则：DDL 逐字取自 schema.sql，保证「表结构与 schema.sql 一致」；
 字段白名单由元数据固化，通用 CRUD 引擎只接受白名单字段，防 SQL 注入。
+
+重要：V3/V4/V5 内容由 A/B/C 配置决定，D 阶段配置不得改动它们，
+      否则已发布 Flyway 迁移的校验和会变，生产库将无法启动。
+      V8/V9 只补「V1~V7 尚未建过」的表，已建表（如 monitor_violation、
+      tenant_parking、training_plan）由专用业务闭环直接复用。
 """
 import json
 import re
@@ -88,6 +95,24 @@ MODULES = [
     dict(code="sign", title="自定义文件签署", phase="C6", group="二期业务", main="sign_task", catalog="BOX1", tables=[
         "sign_task",
     ]),
+    # ===== 阶段 D：三期 P2/P3（v1.2）=====
+    # 注意：这些表若已在 V1~V7 建过，V8 生成时会自动跳过，只补真正缺的表。
+    dict(code="monitor", title="动态监控台账", phase="D1", group="三期业务", main="monitor_ledger", catalog="BOX6", tables=[
+        "monitor_ledger", "org_outsource",
+    ]),
+    dict(code="budget", title="安全生产费用", phase="D2", group="三期业务", main="budget_plan", catalog="BOX5", tables=[
+        "budget_plan", "budget_expense", "budget_category",
+    ]),
+    dict(code="risk", title="风险分级管控", phase="D3", group="三期业务", main="risk_list", catalog="BOX8", tables=[
+        "risk_point_dict", "risk_list", "risk_card", "risk_manual", "org_post_content",
+    ]),
+    # D4 专项台账（电子运单/装卸查验/押运员在岗）按 21 号设计归「盒六·动态监控及交通违法管理」
+    dict(code="dangerspecial", title="危货专项深化", phase="D4", group="三期业务", main="danger_special_ledger", catalog="BOX6", tables=[
+        "danger_special_ledger", "danger_waybill",
+    ]),
+    dict(code="platform", title="平台侧能力", phase="D5", group="平台管理", main="sys_module_config", catalog="", tables=[
+        "sys_module_config", "tenant_module", "sso_config", "service_billing",
+    ]),
 ]
 
 # ---------------------------------------------------------------------------
@@ -153,6 +178,132 @@ EXTRA_DDL = {
   PRIMARY KEY (`id`),
   KEY `idx_sign_task_tenant_id` (`tenant_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci COMMENT='自定义文件签署任务（C6）';""",
+
+    # ===== 阶段 D4：危货专项深化（21 号设计 §5.1 六项台账 + 电子运单）=====
+    "danger_special_ledger": """CREATE TABLE `danger_special_ledger` (
+  `id` BIGINT NOT NULL COMMENT '雪花ID',
+  `tenant_id` BIGINT NOT NULL DEFAULT 0 COMMENT '租户ID',
+  `ledger_type` VARCHAR(30) NOT NULL COMMENT '台账类型：waybill电子运单/load_check装卸查验/transport危险品运输台账/escort押运员在岗/long_line800公里线路/safety_card安全卡一书一签',
+  `biz_date` DATE NOT NULL COMMENT '台账日期',
+  `waybill_no` VARCHAR(50) COMMENT '关联电子运单号',
+  `plate_no` VARCHAR(20) COMMENT '车牌号',
+  `cargo_name` VARCHAR(100) COMMENT '货物品名',
+  `vehicle_id` BIGINT COMMENT '承运车辆',
+  `driver_id` BIGINT COMMENT '驾驶员',
+  `escort_id` BIGINT COMMENT '押运员',
+  `content` TEXT COMMENT '台账内容/查验项（JSON 或文本）',
+  `file_url` VARCHAR(500) COMMENT '附件凭证（MinIO 对象键）',
+  `status` VARCHAR(20) DEFAULT 'draft' COMMENT 'draft草稿/confirmed已确认/archived已归档',
+  `remark` VARCHAR(500),
+  `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+  `created_by` BIGINT NOT NULL DEFAULT 0 COMMENT '创建人ID',
+  `deleted` TINYINT NOT NULL DEFAULT 0 COMMENT '逻辑删除 0否1是',
+  PRIMARY KEY (`id`),
+  KEY `idx_danger_special_tenant` (`tenant_id`),
+  KEY `idx_danger_special_type` (`tenant_id`, `ledger_type`, `biz_date`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci COMMENT='危货六项专项台账统一表（D4）';""",
+    "danger_waybill": """CREATE TABLE `danger_waybill` (
+  `id` BIGINT NOT NULL COMMENT '雪花ID',
+  `tenant_id` BIGINT NOT NULL DEFAULT 0 COMMENT '租户ID',
+  `waybill_no` VARCHAR(50) NOT NULL COMMENT '电子运单号（对接监管平台）',
+  `cargo_name` VARCHAR(100) NOT NULL COMMENT '危险货物品名',
+  `danger_class` VARCHAR(50) COMMENT '危险类别：易燃/腐蚀/毒害/爆炸/放射性',
+  `un_no` VARCHAR(20) COMMENT 'UN 编号',
+  `quantity` DECIMAL(12,2) COMMENT '数量',
+  `unit` VARCHAR(10) DEFAULT '吨' COMMENT '计量单位',
+  `origin` VARCHAR(200) COMMENT '起运地',
+  `destination` VARCHAR(200) COMMENT '送达地',
+  `vehicle_id` BIGINT COMMENT '承运车辆',
+  `plate_no` VARCHAR(20) COMMENT '车牌号（快照）',
+  `driver_id` BIGINT COMMENT '驾驶员',
+  `escort_id` BIGINT COMMENT '押运员（危货强制全程在岗）',
+  `depart_at` DATETIME COMMENT '发车时间',
+  `arrive_at` DATETIME COMMENT '送达时间',
+  `distance_km` INT COMMENT '线路里程（km）',
+  `double_driver` TINYINT DEFAULT 0 COMMENT '800公里以上是否双押双驾',
+  `escort_on_duty` TINYINT DEFAULT 0 COMMENT '押运员在岗校验 1通过',
+  `vehicle_checked` TINYINT DEFAULT 0 COMMENT '车辆资质/罐体/标识查验 1通过',
+  `status` VARCHAR(20) DEFAULT 'draft' COMMENT 'draft待发/transit在途/completed完成/archived已归档',
+  `file_url` VARCHAR(500) COMMENT '运单/安全卡附件',
+  `remark` VARCHAR(500),
+  `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+  `created_by` BIGINT NOT NULL DEFAULT 0 COMMENT '创建人ID',
+  `deleted` TINYINT NOT NULL DEFAULT 0 COMMENT '逻辑删除 0否1是',
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_waybill_no` (`tenant_id`, `waybill_no`),
+  KEY `idx_danger_waybill_tenant` (`tenant_id`, `status`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci COMMENT='危险货物电子运单（D4，法律法规强制）';""",
+
+    # ===== 阶段 D5：平台侧能力（模块配置 / SSO / 增值计费）=====
+    "sys_module_config": """CREATE TABLE `sys_module_config` (
+  `id` BIGINT NOT NULL COMMENT '雪花ID',
+  `module_code` VARCHAR(50) NOT NULL COMMENT '模块编码（对齐 biz/modules.json）',
+  `module_name` VARCHAR(100) NOT NULL COMMENT '模块名称',
+  `phase` VARCHAR(10) COMMENT '所属阶段 A2/B1/C1/D1',
+  `group_name` VARCHAR(50) COMMENT '菜单分组',
+  `is_base` TINYINT DEFAULT 1 COMMENT '1基础版包含 0增值模块',
+  `monthly_fee` DECIMAL(10,2) DEFAULT 0 COMMENT '增值模块月费（元）',
+  `sort_no` INT DEFAULT 0 COMMENT '排序',
+  `enabled` TINYINT DEFAULT 1 COMMENT '平台是否上架',
+  `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+  `created_by` BIGINT NOT NULL DEFAULT 0 COMMENT '创建人ID',
+  `deleted` TINYINT NOT NULL DEFAULT 0 COMMENT '逻辑删除 0否1是',
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_module_code` (`module_code`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci COMMENT='平台功能模块字典（D5，平台级无租户）';""",
+    "tenant_module": """CREATE TABLE `tenant_module` (
+  `id` BIGINT NOT NULL COMMENT '雪花ID',
+  `tenant_id` BIGINT NOT NULL DEFAULT 0 COMMENT '租户ID',
+  `module_code` VARCHAR(50) NOT NULL COMMENT '模块编码',
+  `enabled` TINYINT DEFAULT 1 COMMENT '1已开通 0已关闭',
+  `expire_at` DATE COMMENT '授权到期日（空=长期）',
+  `opened_by` BIGINT COMMENT '开动人',
+  `opened_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '开通时间',
+  `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+  `created_by` BIGINT NOT NULL DEFAULT 0 COMMENT '创建人ID',
+  `deleted` TINYINT NOT NULL DEFAULT 0 COMMENT '逻辑删除 0否1是',
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_tenant_module` (`tenant_id`, `module_code`),
+  KEY `idx_tenant_module_code` (`module_code`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci COMMENT='企业功能模块开通记录（D5）';""",
+    "sso_config": """CREATE TABLE `sso_config` (
+  `id` BIGINT NOT NULL COMMENT '雪花ID',
+  `tenant_id` BIGINT NOT NULL DEFAULT 0 COMMENT '租户ID',
+  `protocol` VARCHAR(20) DEFAULT 'OIDC' COMMENT '协议：OIDC/SAML2/CAS',
+  `idp_url` VARCHAR(300) COMMENT '身份提供方地址',
+  `client_id` VARCHAR(200) COMMENT '客户端 ID',
+  `client_secret` VARCHAR(500) COMMENT '客户端密钥（接口脱敏，不回显明文）',
+  `enabled` TINYINT DEFAULT 0 COMMENT '1启用 0停用',
+  `remark` VARCHAR(500) COMMENT '备注（对接范围说明）',
+  `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+  `created_by` BIGINT NOT NULL DEFAULT 0 COMMENT '创建人ID',
+  `deleted` TINYINT NOT NULL DEFAULT 0 COMMENT '逻辑删除 0否1是',
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_sso_tenant` (`tenant_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci COMMENT='企业 SSO 配置登记（D5）';""",
+    "service_billing": """CREATE TABLE `service_billing` (
+  `id` BIGINT NOT NULL COMMENT '雪花ID',
+  `tenant_id` BIGINT NOT NULL DEFAULT 0 COMMENT '租户ID',
+  `module_code` VARCHAR(50) NOT NULL COMMENT '计费模块',
+  `period` VARCHAR(20) NOT NULL COMMENT '账期 YYYY-MM',
+  `amount` DECIMAL(12,2) NOT NULL COMMENT '账单金额（元）',
+  `status` VARCHAR(20) DEFAULT 'unpaid' COMMENT 'unpaid待付/paid已结/waived已减免',
+  `bill_no` VARCHAR(50) COMMENT '账单号',
+  `paid_at` DATETIME COMMENT '结清时间',
+  `remark` VARCHAR(500),
+  `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+  `created_by` BIGINT NOT NULL DEFAULT 0 COMMENT '创建人ID',
+  `deleted` TINYINT NOT NULL DEFAULT 0 COMMENT '逻辑删除 0否1是',
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_billing` (`tenant_id`, `module_code`, `period`),
+  KEY `idx_billing_period` (`period`, `status`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci COMMENT='增值服务计费账单（D5）';""",
 }
 
 # 普货 10 盒 / 危货 11 盒目录（逐字对齐 08 号设计文档 §2.1 / §2.2）
@@ -191,6 +342,151 @@ SUBITEMS = {
 }
 
 SYSTEM_FIELDS = {"id", "tenant_id", "created_at", "updated_at", "created_by", "deleted"}
+
+# ---------------------------------------------------------------------------
+# 阶段 D（三期 v1.2）：字典种子与档案盒二级目录补充
+# ---------------------------------------------------------------------------
+# 财资〔2022〕136 号 11 类标准支出范围（17 号设计 §3.2），tenant_id=0 为系统预置
+BUDGET_CATEGORIES = [
+    ("FACILITY", "安全防护设施设备支出"),
+    ("LOCATION", "车辆定位监控装置支出"),
+    ("RESCUE", "应急救援器材及演练支出"),
+    ("HAZARD", "危险源监控与隐患整改支出"),
+    ("CHECK", "安全检查评价咨询支出"),
+    ("PPE", "安全防护用品支出"),
+    ("TRAIN", "安全宣传教育培训支出"),
+    ("TECH", "新技术新装备推广支出"),
+    ("INSPECT", "设施检测检验支出"),
+    ("INSUR", "安全责任保险支出"),
+    ("OTHER", "其他安全生产支出"),
+]
+
+# 通用风险点库（18 号设计 §3.2）：驾驶员/车辆/货物/环境/管理 × 四色等级
+# 字段：名称, 分类, 等级（红/橙/黄/蓝）, 默认管控措施, 适用（general/danger/all）
+RISK_POINTS = [
+    ("疲劳驾驶", "driver", "红", "连续驾驶不超过4小时、24小时累计不超过8小时，动态监控平台报警后必须停车休息并登记违规教育", "all"),
+    ("超速行驶", "driver", "红", "按道路限速与车辆核定速度行驶，接入动态监控超速报警并按月汇总违规台账", "all"),
+    ("酒后驾驶", "driver", "红", "出车前酒精检测，一经发现立即停岗并按制度处理", "all"),
+    ("驾驶员从业资格失效", "driver", "橙", "建立证照到期预警，从业资格证过期前完成换证，过期不得派车", "all"),
+    ("危货押运员脱岗", "driver", "红", "每趟电子运单绑定押运员，全程在岗并与运单/轨迹匹配，脱岗不得发车", "danger"),
+    ("制动系统失效", "vehicle", "红", "执行一日三检与二级维护，制动异常立即停运送修", "all"),
+    ("轮胎磨损/爆胎", "vehicle", "橙", "出车前检查胎压与花纹深度，按里程周期更换并留存维修记录", "all"),
+    ("卫星定位装置离线", "vehicle", "橙", "离线车辆不得派车，恢复上线后补录设备故障异常台账", "all"),
+    ("罐体/专用标识不合格", "vehicle", "红", "罐体定期检测、专用标识喷涂齐全，证照归档一车一档", "danger"),
+    ("货物超载/装载不牢", "cargo", "橙", "按核定载质量装载，出车前核验捆扎与封口，超载属重大隐患", "all"),
+    ("危险货物泄漏", "cargo", "红", "配随车安全卡（一书一签）与应急器材，装卸前后查验并留存记录", "danger"),
+    ("危化品夹带/匿报", "cargo", "红", "托运清单与电子运单逐项核对，发现夹带立即停运并纳入隐患排查", "danger"),
+    ("恶劣天气（雨雾冰雪）", "env", "橙", "发布预警、调整班次或限速，必要时停运并记录调度指令", "all"),
+    ("长下坡/临崖等危险路段", "env", "橙", "建立风险路段清单与路书，800公里以上线路执行双押双驾", "all"),
+    ("限行区域误入", "env", "黄", "出车前核对通行证与限行区域，剧毒品按地方要求报备", "danger"),
+    ("安全制度缺失或未更新", "manage", "黄", "年度评审制度汇编并按法规更新，范本套版本留痕", "all"),
+    ("培训教育不到位", "manage", "黄", "年度培训计划 + 月度培训 + 违规靶向教育，学时与考核留痕", "all"),
+    ("隐患排查未闭环", "manage", "橙", "隐患整改通知→整改→验收闭环，超期自动升级提醒", "all"),
+    ("随车工具与灭火器摆放不规范", "vehicle", "蓝", "纳入一日三检随车检查项，定置摆放并月度抽查", "all"),
+    ("安全会议记录签字遗漏", "manage", "蓝", "会议纪要归档前校验签到表完整性，缺签自动提示补签", "all"),
+    ("停车场标识/照明磨损", "env", "蓝", "纳入停车场季度巡检，及时更换标识与照明", "all"),
+]
+
+# 档案盒二级目录补充：D 阶段成果物对齐政府检查项（18/20/21 号设计）
+# key = V5 生成的一级目录 code，value = 新增子项名
+EXTRA_SUBITEMS = {
+    "GENERAL_BOX8": ["风险辨识手册", "风险辨识清单", "岗位风险告知卡", "无重大风险的说明"],
+    "DANGER_BOX9": ["风险辨识手册", "风险辨识清单", "岗位风险告知卡", "无重大风险的说明",
+                     "安全评估（危货）", "无重大事故隐患的声明（危货）"],
+    "DANGER_BOX6": ["危险货物电子运单", "装卸查验记录", "危险品运输台账",
+                    "押运员在岗记录", "800公里以上线路台账", "安全卡（一书一签）"],
+}
+
+# D5 增值模块月费（元/月）；基础模块 is_base=1 不计费
+D5_FEES = {"D1": 199, "D2": 99, "D3": 199, "D4": 299, "D5": 0}
+
+
+def built_tables():
+    """读取 V1~V7 迁移脚本，返回已建表集合。V8/V9 只补真正缺的表，
+    避免重复建表导致 Flyway 在生产库上失败（绝不改已发布迁移的校验和）。"""
+    mig = BE_RES / "db" / "migration"
+    names = set(V1_TABLES)
+    for f in sorted(mig.glob("V[1-7]__*.sql")):
+        names.update(re.findall(r"CREATE TABLE `(\w+)`", f.read_text(encoding="utf-8")))
+    return names
+
+
+def catalog_rows():
+    """V5 目录树（普货 10 盒 / 危货 11 盒 + 二级子项）。V9 复用它取父目录 id。"""
+    seq = [4000]
+    rows = []
+
+    def nid():
+        seq[0] += 1
+        return seq[0]
+
+    # 固定 id：V2 种子中责任制子项（3101）将迁移到 V5 的这一条，ArchiveService 按此常量引用
+    RESPONSIBILITY_ID = 40099
+    for biz, boxes in BOXES.items():
+        for idx, (code, name) in enumerate(boxes, start=1):
+            box_id = nid()
+            rows.append((box_id, 0, biz, 1, idx, f"{biz}_{code}", name, 0, 0, "LONG"))
+            sub_code = code
+            for sidx, sub in enumerate(SUBITEMS.get(sub_code, []), start=1):
+                rid = RESPONSIBILITY_ID if (biz == "GENERAL" and code == "BOX2" and sub == "安全生产责任制") else nid()
+                rows.append((rid, 0, biz, 2, sidx, f"{biz}_{code}_S{sidx:02d}", sub, box_id, 0, "YEAR"))
+    return rows
+
+
+def phase3_seed(cat_rows):
+    """V9 尾部：字典种子 + 档案盒二级目录补充（全部幂等，可读性好、便于人工核对）。"""
+    out = ["", "-- ===== D2：财资〔2022〕136 号 11 类安全费用支出（系统预置 tenant_id=0）====="]
+    out.append("DELETE FROM `budget_category` WHERE `id` BETWEEN 6001 AND 6011;")
+    out.append("INSERT INTO `budget_category` "
+               "(`id`,`tenant_id`,`category_name`,`category_code`,`sort_order`,`created_at`,`deleted`) VALUES")
+    out.append(",\n".join(
+        f"  ({6001 + i}, 0, '{name}', '{code}', {i + 1}, NOW(), 0)"
+        for i, (code, name) in enumerate(BUDGET_CATEGORIES)) + ";")
+
+    out.append("")
+    out.append("-- ===== D3：通用风险点库（系统预置 tenant_id=0，企业可增补自定义）=====")
+    out.append("DELETE FROM `risk_point_dict` WHERE `id` BETWEEN 6201 AND 6299;")
+    out.append("INSERT INTO `risk_point_dict` "
+               "(`id`,`tenant_id`,`risk_name`,`risk_category`,`risk_level`,`control_measure`,`cargo_type`,`created_at`,`deleted`) VALUES")
+    out.append(",\n".join(
+        "  ({}, 0, '{}', '{}', '{}', '{}', '{}', NOW(), 0)".format(
+            6201 + i, *[str(x).replace("'", "''") for x in rp])
+        for i, rp in enumerate(RISK_POINTS)) + ";")
+
+    out.append("")
+    out.append("-- ===== D5：平台功能模块字典（与 biz/modules.json 逐项对齐）=====")
+    out.append("DELETE FROM `sys_module_config` WHERE `id` BETWEEN 6301 AND 6399;")
+    out.append("INSERT INTO `sys_module_config` "
+               "(`id`,`module_code`,`module_name`,`phase`,`group_name`,`is_base`,`monthly_fee`,`sort_no`,`enabled`,`created_at`,`deleted`) VALUES")
+    vals = []
+    for i, m in enumerate(MODULES, start=1):
+        is_base = 0 if m["phase"].startswith("D") else 1
+        fee = 0 if is_base else D5_FEES.get(m["phase"], 99)
+        vals.append(f"  ({6300 + i}, '{m['code']}', '{m['title']}', '{m['phase']}', "
+                    f"'{m['group']}', {is_base}, {fee}, {i}, 1, NOW(), 0)")
+    out.append(",\n".join(vals) + ";")
+
+    out.append("")
+    out.append("-- ===== D1/D3/D4：档案盒二级目录补充（父目录 id 取自 V5 目录树）=====")
+    parent = {r[5]: r[0] for r in cat_rows if r[3] == 1}
+    seq_id = [50000]
+    inserts = []
+    for box_code, subs in EXTRA_SUBITEMS.items():
+        pid = parent.get(box_code)
+        if pid is None:
+            continue
+        biz = box_code.split("_")[0]
+        for sidx, sub in enumerate(subs, start=20):
+            seq_id[0] += 1
+            code = f"{box_code}_D{sidx:02d}"
+            name = sub.replace("'", "''")
+            inserts.append(f"  ({seq_id[0]}, 0, '{biz}', 2, {sidx}, '{code}', '{name}', {pid}, 0, 'YEAR')")
+    out.append("DELETE FROM `archive_catalog` WHERE `id` BETWEEN 50001 AND 50999;")
+    out.append("INSERT INTO `archive_catalog` "
+               "(`id`,`tenant_id`,`biz_type`,`level`,`sort_no`,`code`,`name`,`parent_id`,`has_pdf`,`renew_freq`) VALUES")
+    out.append(",\n".join(inserts) + ";")
+    out.append("")
+    return "\n".join(out)
 
 
 def parse_schema():
@@ -337,23 +633,7 @@ def build():
     print(f"生成 V3__phase1.sql：{p1} 张表；V4__phase2.sql：{p2} 张表")
 
     # ---- V5 档案盒目录种子（B7）----
-    seq = [4000]
-    rows = []
-
-    def nid():
-        seq[0] += 1
-        return seq[0]
-
-    # 固定 id：V2 种子中责任制子项（3101）将迁移到 V5 的这一条，ArchiveService 按此常量引用
-    RESPONSIBILITY_ID = 40099
-    for biz, boxes in BOXES.items():
-        for idx, (code, name) in enumerate(boxes, start=1):
-            box_id = nid()
-            rows.append((box_id, 0, biz, 1, idx, f"{biz}_{code}", name, 0, 0, "LONG"))
-            sub_code = code
-            for sidx, sub in enumerate(SUBITEMS.get(sub_code, []), start=1):
-                rid = RESPONSIBILITY_ID if (biz == "GENERAL" and code == "BOX2" and sub == "安全生产责任制") else nid()
-                rows.append((rid, 0, biz, 2, sidx, f"{biz}_{code}_S{sidx:02d}", sub, box_id, 0, "YEAR"))
+    rows = catalog_rows()
     values = ",\n".join(
         f"  ({r[0]}, {r[1]}, '{r[2]}', {r[3]}, {r[4]}, '{r[5]}', '{r[6]}', {r[7]}, {r[8]}, '{r[9]}')"
         for r in rows)
@@ -367,6 +647,36 @@ def build():
           "DELETE FROM `archive_catalog` WHERE `id` IN (3002, 3101);\n")
     (BE_RES / "db" / "migration" / "V5__archive_catalog.sql").write_text(v5, encoding="utf-8")
     print(f"生成 V5__archive_catalog.sql：{len(rows)} 条目录（含二级子项）")
+
+    # ---- Flyway V8 / V9：三期 D1~D5（v1.2）----
+    # 只读 V1~V7 判断「已建表」，因此重复运行生成器不会把 V8/V9 的表误判为已建。
+    built = built_tables()
+    d123 = [m for m in MODULES if m["phase"] in ("D1", "D2", "D3")]
+    d45 = [m for m in MODULES if m["phase"] in ("D4", "D5")]
+
+    def ddl_only(mods, header):
+        lines = [header,
+                 "-- 由 tools/gen_biz_meta.py 从 database/schema.sql 逐字提取（EXTRA_DDL 补齐表同规则）。",
+                 "-- 只创建 V1~V7 尚未建过的表；已发布迁移 V1~V7 不受影响，校验和保持不变。", ""]
+        seen, n = set(built), 0
+        for mod in mods:
+            lines.append(f"-- ===== {mod['phase']} {mod['title']} =====")
+            for t in mod["tables"]:
+                if t in seen or t not in schema:
+                    continue
+                seen.add(t)
+                lines.append(schema[t]["ddl"])
+                lines.append("")
+                n += 1
+        return "\n".join(lines) + "\n", n
+
+    v8, n8 = ddl_only(d123, "-- D 阶段（三期 v1.2）D1 动态监控台账 / D2 安全生产费用 / D3 风险分级管控")
+    (BE_RES / "db" / "migration" / "V8__phase3.sql").write_text(v8, encoding="utf-8")
+
+    v9, n9 = ddl_only(d45, "-- D 阶段（三期 v1.2）D4 危货专项深化 / D5 平台侧能力")
+    v9 += phase3_seed(rows)
+    (BE_RES / "db" / "migration" / "V9__phase3_ext.sql").write_text(v9, encoding="utf-8")
+    print(f"生成 V8__phase3.sql：{n8} 张表；V9__phase3_ext.sql：{n9} 张表 + 字典/目录种子")
 
     # ---- 前端菜单配置（A5：菜单由配置驱动）----
     FE_CFG.mkdir(parents=True, exist_ok=True)
