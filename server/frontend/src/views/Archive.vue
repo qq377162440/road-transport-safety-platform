@@ -33,7 +33,10 @@ async function generate() {
 async function download(item) {
   if (!item.pdfId) return
   const res = await fetch(`/api/archive/pdf/${item.pdfId}/download`, {
-    headers: { Authorization: `Bearer ${localStorage.getItem('token')}` },
+    headers: {
+      Authorization: `Bearer ${localStorage.getItem('token')}`,
+      'X-Token': `Bearer ${localStorage.getItem('token')}`,
+    },
   })
   if (!res.ok) {
     ElMessage.error('下载失败')

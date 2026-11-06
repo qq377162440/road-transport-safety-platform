@@ -14,6 +14,8 @@ request.interceptors.request.use(
     const token = localStorage.getItem('token')
     if (token) {
       config.headers.Authorization = `Bearer ${token}`
+      // 部分托管反向代理会剥离 Authorization 头，冗余携带自定义头兜底
+      config.headers['X-Token'] = `Bearer ${token}`
     }
     return config
   },

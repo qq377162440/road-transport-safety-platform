@@ -19,6 +19,7 @@ import java.util.Arrays;
 public class AuthInterceptor implements HandlerInterceptor {
 
     public static final String AUTH_HEADER = "Authorization";
+    public static final String ALT_AUTH_HEADER = "X-Token";
     public static final String TOKEN_PREFIX = "Bearer ";
     public static final String WHITELIST_KEY = "auth:token:";
 
@@ -86,6 +87,11 @@ public class AuthInterceptor implements HandlerInterceptor {
     }
 
     private String resolveToken(HttpServletRequest request) {
+        // 自定义头优先：部分托管反向代理会改写 Authorization 为其自身会话凭证
+        String alt = request.getHeader(ALT_AUTH_HEADER);
+        if (alt != null && alt.startsWith(TOKEN_PREFIX)) {
+            return alt.substring(TOKEN_PREFIX.length());
+        }
         String header = request.getHeader(AUTH_HEADER);
         if (header != null && header.startsWith(TOKEN_PREFIX)) {
             return header.substring(TOKEN_PREFIX.length());
