@@ -260,6 +260,42 @@ async function switchSet(row) {
 }
 
 function goArchive() { router.push('/archive') }
+
+// ---------- 印章设置（原型《09-静态资料范本引擎》6.2：两种印章来源） ----------
+const showSeal = ref(false)
+const sealInfo = ref(null)
+const sealUploading = ref(false)
+
+async function loadSeal() {
+  try { sealInfo.value = (await request.get('/tpl/seal')).data } catch (e) { sealInfo.value = null }
+}
+async function openSeal() {
+  showSeal.value = true
+  await loadSeal()
+}
+function pickSealFile(e) {
+  const f = e.target.files?.[0]
+  if (!f) return
+  if (!/^image\/(png|jpeg|gif|webp)$/.test(f.type)) { ElMessage.error('请上传 PNG / JPG 图片'); return }
+  if (f.size > 2 * 1024 * 1024) { ElMessage.error('印章图片请压缩到 2MB 以内'); return }
+  const reader = new FileReader()
+  reader.onload = async () => {
+    sealUploading.value = true
+    try {
+      sealInfo.value = (await request.post('/tpl/seal/upload', { image: reader.result })).data
+      ElMessage.success('已应用真实印章，预览与生成的台账将统一使用此章')
+    } catch (err) { ElMessage.error('印章上传失败，请重试') }
+    finally { sealUploading.value = false }
+  }
+  reader.readAsDataURL(f)
+  e.target.value = ''
+}
+async function resetSeal() {
+  try {
+    sealInfo.value = (await request.delete('/tpl/seal')).data
+    ElMessage.success('已恢复按企业全称自动生成的圆形红章')
+  } catch (e) { ElMessage.error('操作失败，请重试') }
+}
 </script>
 
 <template>
@@ -270,6 +306,7 @@ function goArchive() { router.push('/archive') }
         <div class="desc">维护企业当前应用范本 · 与电子档案柜共用同一份范本，改这里，档案柜生成的台账同步变化</div>
       </div>
       <div class="actions">
+        <button class="btn btn-outline" @click="openSeal"><Icon name="award" :size="16" /> 印章设置</button>
         <button class="btn btn-outline" @click="openResp"><Icon name="users" :size="16" /> 责任制联动编辑</button>
         <button class="btn btn-outline" @click="saveAsName = currentName + '（副本）'; showSaveAs = true">另存为我的范本</button>
         <button class="btn btn-primary" @click="goArchive"><Icon name="archive" :size="16" /> 去电子档案柜验证</button>
@@ -445,10 +482,47 @@ function goArchive() { router.push('/archive') }
         </div>
       </div>
     </div>
+
+    <!-- 印章设置：原型要求所有台账生成时在落款处自动盖公司章 -->
+    <div class="modal-mask" :class="{ show: showSeal }" @click.self="showSeal = false">
+      <div class="modal-box small">
+        <div class="modal-head">印章设置 <span class="x" @click="showSeal = false">×</span></div>
+        <div class="modal-body">
+          <p class="hint" style="margin-top:0">
+            原型《09-静态资料范本引擎》第六章：所有台账生成时统一在落款处盖公司章。
+            优先使用客户上传的真实印章；未上传时按企业全称自动生成标准圆形红章（内部文件章，非法定公章）。
+          </p>
+          <div class="seal-preview">
+            <img v-if="sealInfo" :src="sealInfo.dataUri" alt="当前生效印章" />
+            <span v-else style="color:#94A3B8;font-size:13px">读取中…</span>
+          </div>
+          <div v-if="sealInfo" class="seal-meta">
+            <div>当前来源：<b>{{ sealInfo.label }}</b></div>
+            <div>企业全称：{{ sealInfo.companyName }}</div>
+            <div>规格：圆形 · 直径 40mm · 印泥红 · 上弧公司全称 · 中心五角星 · 内外双圈</div>
+          </div>
+          <div class="seal-actions">
+            <label class="btn btn-primary btn-sm" style="cursor:pointer">
+              <Icon name="upload" :size="14" /> 上传真实印章
+              <input type="file" accept="image/png,image/jpeg,image/webp" style="display:none" :disabled="sealUploading" @change="pickSealFile" />
+            </label>
+            <button class="btn btn-outline btn-sm" @click="resetSeal"><Icon name="rotateCcw" :size="14" /> 恢复自动章</button>
+          </div>
+          <p class="hint">透明底 PNG 效果最佳（建议 300×300 以上、2MB 以内）。切换后「范本预览」「档案柜预览」「生成 PDF」立即同步生效。</p>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
 <style scoped>
+/* 印章设置 */
+.seal-preview { display: flex; align-items: center; justify-content: center; height: 186px;
+  background: #fff; border: 1px dashed var(--border, #CBD5E1); border-radius: 10px; margin: 14px 0; }
+.seal-preview img { width: 152px; height: 152px; object-fit: contain; }
+.seal-meta { font-size: 12.5px; line-height: 1.95; color: var(--text-2, #475569); }
+.seal-actions { display: flex; gap: 8px; margin: 14px 0 8px; }
+
 .tpl-curbar { display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap;
   background: var(--blue-50, #EFF6FF); border: 1px solid var(--blue-200, #BFDBFE); border-radius: var(--r-lg, 12px);
   padding: 14px 18px; margin-bottom: 16px; }

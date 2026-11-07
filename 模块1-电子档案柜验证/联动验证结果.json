@@ -32,7 +32,7 @@
   {
     "name": "不同岗位产出不同正文",
     "ok": true,
-    "detail": "len 3065 / 2907"
+    "detail": "len 52173 / 52047"
   },
   {
     "name": "变量已填充（无 {{ 残留）",
@@ -72,12 +72,12 @@
   {
     "name": "PDF 可下载且为 PDF",
     "ok": true,
-    "detail": "129834 bytes"
+    "detail": "185670 bytes"
   },
   {
     "name": "生成的 PDF 正文含新范本内容",
     "ok": true,
-    "detail": "pdf text len 9415"
+    "detail": "pdf text len 9416"
   },
   {
     "name": "档案柜联动条",

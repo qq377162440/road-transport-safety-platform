@@ -1,0 +1,212 @@
+[
+  {
+    "name": "自动登录取得 token",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "印章接口返回自动生成章",
+    "ok": true,
+    "detail": "系统自动生成 · 内部文件章"
+  },
+  {
+    "name": "印章读取企业全称",
+    "ok": true,
+    "detail": "佛山市高明高洲燃气有限公司"
+  },
+  {
+    "name": "印章为标准 PNG data URI",
+    "ok": true,
+    "detail": "data:image/png;base64,iVBORw0KGgoAAA"
+  },
+  {
+    "name": "印章画布 400×400（2 倍高清）",
+    "ok": true,
+    "detail": "(400, 400)"
+  },
+  {
+    "name": "印章为印泥红 #D0021B",
+    "ok": true,
+    "detail": "红色像素 25619"
+  },
+  {
+    "name": "印章有双圈 + 五角星 + 弧形文字",
+    "ok": true,
+    "detail": "着色像素 25619"
+  },
+  {
+    "name": "范本 ZD01 落款自动盖章",
+    "ok": true,
+    "detail": "len=65238"
+  },
+  {
+    "name": "范本 ZD01 无重复 class",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "范本 ZD01 无演示页 JS / 简化红章",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "范本 ZD01 未重复追加落款",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "范本 RESP_LETTER 落款自动盖章",
+    "ok": true,
+    "detail": "len=52170"
+  },
+  {
+    "name": "范本 RESP_LETTER 无重复 class",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "范本 RESP_LETTER 无演示页 JS / 简化红章",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "范本 RESPONSIBILITY 落款自动盖章",
+    "ok": true,
+    "detail": "len=64881"
+  },
+  {
+    "name": "范本 RESPONSIBILITY 无重复 class",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "范本 RESPONSIBILITY 无演示页 JS / 简化红章",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "范本 LEAD_NOTICE 落款自动盖章",
+    "ok": true,
+    "detail": "len=50664"
+  },
+  {
+    "name": "范本 LEAD_NOTICE 无重复 class",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "范本 LEAD_NOTICE 无演示页 JS / 简化红章",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "范本 LEAD_NOTICE 未重复追加落款",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "范本 RESUME_SIX 落款自动盖章",
+    "ok": true,
+    "detail": "len=71694"
+  },
+  {
+    "name": "范本 RESUME_SIX 无重复 class",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "范本 RESUME_SIX 无演示页 JS / 简化红章",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "范本 APPOINT 落款自动盖章",
+    "ok": true,
+    "detail": "len=49433"
+  },
+  {
+    "name": "范本 APPOINT 无重复 class",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "范本 APPOINT 无演示页 JS / 简化红章",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "范本 APPOINT 未重复追加落款",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "范本 RESP_LETTER 生成 PDF 成功",
+    "ok": true,
+    "detail": "HTTP 200 / 117082 bytes"
+  },
+  {
+    "name": "范本 ZD01 生成 PDF 成功",
+    "ok": true,
+    "detail": "HTTP 200 / 185247 bytes"
+  },
+  {
+    "name": "PDF 内含印章图片",
+    "ok": true,
+    "detail": "page   num  type   width height color comp bpc  enc interp  object ID x-ppi y-ppi size ratio | -----------------------------------------------------------------"
+  },
+  {
+    "name": "范本 LEAD_NOTICE 生成 PDF 成功",
+    "ok": true,
+    "detail": "HTTP 200 / 97489 bytes"
+  },
+  {
+    "name": "范本 RESUME_SIX 生成 PDF 成功",
+    "ok": true,
+    "detail": "HTTP 200 / 240488 bytes"
+  },
+  {
+    "name": "上传真实章成功",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "渲染结果同步使用上传章",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "恢复自动章成功",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "恢复后不再使用上传章",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "台账范本管理有「印章设置」按钮",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "印章设置弹窗显示当前章",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "A4 预览 iframe 内显示公司章",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "电子档案柜联动条存在",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "无控制台错误",
+    "ok": true,
+    "detail": ""
+  }
+]

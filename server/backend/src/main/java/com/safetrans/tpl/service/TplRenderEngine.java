@@ -4,7 +4,9 @@ import org.springframework.stereotype.Component;
 
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -111,19 +113,89 @@ public class TplRenderEngine {
         return v;
     }
 
-    /** 把范本内容解析为完整可渲染 HTML 文档 */
+    /** 把范本内容解析为完整可渲染 HTML 文档（PDF 生成用） */
     public String renderDocument(String content, Map<String, String> vars) {
-        String body = content == null ? "" : content;
-        body = resolveConditions(body, vars);
-        body = fillVariables(body, vars);
-        return wrapHtml(body);
+        return renderDocument(content, vars, null);
+    }
+
+    public String renderDocument(String content, Map<String, String> vars, String sealHtml) {
+        return wrapHtml(renderBody(content, vars, sealHtml));
     }
 
     /** 只输出正文片段（前端 A4 预览容器内嵌用） */
     public String renderBody(String content, Map<String, String> vars) {
+        return renderBody(content, vars, null);
+    }
+
+    /**
+     * 渲染正文：条件段 → 变量 → 公司章注入 → XHTML 规范化。
+     * 预览与 PDF 共用本方法，因此屏幕所见即 PDF 所得。
+     */
+    public String renderBody(String content, Map<String, String> vars, String sealHtml) {
         String body = content == null ? "" : content;
         body = resolveConditions(body, vars);
-        return fillVariables(body, vars);
+        body = fillVariables(body, vars);
+        body = normalizeHtml(body);
+        if (sealHtml != null && !sealHtml.isBlank()) body = injectSeal(body, sealHtml);
+        return body;
+    }
+
+    /**
+     * 公司章注入（原型「所有台账都盖章，生成时自动盖在落款处」）。
+     * 锚定正文中最后一条落款/盖章行，把章块紧接其后；章块自身用负 margin 上提压住落款文字，
+     * 不依赖 CSS absolute / transform —— 浏览器与 openhtmltopdf 都能得到一致且完整的效果。
+     */
+    private String injectSeal(String body, String sealHtml) {
+        if (body.contains("seal-box")) return body;   // 范本已自带章，避免重复
+        // 落款总在文末：只从后半段开始找，避免正文里的「公司各部门：」被误当落款
+        int from = body.length() > 400 ? (int) (body.length() * 0.5) : 0;
+        Matcher m = SIGN_ROW.matcher(body);
+        int hitEnd = -1;
+        while (m.find()) {
+            if (m.start() < from) continue;
+            String hay = (m.group(2) == null ? "" : m.group(2)) + " " + m.group(3);
+            if (SIGN_KEYWORD.matcher(hay).find()) hitEnd = m.end();
+        }
+        if (hitEnd >= 0) return body.substring(0, hitEnd) + sealHtml + body.substring(hitEnd);
+        // 确实没有落款的范本 → 只补一个盖章位，不重复公司名与日期
+        return body + "<div class=\"doc-sign\">（盖章）</div>" + sealHtml;
+    }
+
+    /** 单行类元素（div / p / li / span / td），非贪婪取到第一个同名闭合标签 */
+    private static final Pattern SIGN_ROW = Pattern.compile(
+            "<(div|p|li|span|td)(\\s[^>]*)?>(.*?)</\\1>", Pattern.DOTALL);
+
+    /** 落款行关键词（覆盖制度/任命书/通知/责任书等各类范本的落款写法） */
+    private static final Pattern SIGN_KEYWORD = Pattern.compile(
+            "盖章|公章|责任主体|承诺单位|填报单位|签订单位|单位名称|编制单位|签发人|"
+                    + "实施日期|生效日期|成文日期|发布日期|公司名称|企业名称|公司：|公司:|"
+                    + "sign-zone|class=\"company\"|sign_zone");
+
+    /**
+     * XHTML 规范化：用户范本里存在 {@code <div class="doc-p" class="no-indent">} 这类重复属性，
+     * openhtmltopdf 用 SAX 严格解析会直接抛 "Attribute class was already specified"，导致 PDF 生成 500。
+     * 这里统一把重复 class 合并成一个，浏览器与 PDF 引擎都能正确解析。
+     */
+    private String normalizeHtml(String html) {
+        Matcher m = Pattern.compile("<[a-zA-Z][^>]*>").matcher(html);
+        StringBuffer sb = new StringBuffer();
+        while (m.find()) {
+            String tag = m.group();
+            Matcher c = Pattern.compile("class\\s*=\\s*\"([^\"]*)\"").matcher(tag);
+            List<int[]> spans = new ArrayList<>();
+            List<String> vals = new ArrayList<>();
+            while (c.find()) { spans.add(new int[]{c.start(), c.end()}); vals.add(c.group(1)); }
+            if (spans.size() > 1) {
+                String all = String.join(" ", vals).replaceAll("\\s+", " ").trim();
+                StringBuilder b = new StringBuilder(tag);
+                for (int i = spans.size() - 1; i >= 1; i--) b.delete(spans.get(i)[0], spans.get(i)[1]);
+                b.replace(spans.get(0)[0], spans.get(0)[1], "class=\"" + all + "\"");
+                tag = b.toString().replaceAll("\\s{2,}", " ");
+            }
+            m.appendReplacement(sb, Matcher.quoteReplacement(tag));
+        }
+        m.appendTail(sb);
+        return sb.toString();
     }
 
     /**
@@ -232,12 +304,30 @@ public class TplRenderEngine {
                 + ".doc-tbl th,.doc-tbl td{border:1px solid #333;padding:5px 6px;text-align:center;}"
                 + ".doc-tbl th{background:#f2f4f7;font-weight:bold;}"
                 + ".doc-sign{margin-top:26px;font-size:11pt;line-height:2.2;}"
+                + "/* 公司章：压住落款列文字末端、章身向右下探出（骑年压月），让出左侧关键字保持可读。"
+                + "刻意不用 absolute/transform：openhtmltopdf 对 left:100% 解析不完整会把章推出页面裁切 */"
+                + ".seal-box{text-align:left;margin-top:-70px;margin-bottom:-34px;padding-left:165px;}"
+                + ".seal-img{display:inline-block;width:148px;height:148px;}"
+                + "/* 样例范本的 sign-zone 落款右对齐：章随列走，跟着落款贴右，不飘到左侧正文 */"
+                + ".sign-zone .seal-box{text-align:right;padding-left:0;padding-right:26px;}"
                 + ".fill{display:inline-block;min-width:90px;border-bottom:1px solid #333;}"
                 + ".sign-underline{display:inline-block;min-width:120px;border-bottom:1px solid #333;}"
-                + ".no-indent,.no-indent .doc-p{text-indent:0;}"
+                + ".no-indent,.no-indent .doc-p,.meta{text-indent:0;}"
                 + ".sign-block{margin-top:26px;}"
                 + ".sign-line{margin:12px 0;}"
                 + ".sign-item{display:inline-block;min-width:45%;text-align:center;}"
+                + "/* 用户提供的样例范本类名（成立领导小组通知 / 复工复产六个一）兼容 */"
+                + ".doc-head{text-align:center;font-size:13pt;font-weight:bold;letter-spacing:2px;margin-bottom:8px;}"
+                + ".rule{border-bottom:2px solid #d0021b;margin:8px 0 18px;}"
+                + ".title,.doc-title{font-size:18pt;font-weight:bold;text-align:center;margin:14px 0 18px;}"
+                + ".center{text-align:center;}"
+                + ".member-list{margin:12px 0 12px 2em;line-height:2.1;}"
+                + ".sign-zone{margin-top:26px;text-align:right;line-height:2.2;}"
+                + ".sign-zone .sign-line{display:inline-block;min-width:120px;border-bottom:1px solid #333;margin:0;}"
+                + ".fill-var,.fill-empty{display:inline-block;min-width:90px;border-bottom:1px solid #333;}"
+                + ".meta{font-size:10pt;color:#444;}"
+                + ".photo-holder{border:1px dashed #999;padding:28px;text-align:center;color:#777;margin:10px 0;}"
+                + ".page-break{page-break-before:always;break-before:page;margin-top:26px;border-top:1px dashed #ccc;}"
                 + "ol{margin:4px 0 8px 2em;}li{margin:3px 0;}"
                 + "p{text-indent:2em;margin:5px 0;}"
                 + "h1{font-size:19pt;text-align:center;margin:6px 0 16px;}"

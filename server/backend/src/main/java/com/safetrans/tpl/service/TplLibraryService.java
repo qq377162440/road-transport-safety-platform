@@ -40,13 +40,15 @@ public class TplLibraryService {
     private final TplRenderEngine renderEngine;
     private final PdfService pdfService;
     private final TenantService tenantService;
+    private final SealService sealService;
 
     public TplLibraryService(TplTemplateMapper templateMapper, TplRenderEngine renderEngine,
-                             PdfService pdfService, TenantService tenantService) {
+                             PdfService pdfService, TenantService tenantService, SealService sealService) {
         this.templateMapper = templateMapper;
         this.renderEngine = renderEngine;
         this.pdfService = pdfService;
         this.tenantService = tenantService;
+        this.sealService = sealService;
     }
 
     /** 当前企业 id（平台账号无租户，返回 null，仅使用全局范本） */
@@ -214,13 +216,22 @@ public class TplLibraryService {
                 .eq(TplTemplate::getCode, code));
     }
 
+    /**
+     * 当前范本是否盖章：原型规则「所有台账（PDF）都要盖公司章」，
+     * need_seal 缺省或非空均视为盖章，仅显式 0 才不盖。
+     */
+    private String sealFor(TplTemplate tpl) {
+        Integer need = tpl.getNeedSeal();
+        return (need != null && need == 0) ? null : sealService.sealHtml();
+    }
+
     /** 渲染后的正文片段（前端 A4 预览容器内嵌） */
     public String renderBody(String code, String itemName, int year, String post) {
         TplTemplate tpl = effective(code);
         if (tpl == null) throw new BizException("范本不存在：" + code);
         Map<String, String> vars = renderEngine.defaultVars(
                 tenantService.currentTenantName(), year, post, itemName);
-        return renderEngine.renderBody(tpl.getContent(), vars);
+        return renderEngine.renderBody(tpl.getContent(), vars, sealFor(tpl));
     }
 
     /** 渲染后的完整 HTML 文档（PDF 生成用） */
@@ -229,7 +240,7 @@ public class TplLibraryService {
         if (tpl == null) throw new BizException("范本不存在：" + code);
         Map<String, String> vars = renderEngine.defaultVars(
                 tenantService.currentTenantName(), year, post, itemName);
-        return renderEngine.renderDocument(tpl.getContent(), vars);
+        return renderEngine.renderDocument(tpl.getContent(), vars, sealFor(tpl));
     }
 
     /** 直接渲染为 PDF 字节（范本管理「预览 PDF / 打印」用） */
