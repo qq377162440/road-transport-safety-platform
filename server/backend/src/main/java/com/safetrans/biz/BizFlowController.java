@@ -163,9 +163,12 @@ public class BizFlowController {
             dup.put("result", result);
             dup.put("dangerId", ds.isEmpty() ? null : ds.get(0));
             dup.put("idempotent", true);
+            saveCheckItems(rid, b.get("items"));
             return Result.ok(dup);
         }
         long id = insert("check_record", r);
+        // 小程序「逐项打勾」明细：与 PC 端一日三检台账共用 check_item_result
+        saveCheckItems(id, b.get("items"));
 
         // 异常自动转隐患（B4 → B5 联动）
         Long dangerId = null;
@@ -592,6 +595,34 @@ public class BizFlowController {
         String marks = String.join(",", Collections.nCopies(all.size(), "?"));
         jdbc.update("INSERT INTO `" + table + "` (" + cols + ") VALUES (" + marks + ")", all.values().toArray());
         return id;
+    }
+
+    /**
+     * 小程序三检「逐项打勾」明细，写入 PC 端一日三检台账共用的 check_item_result。
+     * 幂等：先逻辑删除该记录的旧明细再写入，保证断网重试 / 重复点击结果一致。
+     */
+    private void saveCheckItems(long recordId, Object itemsObj) {
+        if (!(itemsObj instanceof List<?> items) || items.isEmpty()) return;
+        jdbc.update("UPDATE `check_item_result` SET `deleted`=1 WHERE `record_id`=?", recordId);
+        for (Object o : items) {
+            if (!(o instanceof Map<?, ?> im)) continue;
+            Long itemId = num(im.get("itemId"));
+            if (itemId == null) continue;
+            Map<String, Object> ir = base();
+            ir.put("record_id", recordId);
+            ir.put("item_id", itemId);
+            ir.put("checked", truthy(im.get("checked")) ? 1 : 0);
+            ir.put("abnormal", truthy(im.get("abnormal")) ? 1 : 0);
+            insert("check_item_result", ir);
+        }
+    }
+
+    private boolean truthy(Object o) {
+        if (o == null) return false;
+        if (o instanceof Boolean bo) return bo;
+        if (o instanceof Number n) return n.intValue() != 0;
+        String s = String.valueOf(o);
+        return "1".equals(s) || "true".equalsIgnoreCase(s) || "yes".equalsIgnoreCase(s);
     }
 
     private void requireExists(String table, long id) {

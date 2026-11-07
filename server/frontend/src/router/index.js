@@ -40,11 +40,20 @@ const dynamicChildren = bizModules.map((m) => ({
 
 const routes = [
   { path: '/login', name: 'Login', component: () => import('@/views/Login.vue'), meta: { title: '登录', public: true } },
-  // B9 小程序端：独立 H5 页面，不套后台框架，适老化大字号
-  { path: '/m/check', name: 'MobileCheck', component: () => import('@/views/MobileCheck.vue'), meta: { title: '一日三检', public: true } },
-  // C1 小程序端：学习中心 → 在线看视频 → 在线考核
-  { path: '/m/study', name: 'MobileStudy', component: () => import('@/views/MobileStudy.vue'), meta: { title: '学习中心', public: true } },
-  // E2 企业侧三步接入填报（适老化 H5）
+  // ===== 小程序端（运管管）正式版：4 Tab + 功能子页，统一 MobileShell 外壳 =====
+  { path: '/m', redirect: '/m/home' },
+  { path: '/m/home', name: 'MobileHome', component: () => import('@/views/mobile/MobileHome.vue'), meta: { title: '首页', public: true } },
+  { path: '/m/check', name: 'MobileCheck', component: () => import('@/views/mobile/MobileCheck.vue'), meta: { title: '一日三检', public: true } },
+  // C1 学习中心 → 在线看视频（断点续播）→ 在线考核（自动判分）
+  { path: '/m/study', name: 'MobileStudy', component: () => import('@/views/mobile/MobileStudy.vue'), meta: { title: '学习中心', public: true } },
+  { path: '/m/mine', name: 'MobileMine', component: () => import('@/views/mobile/MobileMine.vue'), meta: { title: '我的', public: true } },
+  { path: '/m/list', name: 'MobileList', component: () => import('@/views/mobile/MobileList.vue'), meta: { title: '台账记录', public: true } },
+  { path: '/m/report', name: 'MobileReport', component: () => import('@/views/mobile/MobileReport.vue'), meta: { title: '上报', public: true } },
+  { path: '/m/meeting', name: 'MobileMeeting', component: () => import('@/views/mobile/MobileMeeting.vue'), meta: { title: '会议签到', public: true } },
+  { path: '/m/sign', name: 'MobileSign', component: () => import('@/views/mobile/MobileSign.vue'), meta: { title: '文件签署', public: true } },
+  { path: '/m/notice', name: 'MobileNotice', component: () => import('@/views/mobile/MobileNotice.vue'), meta: { title: '消息通知', public: true } },
+  { path: '/m/profile', name: 'MobileProfile', component: () => import('@/views/mobile/MobileProfile.vue'), meta: { title: '个人档案', public: true } },
+  // E2 企业侧三步接入填报（独立 H5，不套小程序外壳）
   { path: '/m/onboard', name: 'MobileOnboard', component: () => import('@/views/MobileOnboard.vue'), meta: { title: '企业接入登记', public: true } },
   {
     path: '/',

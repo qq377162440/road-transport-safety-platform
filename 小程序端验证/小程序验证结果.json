@@ -1,0 +1,267 @@
+[
+  {
+    "name": "小程序自动登录取得 token",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "bootstrap 返回真实企业与人员名册",
+    "ok": true,
+    "detail": "佛山市高明高洲燃气有限公司 / 4 人"
+  },
+  {
+    "name": "bootstrap 返回当前身份与司机角色",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "首页今日必做 3 步且来自真实表",
+    "ok": true,
+    "detail": "还剩 3 件"
+  },
+  {
+    "name": "待办：三检来自 PC 下发的 check_task",
+    "ok": true,
+    "detail": "今日已完成 0/3 个时段"
+  },
+  {
+    "name": "待办：会议签到来自 meeting_attendee",
+    "ok": true,
+    "detail": "还有 2 场会议等你签到"
+  },
+  {
+    "name": "待办：学习来自 training_assign/training_plan",
+    "ok": true,
+    "detail": "本月进度 0% · 还有 3 节课"
+  },
+  {
+    "name": "未读公告数与数据库一致",
+    "ok": true,
+    "detail": "接口 3 / DB 3"
+  },
+  {
+    "name": "宫格角标与 PC 台账计数一致",
+    "ok": true,
+    "detail": "风险 8/8 · 投入 4/4"
+  },
+  {
+    "name": "管理视角返回今日数据概览",
+    "ok": true,
+    "detail": "三检 0/6 · 逾期隐患 1"
+  },
+  {
+    "name": "角色切换生效",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "我的页读取 PC 人员/车辆/证件档案",
+    "ok": true,
+    "detail": "证件 3 张 · 到期提醒 2 张"
+  },
+  {
+    "name": "PC 端下发三检任务成功",
+    "ok": true,
+    "detail": "taskId=2119122759015567360"
+  },
+  {
+    "name": "PC 端创建会议成功",
+    "ok": true,
+    "detail": "meetingId=2119122759099453440"
+  },
+  {
+    "name": "PC 端登记隐患成功",
+    "ok": true,
+    "detail": "dangerId=2119122759376277504"
+  },
+  {
+    "name": "PC 端发布通知成功",
+    "ok": true,
+    "detail": "noticeId=2119122759703433216"
+  },
+  {
+    "name": "PC 端下发待签文件成功",
+    "ok": true,
+    "detail": "signId=2119122761624424448"
+  },
+  {
+    "name": "PC 下发任务 → 小程序三检页可见",
+    "ok": true,
+    "detail": "taskId=2119122759015567360"
+  },
+  {
+    "name": "小程序三检页显示 PC 端车辆档案",
+    "ok": true,
+    "detail": "粤E·12345"
+  },
+  {
+    "name": "PC 检查项字典 → 小程序 6 项检查清单",
+    "ok": true,
+    "detail": "轮胎气压正常、刹车正常、灯光正常、灭火器在位、油/水/电正常、货物捆扎牢固"
+  },
+  {
+    "name": "PC 创建会议 → 小程序会议列表可见",
+    "ok": true,
+    "detail": "3 场"
+  },
+  {
+    "name": "PC 登记隐患 → 小程序隐患台账可见",
+    "ok": true,
+    "detail": "3 条"
+  },
+  {
+    "name": "PC 发布通知 → 小程序公告可见",
+    "ok": true,
+    "detail": "4 条"
+  },
+  {
+    "name": "PC 下发待签文件 → 小程序签署列表可见",
+    "ok": true,
+    "detail": "3 个"
+  },
+  {
+    "name": "PC 培训计划 → 小程序学习中心可见",
+    "ok": true,
+    "detail": "2026年11月岗中安全教育培训"
+  },
+  {
+    "name": "三检页渲染车辆与今日进度",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "三检页渲染 6 项检查清单",
+    "ok": true,
+    "detail": "6 张卡片"
+  },
+  {
+    "name": "提交前弹出大字二次确认",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "提交后显示结果页",
+    "ok": true,
+    "detail": "已上报异常，并自动生成隐患整改单"
+  },
+  {
+    "name": "小程序三检提交 → check_record 落库",
+    "ok": true,
+    "detail": "recordId=2119122773490110464"
+  },
+  {
+    "name": "逐项打勾明细 → check_item_result 落库",
+    "ok": true,
+    "detail": "6 项"
+  },
+  {
+    "name": "异常项明细留痕",
+    "ok": true,
+    "detail": "1 项异常"
+  },
+  {
+    "name": "三检异常 → 自动生成隐患（PC 隐患排查台账）",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "PC 端一日三检台账可见小程序记录",
+    "ok": true,
+    "detail": "1 条"
+  },
+  {
+    "name": "重复提交幂等（不产生重复记录）",
+    "ok": true,
+    "detail": "1 条"
+  },
+  {
+    "name": "隐患上报 → PC 隐患排查台账可见",
+    "ok": true,
+    "detail": "id=2119122782566584322"
+  },
+  {
+    "name": "维修上报 → PC 维修保养台账可见",
+    "ok": true,
+    "detail": "id=2119122782675636226"
+  },
+  {
+    "name": "会议签到 → PC 会议签到表 sign_status=signed",
+    "ok": true,
+    "detail": "status=signed"
+  },
+  {
+    "name": "文件签署 → PC sign_task 已签 + 签名留痕",
+    "ok": true,
+    "detail": "status=signed / 签名 1 条"
+  },
+  {
+    "name": "公告已读 → 回执落库并按人区分",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "意见反馈 → PC 试运行反馈台账可见",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "首页待办实时反映三检进度",
+    "ok": true,
+    "detail": "今日已完成 1/3 个时段"
+  },
+  {
+    "name": "首页（司机）4 Tab 与功能宫格渲染",
+    "ok": true,
+    "detail": "4 Tab / 12 宫格"
+  },
+  {
+    "name": "首页（管理）今日数据概览渲染",
+    "ok": true,
+    "detail": "管理视角今日数据概览"
+  },
+  {
+    "name": "消息通知页渲染未读与已读状态",
+    "ok": true,
+    "detail": "3 条通知"
+  },
+  {
+    "name": "隐患上报表单渲染",
+    "ok": true,
+    "detail": "表单与确认"
+  },
+  {
+    "name": "会议签到页渲染 PC 下发会议",
+    "ok": true,
+    "detail": "2 场会议"
+  },
+  {
+    "name": "文件签署页渲染待签/已签",
+    "ok": true,
+    "detail": "2 个文件"
+  },
+  {
+    "name": "隐患台账列表与 PC 数据同源",
+    "ok": true,
+    "detail": "2 条隐患"
+  },
+  {
+    "name": "个人档案页渲染基本信息与证件",
+    "ok": true,
+    "detail": "档案 + 证件"
+  },
+  {
+    "name": "我的页渲染用户、证件与设置",
+    "ok": true,
+    "detail": "用户信息 + 设置入口"
+  },
+  {
+    "name": "学习 Tab 保留 C1 视频+考核闭环",
+    "ok": true,
+    "detail": "进度卡 + 考核入口"
+  },
+  {
+    "name": "无控制台错误",
+    "ok": true,
+    "detail": ""
+  }
+]

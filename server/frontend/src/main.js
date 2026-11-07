@@ -8,6 +8,8 @@ import './style.css'
 // 原型设计系统（对齐 design-system/MASTER.md 与 prototype 视觉）
 import './styles/prototype.css'
 import './styles/element-overrides.css'
+// 小程序端适老化设计（与原型 mini.css 同源，类名 m- 前缀避免影响 PC 端）
+import './styles/mobile.css'
 
 const app = createApp(App)
 
