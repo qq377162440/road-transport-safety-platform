@@ -1,0 +1,182 @@
+[
+  {
+    "name": "自动登录取得 token",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "空白范本保留变量占位标签",
+    "ok": true,
+    "detail": "len=16144"
+  },
+  {
+    "name": "空白范本不盖公司章",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "空白范本不填真实企业名",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "空白范本不填真实人名",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "渲染接口默认为空白范本",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "空白范本 PDF 生成成功",
+    "ok": true,
+    "detail": "HTTP 200 / 126740 bytes"
+  },
+  {
+    "name": "空白范本 PDF 内无印章图片",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "空白范本 PDF 正文无真实企业名",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "成品自动盖公司章",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "成品填入真实企业名",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "成品无变量占位残留",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "成品 PDF 生成成功",
+    "ok": true,
+    "detail": "HTTP 200 / 185247 bytes"
+  },
+  {
+    "name": "成品 PDF 内含印章图片",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "岗位名册返回启用岗位",
+    "ok": true,
+    "detail": "7 个岗位（其余为企业已禁用岗位）"
+  },
+  {
+    "name": "初始岗位均未分配人员",
+    "ok": true,
+    "detail": "已分配 0 个"
+  },
+  {
+    "name": "读到缺失人名并给出字段清单",
+    "ok": true,
+    "detail": "签发人"
+  },
+  {
+    "name": "缺失项含字段中文说明",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "ZD01 的签发人(issuer)被识别为缺失",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "台账范本管理有模板层说明条",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "范本管理 A4 预览显示变量占位",
+    "ok": true,
+    "detail": "6 个占位"
+  },
+  {
+    "name": "范本管理 A4 预览无公司章",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "范本管理预览不出现真实人名",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "档案柜联动条说明成品层",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "档案柜弹出未读取到岗位人名提醒",
+    "ok": true,
+    "detail": "未读取到岗位人名：签发人。生成后台账中这些姓名栏将留空，建议先补录人员。\n补录人名"
+  },
+  {
+    "name": "档案柜成品预览带公司章",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "档案柜成品预览填了真实企业名",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "生成前弹出「未读取到岗位人名」确认框",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "确认框可跳转补录人名弹窗",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "补录后名册显示岗位人名",
+    "ok": true,
+    "detail": "分层验证-张三"
+  },
+  {
+    "name": "补录后签发人不再缺失",
+    "ok": true,
+    "detail": "剩余: "
+  },
+  {
+    "name": "补录后成品自动带出真实人名",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "补录后模板层仍无真实人名",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "可补录第二个岗位人员",
+    "ok": true,
+    "detail": "分层验证-李四 → 安环主管"
+  },
+  {
+    "name": "应急预案成品带出安全管理员姓名",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "无控制台错误",
+    "ok": true,
+    "detail": ""
+  }
+]

@@ -1,7 +1,7 @@
 <script setup>
 import { ref, computed, onMounted, watch } from 'vue'
 import request from '@/api/request'
-import { ElMessage } from 'element-plus'
+import { ElMessage, ElMessageBox } from 'element-plus'
 import Icon from '@/components/Icon.vue'
 import { ARCHIVE_CATALOG, FREQ_LABEL, STATUS } from '@/config/archiveCatalog'
 import { useRouter } from 'vue-router'
@@ -188,6 +188,8 @@ function currentTpl(item) {
 async function generateOne(item, silent = false) {
   const tpl = currentTpl(item)
   if (!tpl) return false
+  // 单行生成：先检查岗位人名，读不到则提醒（批量生成由 batchGenerate 统一提醒一次）
+  if (!silent && !await confirmMissing(await checkMissing(tpl))) return false
   await request.post('/archive/template/generate', {
     code: tpl.code,
     itemName: item.name,
@@ -203,7 +205,10 @@ async function doGenerate(item) {
   generating.value = true
   try {
     const ok = await generateOne(item)
-    if (!ok) { ElMessage.info('该归档项暂无台账范本，请使用「上传」留存'); return }
+    if (!ok) {
+      if (!currentTpl(item)) ElMessage.info('该归档项暂无台账范本，请使用「上传」留存')
+      return
+    }
     await loadArchiveItems()
   } finally {
     generating.value = false
@@ -220,6 +225,10 @@ async function batchGenerate(scope) {
   }
   generating.value = true
   try {
+    // 批量只提醒一次：先汇总所有归档项缺失的人名字段
+    const allMissing = []
+    for (const r of targets) allMissing.push(...await checkMissing(currentTpl(r)))
+    if (!await confirmMissing(allMissing)) return
     let n = 0
     for (const r of targets) if (await generateOne(r, true)) n++
     ElMessage.success(`已按当前应用范本生成 ${n} 份台账`)
@@ -309,11 +318,81 @@ async function doUpload() {
 }
 
 // ---- PDF 预览 ----
-// 上传留存类 → 嵌入真实文件；按范本生成类 → 渲染「当前应用范本」正文（与台账范本管理同一份 CSS）
+// 上传留存类 → 嵌入真实文件；按范本生成类 → 渲染【成品】（企业信息 + 岗位人名 + 公司章）
 const preview = ref(null)
 const previewBlobUrl = ref('')
 const previewFileKind = ref('') // '' | 'pdf' | 'image'
 const previewDoc = ref('')
+const missingPersons = ref([])  // 当前预览范本读不到的人名字段
+
+// ---- 岗位人名补录（读取不到时提醒，补录后成品自动带上真实姓名）----
+const showRoster = ref(false)
+const rosterList = ref([])
+const assignPost = ref('')
+const assignName = ref('')
+const assigning = ref(false)
+
+const missingLabels = computed(() =>
+  [...new Set(missingPersons.value.map((m) => m.label))].join('、'))
+
+async function checkMissing(tpl) {
+  if (!tpl) return []
+  try {
+    const res = await request.get('/archive/template/check', {
+      params: { code: tpl.code, post: previewPost.value },
+    })
+    return res.data || []
+  } catch (e) { return [] }
+}
+
+/** 生成前提醒：读不到岗位人名时不静默留白，给用户「继续留空」或「去补录」两个选择 */
+async function confirmMissing(list) {
+  if (!list.length) return true
+  const labels = [...new Set(list.map((m) => m.label))]
+  try {
+    await ElMessageBox.confirm(
+      `以下岗位尚未维护人员，生成后台账中的姓名栏将留空：\n\n${labels.join('、')}\n\n建议先补录人名；也可以继续生成空白栏用于手写。`,
+      '未读取到岗位人名',
+      {
+        confirmButtonText: '继续生成（姓名留空）',
+        cancelButtonText: '去补录人名',
+        type: 'warning',
+        distinguishCancelAndClose: true,
+        customStyle: { whiteSpace: 'pre-line' },
+      },
+    )
+    return true
+  } catch (action) {
+    if (action === 'cancel') openRoster()
+    return false
+  }
+}
+
+async function loadRoster() {
+  try { rosterList.value = (await request.get('/archive/template/roster')).data || [] }
+  catch (e) { rosterList.value = [] }
+  if (!assignPost.value && rosterList.value.length) assignPost.value = rosterList.value[0].post
+}
+
+async function openRoster() {
+  showRoster.value = true
+  await loadRoster()
+}
+
+async function doAssign() {
+  if (!assignName.value.trim()) { ElMessage.warning('请填写人员姓名'); return }
+  assigning.value = true
+  try {
+    const msg = (await request.post('/archive/template/assign', {
+      post: assignPost.value, name: assignName.value.trim(),
+    })).data
+    ElMessage.success(`已补录：${msg}`)
+    assignName.value = ''
+    await loadRoster()
+    if (preview.value) await openPreview(preview.value)
+  } catch (e) { ElMessage.error('补录失败，请重试') }
+  finally { assigning.value = false }
+}
 
 function srcdoc(body) {
   const screenFont = "body{font-family:'PingFang SC','Microsoft YaHei','Noto Sans CJK SC',sans-serif !important;padding:44px 50px;margin:0;}"
@@ -325,12 +404,14 @@ function clearPreviewBlob() {
   previewFileKind.value = ''
 }
 
-function openPreview(item) {
+async function openPreview(item) {
+  if (!item) return
   preview.value = item
   clearPreviewBlob()
   previewDoc.value = ''
+  missingPersons.value = []
 
-  // 上传留存的真实文件（PDF / 图片扫描件）：直接嵌入原文件
+  // 上传留存的真实文件（PDF / 图片扫描件）：直接嵌入原文件，无需人名/盖章
   if (item.isUploaded && item.pdfId) {
     fetch(`/api/archive/pdf/${item.pdfId}/download`, {
       headers: {
@@ -349,21 +430,33 @@ function openPreview(item) {
     return
   }
 
-  // 按当前应用范本渲染 A4 正文：未生成也能预览，改了范本这里立刻变
+  // 按当前应用范本渲染【成品】：真实企业信息 + 岗位人名 + 公司章
   const tpl = currentTpl(item)
   if (!tpl) {
     previewDoc.value = srcdoc(
       '<div class="doc-h0">暂无台账范本</div><div class="doc-p">该归档项尚未配置台账范本，请使用「上传」留存佐证材料，或到台账范本管理中新增。</div>')
     return
   }
-  previewDoc.value = srcdoc('<div class="doc-p">正在按当前应用范本渲染…</div>')
-  request.get(`/tpl/library/render/${encodeURIComponent(tpl.code)}`, {
-    params: { itemName: item.name, year: selYear.value, post: previewPost.value },
-  }).then((res) => {
+  previewDoc.value = srcdoc('<div class="doc-p">正在按当前应用范本生成成品预览…</div>')
+  // rows 是 computed，对象引用会被重算替换，用稳定的 key 判断是否为当前预览项
+  const key = item.key
+  checkMissing(tpl).then((list) => { if (preview.value?.key === key) missingPersons.value = list })
+  try {
+    const res = await request.get(`/tpl/library/render/${encodeURIComponent(tpl.code)}`, {
+      params: { mode: 'final', itemName: item.name, year: selYear.value, post: previewPost.value },
+    })
+    if (preview.value?.key !== key) return  // 快速切换时丢弃过期响应
     previewDoc.value = srcdoc(res.data || '')
-  }).catch(() => {
-    previewDoc.value = srcdoc('<div class="doc-p">范本渲染失败，请稍后重试。</div>')
-  })
+  } catch (e) {
+    if (preview.value?.key === key) previewDoc.value = srcdoc('<div class="doc-p">范本渲染失败，请稍后重试。</div>')
+  }
+}
+
+async function generateFromPreview() {
+  const item = preview.value
+  if (!item) return
+  const ok = await generateOne(item)
+  if (ok) { await loadArchiveItems(); await openPreview(item) }
 }
 
 function closePreview() {
@@ -405,7 +498,7 @@ function refreshTpl() { loadTplLibrary(); loadArchiveItems() }
         <Icon name="bookOpen" :size="19" />
         <div>
           <div class="lb-t">当前应用范本：<b>{{ currentSetName }}</b> · 已加载 {{ tplList.length }} 份台账范本</div>
-          <div class="lb-d">本柜「生成 / 重新生成 / 预览」均取自该范本；在台账范本管理中修改并保存后，点右侧刷新即可生效</div>
+          <div class="lb-d">本柜预览/生成的是带<b>岗位人名与公司章</b>的成品；台账范本管理里是空白范本。修改并保存范本后点右侧刷新即可生效</div>
         </div>
       </div>
       <div class="lb-ops">
@@ -565,11 +658,11 @@ function refreshTpl() { loadTplLibrary(); loadArchiveItems() }
       </div>
     </div>
 
-    <!-- PDF 预览：上传留存嵌入原文件；按范本生成类渲染「当前应用范本」正文 -->
+    <!-- PDF 预览：上传留存嵌入原文件；按范本生成类渲染成品（岗位人名 + 公司章） -->
     <div class="pdf-mask" :class="{ show: preview }" @click.self="closePreview">
       <div class="pdf-wrap">
         <div class="pdf-toolbar">
-          <span class="t">{{ preview?.name }} · {{ selYear }} 年度</span>
+          <span class="t">{{ preview?.name }} · {{ selYear }} 年度 · 成品预览</span>
           <span v-if="currentTpl(preview)?.name" class="tb-tpl">
             当前范本：{{ currentTpl(preview).name }}（{{ currentTpl(preview).versionLabel || '内置' }}）
           </span>
@@ -577,10 +670,18 @@ function refreshTpl() { loadTplLibrary(); loadArchiveItems() }
             <option value="">默认岗位</option>
             <option v-for="p in previewPosts" :key="p" :value="p">{{ p }}</option>
           </select>
+          <el-button v-if="currentTpl(preview) && !preview?.isUploaded" size="small" @click="generateFromPreview">
+            <Icon name="refresh" :size="13" /> 生成 / 重新生成
+          </el-button>
           <el-button v-if="preview?.pdfId" size="small" type="primary" @click="download(preview)">
             <Icon name="download" :size="13" /> 下载 PDF
           </el-button>
           <button class="x" @click="closePreview">×</button>
+        </div>
+        <div v-if="missingPersons.length" class="person-warn">
+          <Icon name="info" :size="16" />
+          <span><b>未读取到岗位人名</b>：{{ missingLabels }}。生成后台账中这些姓名栏将留空，建议先补录人员。</span>
+          <el-button size="small" type="warning" plain @click="openRoster">补录人名</el-button>
         </div>
         <div class="pdf-body">
           <iframe v-if="previewBlobUrl && previewFileKind === 'pdf'" :src="previewBlobUrl" class="pdf-embed" />
@@ -591,10 +692,66 @@ function refreshTpl() { loadTplLibrary(); loadArchiveItems() }
         </div>
       </div>
     </div>
+
+    <!-- 岗位人名补录：提醒可闭环，补录后成品自动带出真实姓名 -->
+    <div class="pdf-mask roster-mask" :class="{ show: showRoster }" @click.self="showRoster = false">
+      <div class="roster-wrap">
+        <div class="roster-head">
+          补录岗位人名
+          <span class="rh-sub">写入人员-岗位分配，之后生成台账自动带出</span>
+          <span class="x" @click="showRoster = false">×</span>
+        </div>
+        <div class="roster-body">
+          <div class="roster-form">
+            <label>岗位
+              <select v-model="assignPost" class="tb-sel">
+                <option v-for="r in rosterList" :key="r.post" :value="r.post">{{ r.post }}</option>
+              </select>
+            </label>
+            <label>姓名
+              <input v-model="assignName" class="form-input" placeholder="输入要绑定的人员姓名" @keyup.enter="doAssign" />
+            </label>
+            <el-button type="primary" size="small" :loading="assigning" @click="doAssign">保存分配</el-button>
+          </div>
+          <div class="roster-list">
+            <div v-for="r in rosterList" :key="r.post" class="roster-row">
+              <span class="rp">{{ r.post }}</span>
+              <span :class="['rn', { empty: !r.names }]">{{ r.names || '未分配人员' }}</span>
+            </div>
+          </div>
+          <p class="roster-hint">补录后当前成品预览立即刷新；空白范本管理页不会出现这些人名。</p>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
 <style scoped>
+/* 岗位人名缺失提醒 + 补录弹窗 */
+.person-warn { display: flex; align-items: center; gap: 10px; padding: 9px 16px;
+  background: #FFFBEB; border-bottom: 1px solid #FDE68A; color: #92400E;
+  font-size: 12.5px; line-height: 1.6; }
+.person-warn > svg { flex: none; }
+.person-warn > span { flex: 1; }
+.roster-mask { z-index: 210; }
+.roster-wrap { width: 560px; max-width: 94vw; max-height: 80vh; display: flex; flex-direction: column;
+  background: #fff; border-radius: 10px; overflow: hidden; box-shadow: 0 8px 40px rgba(0,0,0,.3); }
+.roster-head { display: flex; align-items: center; gap: 10px; padding: 14px 18px;
+  border-bottom: 1px solid var(--border, #E2E8F0); font-size: 15px; font-weight: 700; }
+.rh-sub { font-size: 12px; font-weight: 400; color: var(--text-3, #94A3B8); }
+.roster-head .x { margin-left: auto; cursor: pointer; font-size: 20px; color: #94A3B8; }
+.roster-body { padding: 18px; overflow: auto; }
+.roster-form { display: flex; align-items: flex-end; gap: 10px; margin-bottom: 16px; }
+.roster-form label { display: flex; flex-direction: column; gap: 5px; font-size: 12px; color: var(--text-2); }
+.roster-form .tb-sel, .roster-form .form-input { width: 190px; }
+.roster-list { border: 1px solid var(--border, #E2E8F0); border-radius: 8px; overflow: hidden; }
+.roster-row { display: flex; align-items: center; padding: 8px 12px; font-size: 13px; border-bottom: 1px solid #F1F5F9; }
+.roster-row:last-child { border-bottom: none; }
+.rp { width: 160px; font-weight: 600; }
+.rn { color: #15803D; }
+.rn.empty { color: #B45309; }
+.roster-hint { margin: 12px 0 0; font-size: 12px; color: var(--text-3, #94A3B8); line-height: 1.7; }
+
 .cargo-switch { display: flex; align-items: center; gap: 10px; }
 .cargo-switch .lbl { font-size: 13px; font-weight: 700; color: var(--text-2); }
 .hint { font-size: 12.5px; color: var(--text-3); background: var(--brand-50); border: 1px solid var(--brand-100); border-radius: 8px; padding: 10px 14px; margin-bottom: 16px; line-height: 1.8; }

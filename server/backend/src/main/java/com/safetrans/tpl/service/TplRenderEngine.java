@@ -12,17 +12,19 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
- * 台账范本渲染引擎（范本管理 & 电子档案柜共用的唯一渲染口径）。
+ * 台账范本渲染引擎（范本管理 & 电子档案柜共用的唯一渲染口径，但分两层输出）。
  *
- * <p>负责三件事：
- * <ol>
- *   <li>解析用户范本中的条件段落：{% if post == '主要负责人' %} / {% elif %} / {% else %} / {% endif %}</li>
- *   <li>填充变量：{{company_name}}、{{post}}、{{sign_date}}、{{公司名称}} 等，未知变量渲染为可手写填写的空栏</li>
- *   <li>套统一 A4 版式后输出完整 HTML，供前端预览与 PdfService 生成 PDF</li>
- * </ol>
+ * <p><b>模板层 · 空白范本</b>（台账范本管理）：{@link #renderBlankBody}——
+ * 变量保持 {@code {{xxx}}} 可见占位、不填企业名与人名、不盖章，供版式编辑与预览。
  *
- * <p>范本 HTML 使用 doc-* 类名（来自原型 archive_shared.js 的版式约定），
- * 样例范本中的 no-indent / sign-block 等类名在此一并兼容。
+ * <p><b>成品层 · 正式台账</b>（电子档案柜）：{@link #renderBody}——
+ * 填入企业信息与岗位人名、按印章设置自动盖公司章，供预览与 PDF 生成。
+ *
+ * <p>两层共用同一份 {@code tpl_template.content} 与 {@link #pageCss()}，
+ * 因此在范本管理里改了版式，档案柜生成的成品立刻同步。
+ *
+ * <p>另负责解析条件段 {@code {% if post == '主要负责人' %}} 系列、
+ * 把用户范本里的重复 class / 未闭合空元素规范化为合法 XHTML。
  */
 @Component
 public class TplRenderEngine {
@@ -39,8 +41,8 @@ public class TplRenderEngine {
     private static final Pattern TERM = Pattern.compile(
             "^\\s*([\\w\\u4e00-\\u9fa5]+)\\s*(==|!=)\\s*['\"]([^'\"]*)['\"]\\s*$");
 
-    /** 空白填写栏（用于未提供的变量，保证打印出来可手写补全） */
-    private static final String BLANK = "<span class=\"fill\">&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;</span>";
+    /** 空白填写栏（用于未提供的变量，保证打印出来可手写补全；人名解析失败时也用它兜底） */
+    public static final String BLANK = "<span class=\"fill\">&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;</span>";
 
     /** 签字图片类变量渲染为手写签名线 */
     private static final String SIGN_LINE = "<span class=\"sign-underline\">&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;</span>";
@@ -122,13 +124,42 @@ public class TplRenderEngine {
         return wrapHtml(renderBody(content, vars, sealHtml));
     }
 
+    /**
+     * 空白范本（台账范本管理预览/下载用）：
+     * 变量保持 {{xxx}} 可见占位、不填真实企业名与人名、不盖公司章。
+     * 条件段仍按当前岗位解析，让管理员看到该岗位下真实的版式骨架。
+     */
+    public String renderBlankBody(String content, Map<String, String> vars) {
+        String body = content == null ? "" : content;
+        body = resolveConditions(body, vars);
+        body = markVariables(body);
+        return normalizeHtml(body);
+    }
+
+    public String renderBlankDocument(String content, Map<String, String> vars) {
+        return wrapHtml(renderBlankBody(content, vars));
+    }
+
+    /** 把 {{变量}} 转成浅灰可见占位标签，明确「这里是待填字段」 */
+    private String markVariables(String html) {
+        Matcher m = VAR.matcher(html);
+        StringBuffer sb = new StringBuffer();
+        while (m.find()) {
+            String key = escape(m.group(1).trim());
+            m.appendReplacement(sb, Matcher.quoteReplacement(
+                    "<span class=\"tpl-var\">{{" + key + "}}</span>"));
+        }
+        m.appendTail(sb);
+        return sb.toString();
+    }
+
     /** 只输出正文片段（前端 A4 预览容器内嵌用） */
     public String renderBody(String content, Map<String, String> vars) {
         return renderBody(content, vars, null);
     }
 
     /**
-     * 渲染正文：条件段 → 变量 → 公司章注入 → XHTML 规范化。
+     * 成品渲染（电子档案柜预览/PDF 用）：条件段 → 变量填真实值 → 公司章注入 → XHTML 规范化。
      * 预览与 PDF 共用本方法，因此屏幕所见即 PDF 所得。
      */
     public String renderBody(String content, Map<String, String> vars, String sealHtml) {
@@ -311,6 +342,9 @@ public class TplRenderEngine {
                 + "/* 样例范本的 sign-zone 落款右对齐：章随列走，跟着落款贴右，不飘到左侧正文 */"
                 + ".sign-zone .seal-box{text-align:right;padding-left:0;padding-right:26px;}"
                 + ".fill{display:inline-block;min-width:90px;border-bottom:1px solid #333;}"
+                + "/* 空白范本模式：变量占位标签（只在台账范本管理出现，成品不会带） */"
+                + ".tpl-var{display:inline-block;padding:0 5px;border:1px dashed #94a3b8;background:#f1f5f9;"
+                + "color:#64748b;font-size:9pt;white-space:nowrap;}"
                 + ".sign-underline{display:inline-block;min-width:120px;border-bottom:1px solid #333;}"
                 + ".no-indent,.no-indent .doc-p,.meta{text-indent:0;}"
                 + ".sign-block{margin-top:26px;}"

@@ -91,7 +91,8 @@ async function openPreview(t) {
   previewDoc.value = srcdoc('<div class="doc-p">正在渲染范本…</div>')
   try {
     const res = await request.get(`/tpl/library/render/${encodeURIComponent(t.code)}`, {
-      params: { itemName: t.archiveItem || t.name, post: postForPreview.value },
+      // 空白范本模式：变量保持占位、无章、无真实人名
+      params: { mode: 'blank', post: postForPreview.value },
     })
     previewDoc.value = srcdoc(res.data || '')
   } catch (e) {
@@ -107,7 +108,7 @@ function printPreview() {
 async function downloadPreviewPdf() {
   const t = previewTpl.value
   if (!t) return
-  const res = await fetch(`/api/tpl/library/pdf/${encodeURIComponent(t.code)}?itemName=${encodeURIComponent(t.archiveItem || t.name)}`, {
+  const res = await fetch(`/api/tpl/library/pdf/${encodeURIComponent(t.code)}?mode=blank&post=${encodeURIComponent(postForPreview.value || '')}`, {
     headers: {
       Authorization: `Bearer ${localStorage.getItem('token')}`,
       'X-Token': `Bearer ${localStorage.getItem('token')}`,
@@ -118,7 +119,7 @@ async function downloadPreviewPdf() {
   const url = URL.createObjectURL(blob)
   const a = document.createElement('a')
   a.href = url
-  a.download = `${t.name}.pdf`
+  a.download = `${t.name}-空白范本.pdf`
   a.click()
   URL.revokeObjectURL(url)
 }
@@ -283,7 +284,7 @@ function pickSealFile(e) {
     sealUploading.value = true
     try {
       sealInfo.value = (await request.post('/tpl/seal/upload', { image: reader.result })).data
-      ElMessage.success('已应用真实印章，预览与生成的台账将统一使用此章')
+      ElMessage.success('已应用真实印章，电子档案柜生成的台账成品将统一使用此章')
     } catch (err) { ElMessage.error('印章上传失败，请重试') }
     finally { sealUploading.value = false }
   }
@@ -303,7 +304,7 @@ async function resetSeal() {
     <div class="pc-header">
       <div>
         <h1>台账范本管理</h1>
-        <div class="desc">维护企业当前应用范本 · 与电子档案柜共用同一份范本，改这里，档案柜生成的台账同步变化</div>
+        <div class="desc">维护企业当前应用的空白范本 · 企业信息、岗位人名与盖章只在电子档案柜生成成品时填入</div>
       </div>
       <div class="actions">
         <button class="btn btn-outline" @click="openSeal"><Icon name="award" :size="16" /> 印章设置</button>
@@ -324,6 +325,16 @@ async function resetSeal() {
       </div>
       <div class="cb-tip">
         <Icon name="info" :size="15" /> 在「在线修改」保存后，到电子档案柜点「生成 / 重新生成」即可看到新范本内容
+      </div>
+    </div>
+
+    <!-- 模板层 / 成品层分层说明 -->
+    <div class="layer-note">
+      <Icon name="info" :size="16" />
+      <div>
+        <b>这里是模板层：预览与下载的都是「空白范本」</b>
+        <span>变量以灰色 <code v-pre>{{变量名}}</code> 占位，不填企业名与人名、不盖公司章。</span>
+        <span>带真实岗位人名与公司章的正式台账，在 <a href="javascript:;" @click="goArchive">电子档案柜</a> 按范本生成。</span>
       </div>
     </div>
 
@@ -358,7 +369,7 @@ async function resetSeal() {
         <div class="list-head">
           <div>
             <h2>{{ curBox ? BOX_NAMES[curBox] : '全部台账范本' }}</h2>
-            <div class="sub">共 {{ filtered.length }} 份 · 点击「预览」查看按当前范本渲染的 A4 正文</div>
+            <div class="sub">共 {{ filtered.length }} 份 · 预览为空白范本（变量占位、不盖章、无人名）</div>
           </div>
           <input v-model="keyword" class="form-input search" placeholder="搜索范本名称 / 编码 / 归档项" />
         </div>
@@ -429,7 +440,7 @@ async function resetSeal() {
     <div class="modal-mask" :class="{ show: showPreview }" @click.self="showPreview = false">
       <div class="modal-box preview-box">
         <div class="modal-head">
-          范本 PDF 预览 <span class="mh-sub">{{ previewTpl?.name }} · 当前应用范本</span>
+          空白范本预览 <span class="mh-sub">{{ previewTpl?.name }} · 当前应用范本（模板层）</span>
           <span class="x" @click="showPreview = false">×</span>
         </div>
         <div class="pdf-toolbar">
@@ -437,7 +448,7 @@ async function resetSeal() {
             <option value="">默认岗位</option>
             <option v-for="p in posts" :key="p" :value="p">{{ p }}</option>
           </select>
-          <span class="tb-tip">按同一份版式 CSS 渲染，屏幕所见即生成 PDF 所得</span>
+          <span class="tb-tip">岗位仅决定条件段版式；灰色 <code v-pre>{{变量}}</code> 为待填字段，成品在电子档案柜生成</span>
           <div style="margin-left:auto; display:flex; gap:8px">
             <button class="btn btn-outline btn-sm" @click="printPreview"><Icon name="fileText" :size="14" /> 打印</button>
             <button class="btn btn-primary btn-sm" @click="downloadPreviewPdf"><Icon name="download" :size="14" /> 下载 PDF</button>
@@ -492,6 +503,9 @@ async function resetSeal() {
             原型《09-静态资料范本引擎》第六章：所有台账生成时统一在落款处盖公司章。
             优先使用客户上传的真实印章；未上传时按企业全称自动生成标准圆形红章（内部文件章，非法定公章）。
           </p>
+          <p class="hint" style="margin:0 0 4px;color:#B45309">
+            <b>注意：</b>印章只出现在「电子档案柜」生成的成品上；本页的空白范本预览与下载均不盖章。
+          </p>
           <div class="seal-preview">
             <img v-if="sealInfo" :src="sealInfo.dataUri" alt="当前生效印章" />
             <span v-else style="color:#94A3B8;font-size:13px">读取中…</span>
@@ -508,7 +522,7 @@ async function resetSeal() {
             </label>
             <button class="btn btn-outline btn-sm" @click="resetSeal"><Icon name="rotateCcw" :size="14" /> 恢复自动章</button>
           </div>
-          <p class="hint">透明底 PNG 效果最佳（建议 300×300 以上、2MB 以内）。切换后「范本预览」「档案柜预览」「生成 PDF」立即同步生效。</p>
+          <p class="hint">透明底 PNG 效果最佳（建议 300×300 以上、2MB 以内）。切换后电子档案柜的成品预览与生成 PDF 立即生效。</p>
         </div>
       </div>
     </div>
@@ -516,6 +530,15 @@ async function resetSeal() {
 </template>
 
 <style scoped>
+/* 模板层 / 成品层分层说明条 */
+.layer-note { display: flex; align-items: flex-start; gap: 10px; margin: 0 0 16px;
+  padding: 11px 14px; background: #EFF6FF; border: 1px solid #BFDBFE; border-radius: 8px;
+  color: #1E40AF; font-size: 12.5px; line-height: 1.8; }
+.layer-note > svg { flex: none; margin-top: 3px; }
+.layer-note div { display: flex; flex-direction: column; }
+.layer-note code { padding: 0 4px; background: #DBEAFE; border-radius: 3px; }
+.layer-note a { color: #1D4ED8; text-decoration: underline; }
+
 /* 印章设置 */
 .seal-preview { display: flex; align-items: center; justify-content: center; height: 186px;
   background: #fff; border: 1px dashed var(--border, #CBD5E1); border-radius: 10px; margin: 14px 0; }

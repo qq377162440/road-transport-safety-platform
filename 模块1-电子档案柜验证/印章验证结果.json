@@ -195,12 +195,22 @@
     "detail": ""
   },
   {
-    "name": "A4 预览 iframe 内显示公司章",
+    "name": "台账范本管理 A4 预览为空白范本（无章）",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "台账范本管理 A4 预览显示变量占位",
     "ok": true,
     "detail": ""
   },
   {
     "name": "电子档案柜联动条存在",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "电子档案柜成品预览显示公司章",
     "ok": true,
     "detail": ""
   },

@@ -5,6 +5,8 @@ import com.safetrans.archive.entity.ArchivePdf;
 import com.safetrans.archive.service.ArchiveService;
 import com.safetrans.common.auth.RequireRole;
 import com.safetrans.common.web.Result;
+import com.safetrans.tpl.service.TplLibraryService;
+import com.safetrans.tpl.service.TplPersonResolver;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -25,9 +27,11 @@ import java.util.Map;
 public class ArchiveController {
 
     private final ArchiveService archiveService;
+    private final TplLibraryService tplLibraryService;
 
-    public ArchiveController(ArchiveService archiveService) {
+    public ArchiveController(ArchiveService archiveService, TplLibraryService tplLibraryService) {
         this.archiveService = archiveService;
+        this.tplLibraryService = tplLibraryService;
     }
 
     /** 责任制归档项列表 */
@@ -55,6 +59,27 @@ public class ArchiveController {
         int year = body.get("year") == null ? java.time.Year.now().getValue()
                 : Integer.parseInt(String.valueOf(body.get("year")));
         return Result.ok(archiveService.generateByTemplate(code, itemName, boxNo, year, post));
+    }
+
+    /** 生成前检查：该范本在当前岗位下读不到哪些人名（前端据此提醒，而不是静默留白） */
+    @GetMapping("/template/check")
+    public Result<List<TplPersonResolver.Missing>> checkPersons(@RequestParam("code") String code,
+                                                                @RequestParam(value = "post", required = false) String post) {
+        return Result.ok(tplLibraryService.checkMissing(code, post));
+    }
+
+    /** 岗位人员名册（档案柜「补录人名」弹窗用） */
+    @GetMapping("/template/roster")
+    public Result<List<Map<String, Object>>> roster() {
+        return Result.ok(tplLibraryService.roster());
+    }
+
+    /** 补录岗位人名：写入 org_member，之后生成台账即可自动读到 */
+    @PostMapping("/template/assign")
+    public Result<String> assign(@RequestBody Map<String, Object> body) {
+        String post = body.get("post") == null ? "" : String.valueOf(body.get("post"));
+        String name = body.get("name") == null ? "" : String.valueOf(body.get("name"));
+        return Result.ok(tplLibraryService.assignPerson(post, name));
     }
 
     /** 下载 PDF / 上传留存文件（图片、扫描件等）：按文件名后缀返回正确 Content-Type */

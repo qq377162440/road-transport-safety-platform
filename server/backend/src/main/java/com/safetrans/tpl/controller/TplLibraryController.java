@@ -91,24 +91,35 @@ public class TplLibraryController {
         return Result.ok(v);
     }
 
-    /** 渲染后的 A4 正文 HTML（前端预览容器内嵌） */
+    /**
+     * A4 正文 HTML。
+     * mode=blank（默认，台账范本管理用）：空白范本，变量占位、无章、无真实人名；
+     * mode=final（电子档案柜用）：成品，填企业信息与岗位人名、自动盖公司章。
+     */
     @GetMapping("/render/{code}")
     public Result<String> render(@PathVariable String code,
                                  @RequestParam(value = "itemName", required = false) String itemName,
                                  @RequestParam(value = "year", required = false) Integer year,
-                                 @RequestParam(value = "post", required = false) String post) {
-        return Result.ok(library.renderBody(code, itemName, year == null ? java.time.Year.now().getValue() : year, post));
+                                 @RequestParam(value = "post", required = false) String post,
+                                 @RequestParam(value = "mode", defaultValue = "blank") String mode) {
+        int y = year == null ? java.time.Year.now().getValue() : year;
+        return Result.ok("final".equalsIgnoreCase(mode)
+                ? library.renderBody(code, itemName, y, post)
+                : library.renderBlankBody(code, post));
     }
 
-    /** 渲染为 PDF 字节（范本管理预览 PDF / 打印 / 另存） */
+    /** PDF：同样区分空白范本与盖章成品 */
     @GetMapping("/pdf/{code}")
     public ResponseEntity<byte[]> pdf(@PathVariable String code,
                                       @RequestParam(value = "itemName", required = false) String itemName,
                                       @RequestParam(value = "year", required = false) Integer year,
-                                      @RequestParam(value = "post", required = false) String post) {
-        byte[] bytes = library.renderPdf(code, itemName,
-                year == null ? java.time.Year.now().getValue() : year, post);
-        String name = URLEncoder.encode(code + "_范本预览", StandardCharsets.UTF_8).replace("+", "%20");
+                                      @RequestParam(value = "post", required = false) String post,
+                                      @RequestParam(value = "mode", defaultValue = "blank") String mode) {
+        int y = year == null ? java.time.Year.now().getValue() : year;
+        boolean blank = !"final".equalsIgnoreCase(mode);
+        byte[] bytes = blank ? library.renderBlankPdf(code, post) : library.renderPdf(code, itemName, y, post);
+        String name = URLEncoder.encode(code + (blank ? "_空白范本" : "_台账成品"),
+                StandardCharsets.UTF_8).replace("+", "%20");
         return ResponseEntity.ok()
                 .header(HttpHeaders.CONTENT_DISPOSITION, "inline; filename*=UTF-8''" + name + ".pdf")
                 .contentType(MediaType.APPLICATION_PDF)

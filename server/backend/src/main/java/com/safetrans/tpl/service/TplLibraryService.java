@@ -41,14 +41,17 @@ public class TplLibraryService {
     private final PdfService pdfService;
     private final TenantService tenantService;
     private final SealService sealService;
+    private final TplPersonResolver personResolver;
 
     public TplLibraryService(TplTemplateMapper templateMapper, TplRenderEngine renderEngine,
-                             PdfService pdfService, TenantService tenantService, SealService sealService) {
+                             PdfService pdfService, TenantService tenantService, SealService sealService,
+                             TplPersonResolver personResolver) {
         this.templateMapper = templateMapper;
         this.renderEngine = renderEngine;
         this.pdfService = pdfService;
         this.tenantService = tenantService;
         this.sealService = sealService;
+        this.personResolver = personResolver;
     }
 
     /** 当前企业 id（平台账号无租户，返回 null，仅使用全局范本） */
@@ -217,7 +220,8 @@ public class TplLibraryService {
     }
 
     /**
-     * 当前范本是否盖章：原型规则「所有台账（PDF）都要盖公司章」，
+     * 当前范本是否盖章：原型规则「所有台账（PDF）都要盖公司章」。
+     * <b>只在成品层生效</b> —— 台账范本管理的空白范本不盖章。
      * need_seal 缺省或非空均视为盖章，仅显式 0 才不盖。
      */
     private String sealFor(TplTemplate tpl) {
@@ -225,27 +229,73 @@ public class TplLibraryService {
         return (need != null && need == 0) ? null : sealService.sealHtml();
     }
 
-    /** 渲染后的正文片段（前端 A4 预览容器内嵌） */
-    public String renderBody(String code, String itemName, int year, String post) {
+    private TplTemplate mustGet(String code) {
         TplTemplate tpl = effective(code);
         if (tpl == null) throw new BizException("范本不存在：" + code);
+        return tpl;
+    }
+
+    private Map<String, String> blankVars(String post) {
+        // 空白范本不展示任何真实值；变量表仅供条件段判断岗位分支
+        return renderEngine.defaultVars(null, java.time.Year.now().getValue(), post, null);
+    }
+
+    // ===== 模板层：台账范本管理（空白范本，无章、无真实人名）=====
+
+    /** 空白范本正文：变量保持 {{}} 占位，管理员看的是「待填版式」 */
+    public String renderBlankBody(String code, String post) {
+        return renderEngine.renderBlankBody(mustGet(code).getContent(), blankVars(post));
+    }
+
+    public String renderBlankDocument(String code, String post) {
+        return renderEngine.renderBlankDocument(mustGet(code).getContent(), blankVars(post));
+    }
+
+    public byte[] renderBlankPdf(String code, String post) {
+        return pdfService.render(renderBlankDocument(code, post));
+    }
+
+    // ===== 成品层：电子档案柜（真实企业信息 + 岗位人名 + 公司章）=====
+
+    /** 成品正文片段（档案柜 A4 预览容器内嵌） */
+    public String renderBody(String code, String itemName, int year, String post) {
+        TplTemplate tpl = mustGet(code);
         Map<String, String> vars = renderEngine.defaultVars(
                 tenantService.currentTenantName(), year, post, itemName);
+        personResolver.apply(vars, renderEngine.resolveConditions(tpl.getContent(), vars), post);
         return renderEngine.renderBody(tpl.getContent(), vars, sealFor(tpl));
     }
 
-    /** 渲染后的完整 HTML 文档（PDF 生成用） */
+    /** 成品完整 HTML 文档（PDF 生成用） */
     public String renderDocument(String code, String itemName, int year, String post) {
-        TplTemplate tpl = effective(code);
-        if (tpl == null) throw new BizException("范本不存在：" + code);
+        TplTemplate tpl = mustGet(code);
         Map<String, String> vars = renderEngine.defaultVars(
                 tenantService.currentTenantName(), year, post, itemName);
+        personResolver.apply(vars, renderEngine.resolveConditions(tpl.getContent(), vars), post);
         return renderEngine.renderDocument(tpl.getContent(), vars, sealFor(tpl));
     }
 
-    /** 直接渲染为 PDF 字节（范本管理「预览 PDF / 打印」用） */
+    /** 直接渲染为成品 PDF（电子档案柜生成归档用） */
     public byte[] renderPdf(String code, String itemName, int year, String post) {
         return pdfService.render(renderDocument(code, itemName, year, post));
+    }
+
+    /** 生成前检查：该范本在当前岗位下读不到人名的字段清单 */
+    public List<TplPersonResolver.Missing> checkMissing(String code, String post) {
+        TplTemplate tpl = mustGet(code);
+        Map<String, String> vars = renderEngine.defaultVars(
+                tenantService.currentTenantName(), java.time.Year.now().getValue(), post, null);
+        return personResolver.check(renderEngine.resolveConditions(tpl.getContent(), vars), post);
+    }
+
+    /** 当前企业岗位人员名册（档案柜补录弹窗用） */
+    public List<Map<String, Object>> roster() {
+        return personResolver.roster();
+    }
+
+    /** 为岗位补录人名（提醒闭环） */
+    public String assignPerson(String post, String name) {
+        return personResolver.assign(post, name);
     }
 
     /** 统一版式 CSS（前端 A4 预览容器复用，保证屏幕与 PDF 一致） */
