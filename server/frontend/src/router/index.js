@@ -14,6 +14,10 @@ const staticChildren = [
   { path: 'responsibility', name: 'Responsibility', component: () => import('@/views/Responsibility.vue'), meta: { title: '安全生产责任制', roles: ['enterprise', 'admin'] } },
   { path: 'archive', name: 'Archive', component: () => import('@/views/Archive.vue'), meta: { title: '电子档案柜', roles: ['enterprise', 'provider', 'admin'] } },
   { path: 'archive-overview', name: 'ArchiveOverview', component: () => import('@/views/ArchiveOverview.vue'), meta: { title: '档案柜全景与缺项' } },
+  // ===== C1 培训教育（PC 下发端）=====
+  { path: 'training/course', name: 'TrainingCourse', component: () => import('@/views/TrainingCourse.vue'), meta: { title: '线上学习（课程库+试题管理）', roles: ['enterprise', 'provider', 'admin'] } },
+  { path: 'training/plan', name: 'TrainingPlan', component: () => import('@/views/TrainingPlan.vue'), meta: { title: '岗中培训计划', roles: ['enterprise', 'provider', 'admin'] } },
+  { path: 'training/stat', name: 'TrainingStat', component: () => import('@/views/TrainingStat.vue'), meta: { title: '学习情况统计', roles: ['enterprise', 'provider', 'admin'] } },
   { path: 'collect', name: 'Collect', component: () => import('@/views/Collect.vue'), meta: { title: '服务商代录工作台', roles: ['provider', 'admin'] } },
   { path: 'flow-tools', name: 'FlowTools', component: () => import('@/views/FlowTools.vue'), meta: { title: '业务闭环工具箱' } },
   { path: 'onboarding', name: 'Onboarding', component: () => import('@/views/Onboarding.vue'), meta: { title: '新企业接入引导', roles: ['provider', 'admin'] } },
@@ -38,6 +42,8 @@ const routes = [
   { path: '/login', name: 'Login', component: () => import('@/views/Login.vue'), meta: { title: '登录', public: true } },
   // B9 小程序端：独立 H5 页面，不套后台框架，适老化大字号
   { path: '/m/check', name: 'MobileCheck', component: () => import('@/views/MobileCheck.vue'), meta: { title: '一日三检', public: true } },
+  // C1 小程序端：学习中心 → 在线看视频 → 在线考核
+  { path: '/m/study', name: 'MobileStudy', component: () => import('@/views/MobileStudy.vue'), meta: { title: '学习中心', public: true } },
   // E2 企业侧三步接入填报（适老化 H5）
   { path: '/m/onboard', name: 'MobileOnboard', component: () => import('@/views/MobileOnboard.vue'), meta: { title: '企业接入登记', public: true } },
   {

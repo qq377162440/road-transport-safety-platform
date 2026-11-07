@@ -1,0 +1,292 @@
+[
+  {
+    "name": "自动登录取得 token",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "字典返回课程/行业/岗位分类",
+    "ok": true,
+    "detail": "8 类 / 5 岗位"
+  },
+  {
+    "name": "视频库返回 5 段平台级视频",
+    "ok": true,
+    "detail": "冬季行车安全要点、防御性驾驶技巧、危化品应急处置、消防控制室“四快”处置规程、新《安全生产法》解读"
+  },
+  {
+    "name": "视频 URL 真实可播放（H.264 mp4）",
+    "ok": true,
+    "detail": "HTTP 200 / 70630 bytes"
+  },
+  {
+    "name": "课程库返回 5 门课程",
+    "ok": true,
+    "detail": "total=5"
+  },
+  {
+    "name": "课程分类多选筛选生效",
+    "ok": true,
+    "detail": "法律法规 → 1 门"
+  },
+  {
+    "name": "课程详情含视频列表",
+    "ok": true,
+    "detail": "1 段"
+  },
+  {
+    "name": "课程详情含绑定考题",
+    "ok": true,
+    "detail": "5 题"
+  },
+  {
+    "name": "试题管理返回 4 套卷子",
+    "ok": true,
+    "detail": "4 套"
+  },
+  {
+    "name": "卷子含单选/多选/判断三种题型",
+    "ok": true,
+    "detail": "judge、multi、single"
+  },
+  {
+    "name": "PC 查看题目带正确答案",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "PC 出题成功并计入题目数",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "PC 删题后题目数同步",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "PC 创建课程并挂载视频/卷子",
+    "ok": true,
+    "detail": "视频 1 段 / 题目 6 题"
+  },
+  {
+    "name": "可下发人员名册返回演示从业人员",
+    "ok": true,
+    "detail": "陈刚、刘洋、赵敏、邓佐成"
+  },
+  {
+    "name": "PC 新建计划自动挂课程视频",
+    "ok": true,
+    "detail": "1 段"
+  },
+  {
+    "name": "PC 下发人员成功",
+    "ok": true,
+    "detail": "新增 1 人"
+  },
+  {
+    "name": "下发后计划状态为已发布",
+    "ok": true,
+    "detail": "published"
+  },
+  {
+    "name": "小程序学习中心显示本月进度卡",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "小程序显示继续学习课程",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "小程序显示全部课程列表",
+    "ok": true,
+    "detail": "2 项"
+  },
+  {
+    "name": "小程序显示在线考核入口",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "学习中心接口返回本月计划与课程",
+    "ok": true,
+    "detail": "1 门课 / 进度 0%"
+  },
+  {
+    "name": "初始进度为 0、考核未通过",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "学时开关关闭时考核未锁定",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "学习中心返回绑定考试卷名称",
+    "ok": true,
+    "detail": "冬季行车与防御性驾驶考试卷"
+  },
+  {
+    "name": "进入在线学习页并渲染 video 播放器",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "播放器 src 指向真实视频",
+    "ok": true,
+    "detail": "/videos/safety_law.mp4"
+  },
+  {
+    "name": "观看进度已落库（前端心跳上报）",
+    "ok": true,
+    "detail": "{\"8801000000000005\":{\"position\":0,\"duration\":17,\"time\":\"2026-11-07T19:56:00.543029442\"}}"
+  },
+  {
+    "name": "断点续播：回到课程显示已看位置",
+    "ok": true,
+    "detail": "position=9"
+  },
+  {
+    "name": "断点续播：学习中心首页显示已看进度",
+    "ok": true,
+    "detail": "已看 52% · 看完才算完成"
+  },
+  {
+    "name": "断点续播：播放器从上次位置继续",
+    "ok": true,
+    "detail": "currentTime=10.148244"
+  },
+  {
+    "name": "学完全部视频后进度 100%",
+    "ok": true,
+    "detail": "100%"
+  },
+  {
+    "name": "观看时长已累计留痕",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "组卷返回试题",
+    "ok": true,
+    "detail": "6 题"
+  },
+  {
+    "name": "下发到小程序的试卷不含正确答案（防作弊）",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "试卷含及格线与考试次数",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "全对交卷得 100 分并通过",
+    "ok": true,
+    "detail": "100 分 / pass / 答对 6/6"
+  },
+  {
+    "name": "试题与作答明细留痕",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "考核通过后学习状态为 completed",
+    "ok": true,
+    "detail": "completed"
+  },
+  {
+    "name": "学习中心显示考核已通过",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "全错交卷得 0 分并判定未通过",
+    "ok": true,
+    "detail": "0 分 / fail"
+  },
+  {
+    "name": "PC 学习统计出现小程序学习记录",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "PC 统计同步显示观看进度",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "PC 统计同步显示考核得分与次数",
+    "ok": true,
+    "detail": "score=0 / times=2"
+  },
+  {
+    "name": "培训证明接口返回试题作答留痕",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "学时开关开启时未学满禁止考核",
+    "ok": true,
+    "detail": "请先学完本月全部课程视频，再参加考核"
+  },
+  {
+    "name": "学满后自动解锁考核",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "PC 课程库页面渲染课程表格",
+    "ok": true,
+    "detail": "9 行"
+  },
+  {
+    "name": "PC 课程库有原型说明条",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "PC 岗中计划页渲染计划列表",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "PC 有打开小程序学习端入口",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "PC 学习统计页渲染统计行",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "PC 统计页有完成率 KPI",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "UI 走查：重置后学习中心恢复待学习态",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "小程序考核页渲染题目与选项",
+    "ok": true,
+    "detail": "6 题"
+  },
+  {
+    "name": "小程序交卷后显示考核结果页",
+    "ok": true,
+    "detail": "考核未通过"
+  },
+  {
+    "name": "无控制台错误",
+    "ok": true,
+    "detail": ""
+  }
+]

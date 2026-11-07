@@ -44,6 +44,11 @@ const staticGroups = [
     { name: '台账范本管理', path: '/template-manager', icon: 'book' },
     { name: '安全生产责任制', path: '/responsibility', roles: ['enterprise', 'admin'], icon: 'shieldCheck' },
   ] },
+  { group: '培训教育管理', roles: ['enterprise', 'admin', 'provider'], items: [
+    { name: '线上学习（课程库+试题）', path: '/training/course', icon: 'video' },
+    { name: '岗中培训计划', path: '/training/plan', icon: 'bookOpen' },
+    { name: '学习情况统计', path: '/training/stat', icon: 'chart' },
+  ] },
   { group: '专用业务闭环', items: [
     { name: '业务闭环工具箱', path: '/flow-tools', icon: 'wrench' },
   ] },
