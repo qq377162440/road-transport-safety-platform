@@ -62,32 +62,32 @@
   {
     "name": "PC 端下发三检任务成功",
     "ok": true,
-    "detail": "taskId=2119122759015567360"
+    "detail": "taskId=2119311774515826688"
   },
   {
     "name": "PC 端创建会议成功",
     "ok": true,
-    "detail": "meetingId=2119122759099453440"
+    "detail": "meetingId=2119311774666821632"
   },
   {
     "name": "PC 端登记隐患成功",
     "ok": true,
-    "detail": "dangerId=2119122759376277504"
+    "detail": "dangerId=2119311774968811520"
   },
   {
     "name": "PC 端发布通知成功",
     "ok": true,
-    "detail": "noticeId=2119122759703433216"
+    "detail": "noticeId=2119311775312744448"
   },
   {
     "name": "PC 端下发待签文件成功",
     "ok": true,
-    "detail": "signId=2119122761624424448"
+    "detail": "signId=2119311775514071040"
   },
   {
     "name": "PC 下发任务 → 小程序三检页可见",
     "ok": true,
-    "detail": "taskId=2119122759015567360"
+    "detail": "taskId=2119311774515826688"
   },
   {
     "name": "小程序三检页显示 PC 端车辆档案",
@@ -147,7 +147,7 @@
   {
     "name": "小程序三检提交 → check_record 落库",
     "ok": true,
-    "detail": "recordId=2119122773490110464"
+    "detail": "recordId=2119311787484614656"
   },
   {
     "name": "逐项打勾明细 → check_item_result 落库",
@@ -177,12 +177,12 @@
   {
     "name": "隐患上报 → PC 隐患排查台账可见",
     "ok": true,
-    "detail": "id=2119122782566584322"
+    "detail": "id=2119311796758220802"
   },
   {
     "name": "维修上报 → PC 维修保养台账可见",
     "ok": true,
-    "detail": "id=2119122782675636226"
+    "detail": "id=2119311796884049922"
   },
   {
     "name": "会议签到 → PC 会议签到表 sign_status=signed",
