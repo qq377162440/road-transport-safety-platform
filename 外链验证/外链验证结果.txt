@@ -1,0 +1,10 @@
+PASS 外链首页可打开（跨境隧道） | 9.7s / 道路运输安全生产管理平台
+PASS 自动登录进入企业工作台（无登录页拦截） | https://nsw-improvement-heating-template.trycloudflare.com/d
+PASS 左侧菜单与业务模块渲染 | 菜单关键字命中
+PASS 电子档案柜页在外链下正常渲染 | https://nsw-improvement-heating-template.trycloudflare.com/a
+PASS 当前应用范本套联动条可见 | 
+PASS 安全管理架构页显示「安全员」与真实人名 | 
+PASS 小程序端首页在外链下正常渲染 | https://nsw-improvement-heating-template.trycloudflare.com/m
+PASS 无控制台错误 | 
+
+8/8 passed
