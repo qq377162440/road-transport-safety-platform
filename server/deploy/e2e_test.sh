@@ -67,16 +67,17 @@ ENABLED=$(curl -fsS --max-time 10 "$BASE/api/org/posts/enabled" -H "$AUTH")
 COUNT=$(echo "$ENABLED" | jget "import sys,json; print(len(json.load(sys.stdin)['data']))")
 [ "$COUNT" = "4" ] && ok "启用岗位 4 个" || bad "启用岗位数量=${COUNT:-无响应}"
 
-# 4. 岗位改名（安全员 → 安环主管）
+# 4. 岗位改名（用临时名验收，末尾改回「安全员」，避免污染交付态）
+TMP_NAME='安全员（改名验收）'
 SAFE_ID=$(curl -fsS --max-time 10 "$BASE/api/org/posts" -H "$AUTH" | jget "import sys,json; d=json.load(sys.stdin)['data']; print([p['id'] for p in d if p['funcKey']=='safe'][0])")
-RENAME=$(curl -fsS --max-time 10 -X PUT "$BASE/api/org/post/$SAFE_ID/rename" -H "$AUTH" -H "Content-Type: application/json" -d '{"name":"安环主管"}')
+RENAME=$(curl -fsS --max-time 10 -X PUT "$BASE/api/org/post/$SAFE_ID/rename" -H "$AUTH" -H "Content-Type: application/json" -d "{\"name\":\"$TMP_NAME\"}")
 NEWNAME=$(echo "$RENAME" | jget "import sys,json; print(json.load(sys.stdin)['data']['postName'])")
-[ "$NEWNAME" = "安环主管" ] && ok "岗位改名成功" || bad "改名失败=${NEWNAME:-无响应}"
+[ "$NEWNAME" = "$TMP_NAME" ] && ok "岗位改名成功" || bad "改名失败=${NEWNAME:-无响应}"
 
-# 5. 责任制联动（含安环主管）
+# 5. 责任制联动（含改名后的岗位）
 RESP=$(curl -fsS --max-time 10 "$BASE/api/tpl/responsibility" -H "$AUTH")
-HAS_NEW=$(echo "$RESP" | jget "import sys,json; d=json.load(sys.stdin)['data']; print('安环主管' in [r['name'] for r in d])")
-[ "$HAS_NEW" = "True" ] && ok "责任制联动（含安环主管）" || bad "责任制未联动"
+HAS_NEW=$(echo "$RESP" | jget "import sys,json; d=json.load(sys.stdin)['data']; print('$TMP_NAME' in [r['name'] for r in d])")
+[ "$HAS_NEW" = "True" ] && ok "责任制联动（含改名后岗位）" || bad "责任制未联动"
 
 # 6. 范本套列表
 SETS=$(curl -fsS --max-time 10 "$BASE/api/tpl/set" -H "$AUTH")
@@ -98,6 +99,11 @@ GM_ID=$(curl -fsS --max-time 10 "$BASE/api/org/posts" -H "$AUTH" | jget "import 
 TOGGLE=$(curl -fsS --max-time 10 -X PUT "$BASE/api/org/post/$GM_ID/toggle" -H "$AUTH")
 TOGGLE_CODE=$(echo "$TOGGLE" | jget "import sys,json; print(json.load(sys.stdin)['code'])")
 [ -n "$TOGGLE_CODE" ] && [ "$TOGGLE_CODE" != "0" ] && ok "强制岗位禁用被拦截（code=$TOGGLE_CODE）" || bad "强制岗位未被拦截：code=${TOGGLE_CODE:-无响应}"
+
+# 10. 恢复交付态岗位名「安全员」（改名验收用临时名，不得留在交付数据里）
+RESTORE=$(curl -fsS --max-time 10 -X PUT "$BASE/api/org/post/$SAFE_ID/rename" -H "$AUTH" -H "Content-Type: application/json" -d '{"name":"安全员"}')
+RESTORE_NAME=$(echo "$RESTORE" | jget "import sys,json; print(json.load(sys.stdin)['data']['postName'])")
+[ "$RESTORE_NAME" = "安全员" ] && ok "岗位名恢复为「安全员」" || bad "岗位名恢复失败=${RESTORE_NAME:-无响应}"
 
 echo ""
 echo "===== 结果：$PASS 通过，$FAIL 失败 ====="

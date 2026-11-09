@@ -90,7 +90,7 @@ public class OrgChartService {
 
     static {
         DEMO_NAMES.put("gm", "总经理");
-        DEMO_NAMES.put("safe", "安环主管");
+        DEMO_NAMES.put("safe", "安全员");
         DEMO_NAMES.put("disp", "运营调度员");
         DEMO_NAMES.put("mon", "监控员");
         DEMO_NAMES.put("clerk", "资料员");
@@ -409,14 +409,12 @@ public class OrgChartService {
                 .append(".ptitle{text-align:center;font-size:20pt;font-weight:bold;letter-spacing:3px;margin:12px 0 16px;}")
                 .append(".chart{text-align:center;}")
                 .append(".chart img{width:255mm;max-width:100%;}")
-                .append(".ft{border-top:1px solid #999;margin-top:12px;padding-top:8px;font-size:9pt;color:#555;}")
                 .append("</style></head><body>")
                 .append("<div class=\"hd\"><div class=\"org\">").append(esc(company)).append("</div>")
                 .append("<div class=\"meta\">安全管理组织架构图　归档日期：").append(esc(s(c.get("date"))))
                 .append("</div></div>")
                 .append("<div class=\"ptitle\">安全管理组织架构</div>")
                 .append("<div class=\"chart\"><img src=\"").append(png).append("\" alt=\"安全管理组织架构图\" /></div>")
-                .append("<div class=\"ft\" style=\"text-align:right;\">数据来源：组织架构实时数据</div>")
                 .append("</body></html>");
         return h.toString();
     }

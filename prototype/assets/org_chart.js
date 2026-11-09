@@ -285,10 +285,7 @@
       '<div class="ph"><div class="org">'+esc(t.company)+'</div>'+
       '<div class="meta">安全管理组织架构图　归档日期：'+new Date().toLocaleDateString('zh-CN')+'</div></div>'+
       '<div class="ptitle">安全管理组织架构</div>'+
-      '<div class="psub">公司 → 主要负责人 → 各启用岗位（按上级关系组树）</div>'+
-      '<p class="ni" style="font-size:12px;color:#555">'+esc(summary())+'</p>'+
       html({ compact:true })+
-      '<div class="pdf-foot"><div>编制：安全管理部门　审核：主要负责人</div><div>数据来源：组织架构实时数据</div></div>'+
       '</div>';
   }
   /** 仅架构图的打印文档（org.html「下载 / 打印架构图」用） */
