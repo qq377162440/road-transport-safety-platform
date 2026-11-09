@@ -252,6 +252,8 @@ public class OrgChartService {
         out.put("date", LocalDate.now().toString());
         out.put("nodes", nodes);
         out.put("tree", tree);
+        // PDF / 打印归档专用树（隐藏待配置岗位、下级上提），与下载的架构图完全同源
+        out.put("archiveTree", archiveTree(tree));
         out.put("disabled", disabled);
         out.put("disabledCount", disabled.size());
         out.put("enabledCount", nodes.size());
@@ -382,13 +384,19 @@ public class OrgChartService {
         return pdfService.render(chartHtml());
     }
 
-    /** PDF / 打印共用的完整 HTML 文档 */
+    /**
+     * PDF / 打印共用的完整 HTML 文档。
+     *
+     * <p>归档件只保留必要信息：企业名、归档日期、标题、架构图、数据来源。
+     * 不输出组树说明、启用/禁用统计、「编制/审核」落款等多余文字；
+     * 未配置人员的岗位不列入，其下级上提到最近的已配置祖先（见 archiveTree）。
+     */
     public String chartHtml() {
         Map<String, Object> c = chart();
         String company = s(c.get("company"));
         @SuppressWarnings("unchecked")
-        List<Map<String, Object>> tree = (List<Map<String, Object>>) c.get("tree");
-        String png = OrgChartPng.dataUri(company, tree);
+        List<Map<String, Object>> archive = (List<Map<String, Object>>) c.get("archiveTree");
+        String png = OrgChartPng.dataUri(company, archive == null ? new ArrayList<>() : archive);
         StringBuilder h = new StringBuilder();
         h.append("<!DOCTYPE html><html lang=\"zh\"><head><meta charset=\"UTF-8\" />")
                 .append("<title>").append(esc(company)).append(" 安全管理组织架构</title><style>")
@@ -398,9 +406,7 @@ public class OrgChartService {
                 .append(".hd{text-align:center;border-bottom:2px solid #000;padding-bottom:6px;margin-bottom:8px;}")
                 .append(".hd .org{font-size:15pt;font-weight:bold;letter-spacing:1px;}")
                 .append(".hd .meta{font-size:9pt;color:#555;}")
-                .append(".ptitle{text-align:center;font-size:20pt;font-weight:bold;letter-spacing:3px;margin:12px 0 2px;}")
-                .append(".psub{text-align:center;font-size:10pt;color:#333;margin-bottom:8px;}")
-                .append(".sum{font-size:9pt;color:#555;margin:6px 0 8px;text-align:center;}")
+                .append(".ptitle{text-align:center;font-size:20pt;font-weight:bold;letter-spacing:3px;margin:12px 0 16px;}")
                 .append(".chart{text-align:center;}")
                 .append(".chart img{width:255mm;max-width:100%;}")
                 .append(".ft{border-top:1px solid #999;margin-top:12px;padding-top:8px;font-size:9pt;color:#555;}")
@@ -409,15 +415,60 @@ public class OrgChartService {
                 .append("<div class=\"meta\">安全管理组织架构图　归档日期：").append(esc(s(c.get("date"))))
                 .append("</div></div>")
                 .append("<div class=\"ptitle\">安全管理组织架构</div>")
-                .append("<div class=\"psub\">公司 → 主要负责人 → 各启用岗位（按上级关系组树）</div>")
-                .append("<div class=\"sum\">").append(esc(s(c.get("summary")))).append("</div>")
                 .append("<div class=\"chart\"><img src=\"").append(png).append("\" alt=\"安全管理组织架构图\" /></div>")
-                .append("<table class=\"ft\" style=\"width:100%;border-collapse:collapse;\"><tr>")
-                .append("<td style=\"text-align:left;border:0;\">编制：安全管理部门　审核：主要负责人</td>")
-                .append("<td style=\"text-align:right;border:0;\">数据来源：组织架构实时数据</td>")
-                .append("</tr></table>")
+                .append("<div class=\"ft\" style=\"text-align:right;\">数据来源：组织架构实时数据</div>")
                 .append("</body></html>");
         return h.toString();
+    }
+
+    /**
+     * 归档用树（PDF / 打印）：隐藏「待配置」岗位（org_member 无人员），
+     * 并把其已配置下级沿父链上提到最近的已显示祖先，避免人员被连带丢弃。
+     * 屏幕端 /org 页面仍保留待配置岗位，方便管理员通过右键菜单补配人员。
+     */
+    @SuppressWarnings("unchecked")
+    private static List<Map<String, Object>> archiveTree(List<Map<String, Object>> roots) {
+        List<Map<String, Object>> out = new ArrayList<>();
+        for (Map<String, Object> n : roots) liftConfigured(n, out, "");
+        sortArchive(out);
+        return out;
+    }
+
+    /**
+     * @param siblings     当前层的兄弟列表
+     * @param newParentId  本节点若被隐藏，其子节点应挂到的上级 id（空串表示根）
+     */
+    private static void liftConfigured(Map<String, Object> n, List<Map<String, Object>> siblings,
+                                       String newParentId) {
+        boolean configured = !s(n.get("person")).isEmpty();
+        // 上提后的父由调用方给定；未发生上提时保留数据库原层级
+        String effectiveParent = newParentId.isEmpty() ? s(n.get("parentId")) : newParentId;
+        Map<String, Object> copy = new LinkedHashMap<>(n);
+        copy.put("parentId", effectiveParent.isEmpty() ? null : effectiveParent);
+        List<Map<String, Object>> kidsCopy = new ArrayList<>();
+        copy.put("children", kidsCopy);
+        if (configured) siblings.add(copy);
+        Object raw = n.get("children");
+        if (!(raw instanceof List<?>)) return;
+        // 自身被隐藏时，子节点挂到同一层（相当于上提一级），并改写其 parentId 指向新上级
+        List<Map<String, Object>> target = configured ? kidsCopy : siblings;
+        String childParent = configured ? s(n.get("id")) : newParentId;
+        for (Object o : (List<?>) raw) {
+            if (o instanceof Map<?, ?>) liftConfigured((Map<String, Object>) o, target, childParent);
+        }
+    }
+
+    private static void sortArchive(List<Map<String, Object>> list) {
+        list.sort(Comparator.comparingInt(n -> n.get("no") instanceof Number
+                ? ((Number) n.get("no")).intValue() : 999));
+        for (Map<String, Object> n : list) {
+            Object c = n.get("children");
+            if (c instanceof List<?>) {
+                @SuppressWarnings("unchecked")
+                List<Map<String, Object>> kids = (List<Map<String, Object>>) c;
+                sortArchive(kids);
+            }
+        }
     }
 
     private static String esc(String s) {
