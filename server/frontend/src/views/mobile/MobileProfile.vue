@@ -10,11 +10,16 @@ const route = useRoute()
 const router = useRouter()
 const data = ref(null)
 const err = ref('')
+const archiveData = ref(null)
 
 async function load() {
   try {
     const res = await request.get('/mini/mine', { params: { personId: mini.personId } })
     data.value = res.data || {}
+    // 一人一档完整度与缺项：与 PC 端 B1 人员基础信息同源（/api/flow/person/{id}/archive）
+    const pid = data.value?.person?.id || mini.personId || 0
+    try { archiveData.value = (await request.get(`/flow/person/${pid}/archive`)).data || null }
+    catch { archiveData.value = null }
   } catch (e) { err.value = e.message || '加载失败' }
 }
 onMounted(async () => { await ensureMini(route); await load() })
@@ -36,6 +41,32 @@ const rows = computed(() => [
   <MobileShell title="个人档案" tab="mine" back>
     <div class="m-tip" style="margin-top:0">档案与 PC 端「人员基础信息 / 一人一档」同源，安全员在 PC 端修改后这里同步更新。</div>
     <div v-if="err" class="m-err">{{ err }}</div>
+
+    <!-- 一人一档归档完整度（PC 端 B1 同源） -->
+    <div v-if="archiveData?.ok" class="m-card" style="border:2px solid #1E40AF">
+      <div style="display:flex;align-items:center;gap:14px">
+        <div style="font-size:calc(36px * var(--m-scale));font-weight:800;color:#1D4ED8;line-height:1">{{ archiveData.percent }}<span style="font-size:calc(17px * var(--m-scale))">%</span></div>
+        <div style="flex:1;min-width:0">
+          <div style="font-size:calc(17px * var(--m-scale));font-weight:700">一人一档归档完整度</div>
+          <div style="font-size:calc(13px * var(--m-scale));color:#64748B;margin-top:4px">
+            已齐 {{ archiveData.done }}/{{ archiveData.required }} 项 · 缺 {{ (archiveData.missing || []).length }} 项
+          </div>
+          <div style="height:8px;background:#E2E8F0;border-radius:6px;margin-top:8px;overflow:hidden">
+            <div :style="{ width: archiveData.percent + '%', height: '100%', background: archiveData.percent >= 100 ? '#16A34A' : '#3B82F6' }"></div>
+          </div>
+        </div>
+      </div>
+      <div v-if="(archiveData.missing || []).length" style="margin-top:12px;padding-top:12px;border-top:1px solid #E2E8F0">
+        <div style="font-size:calc(14px * var(--m-scale));font-weight:700;margin-bottom:6px">待补齐归档项</div>
+        <div v-for="m in archiveData.missing.slice(0, 6)" :key="m.itemCode"
+             style="display:flex;gap:8px;align-items:center;padding:5px 0;font-size:calc(14px * var(--m-scale))">
+          <span style="color:#DC2626">●</span><span style="flex:1">{{ m.itemName }}</span>
+          <span style="color:#64748B;font-size:calc(12px * var(--m-scale))">{{ m.expired ? '已过期' : '待补' }}</span>
+        </div>
+        <div v-if="archiveData.missing.length > 6" style="font-size:calc(13px * var(--m-scale));color:#64748B">另有 {{ archiveData.missing.length - 6 }} 项…</div>
+        <div class="m-tip" style="margin-top:8px">请安全员在 PC 端「人员基础信息 → 一人一档」上传证件或生成范本，完成后这里实时更新。</div>
+      </div>
+    </div>
 
     <div class="m-card-title">基本信息</div>
     <div class="m-card" style="padding:0;overflow:hidden">

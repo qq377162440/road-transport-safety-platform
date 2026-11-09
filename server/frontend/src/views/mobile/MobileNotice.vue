@@ -18,6 +18,21 @@ async function load() {
     const res = await request.get('/mini/notice/list', { params: { personId: mini.personId } })
     rows.value = res.data || []
   } catch (e) { err.value = e.message || '加载失败' }
+  // 证照到期预警：与 PC 端 B1 /api/flow/person/expiring 同源，作为消息推给本人
+  try {
+    const r = await request.get('/flow/person/expiring', { params: { days: 30 } })
+    const extra = (r.data?.list || []).map((d, i) => ({
+      id: 'exp_' + (d.id || i),
+      title: `证照到期提醒：${d.person_name} · ${d.doc_name}`,
+      created_at: d.expire_date,
+      level: 2,
+      read: 0,
+      source: 'person',
+      expire_date: d.expire_date,
+      daysLeft: d.daysLeft,
+    }))
+    rows.value = [...extra, ...rows.value]
+  } catch (e) { /* 预警接口不可用时不阻断原有通知 */ }
   finally { loading.value = false }
 }
 onMounted(async () => { await ensureMini(route); await load() })
@@ -28,10 +43,11 @@ function fmt(t) { return String(t || '').replace('T', ' ').slice(0, 16) }
 async function open(n) {
   openId.value = openId.value === String(n.id) ? null : String(n.id)
   if (openId.value && Number(n.read) === 0) {
-    try {
-      await request.post(`/mini/notice/${n.id}/read`, { personId: mini.personId })
-      n.read = 1
-    } catch (e) { /* 静默，下次进入仍可重试 */ }
+    if (n.source !== 'person') {
+      try { await request.post(`/mini/notice/${n.id}/read`, { personId: mini.personId }) }
+      catch (e) { /* 静默，下次进入仍可重试 */ }
+    }
+    n.read = 1
   }
 }
 </script>

@@ -15,6 +15,7 @@ const route = useRoute()
 const router = useRouter()
 const data = ref(null)
 const err = ref('')
+const personArchive = ref(null)
 
 async function load() {
   try {
@@ -23,11 +24,17 @@ async function load() {
     })
     data.value = res.data || {}
   } catch (e) { err.value = e.message || '加载失败' }
+  // 一人一档缺项进首页待办：与 PC 端 B1 同源
+  try { personArchive.value = (await request.get(`/flow/person/${mini.personId || 0}/archive`)).data || null }
+  catch { personArchive.value = null }
 }
 onMounted(async () => { await ensureMini(route); await load() })
 
 const isManager = computed(() => mini.role === 'manager')
 const todos = computed(() => data.value?.todos || [])
+const archiveTodo = computed(() => personArchive.value?.ok && (personArchive.value.missing || []).length
+  ? { n: (personArchive.value.missing || []).length, percent: personArchive.value.percent } : null)
+const totalSteps = computed(() => todos.value.length + (archiveTodo.value ? 1 : 0))
 const badges = computed(() => data.value?.badges || {})
 const manager = computed(() => data.value?.manager || {})
 const greeting = computed(() => {
@@ -86,8 +93,8 @@ function stepIco(t) { return t.done ? '✓' : (t.key === 'check' ? '1' : (t.key 
     <!-- 今日必做 -->
     <div class="m-card" style="border:2px solid #1E40AF">
       <div style="font-size:calc(18px * var(--m-scale));font-weight:800;color:#1D4ED8;margin-bottom:12px">
-        今天按顺序做这 {{ todos.length }} 步
-        <span style="float:right;font-size:calc(14px * var(--m-scale));color:#64748B">还剩 {{ data?.todoLeft ?? 0 }} 件</span>
+        今天按顺序做这 {{ totalSteps }} 步
+        <span style="float:right;font-size:calc(14px * var(--m-scale));color:#64748B">还剩 {{ (data?.todoLeft ?? 0) + (archiveTodo ? 1 : 0) }} 件</span>
       </div>
       <div v-for="t in todos" :key="t.key" class="m-task" :class="t.done ? 'done' : 'active'"
            :style="!t.done ? 'border:2px solid #FCD9B6;background:#FFF8F2' : ''" @click="goMini(router, t.route)">
@@ -97,6 +104,16 @@ function stepIco(t) { return t.done ? '✓' : (t.key === 'check' ? '1' : (t.key 
           <div class="m-t-desc">{{ t.desc }}</div>
         </div>
         <span class="m-tag" :class="t.done ? 'm-tag-green' : 'm-tag-blue'">{{ t.done ? '已完成' : '去办 ›' }}</span>
+      </div>
+      <!-- 一人一档缺项：PC 端 B1 联动待办 -->
+      <div v-if="archiveTodo" class="m-task active" style="border:2px solid #FCD9B6;background:#FFF8F2"
+           @click="goMini(router, '/m/profile')">
+        <div class="m-t-ico blue">档</div>
+        <div class="m-t-info">
+          <div class="m-t-title">一人一档待补齐</div>
+          <div class="m-t-desc">还缺 {{ archiveTodo.n }} 项归档资料（当前 {{ archiveTodo.percent }}%）</div>
+        </div>
+        <span class="m-tag m-tag-blue">去查看 ›</span>
       </div>
     </div>
 

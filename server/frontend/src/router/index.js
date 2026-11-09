@@ -31,13 +31,16 @@ const staticChildren = [
 ]
 
 // 由元数据驱动：新增模块只改 tools/gen_biz_meta.py，路由自动出现
-// 18 个模块统一走 BizModule.vue 专用页容器，按 meta.moduleCode 读展示配置；
-// 重点模块按 feature 挂载特色区块（原型对齐），未配置的回退通用表格引擎。
+// 已完成「完整流程闭环」的模块走独立专用页（如 B1 人员基础信息），
+// 其余模块暂走 BizModule.vue 配置化容器 + 特色区块，逐个深化后逐个替换。
+// moduleCode 供专用页定位模块（原 route.params.module 恒为空，导致整批空白）
+const CLOSED_LOOP_PAGES = {
+  person: () => import('@/views/biz/person/PersonModule.vue'),
+}
 const dynamicChildren = bizModules.map((m) => ({
   path: `biz/${m.code}`,
   name: `Biz_${m.code}`,
-  component: () => import('@/views/biz/BizModule.vue'),
-  // moduleCode 供专用页定位模块（原 route.params.module 恒为空，导致整批空白）
+  component: CLOSED_LOOP_PAGES[m.code] || (() => import('@/views/biz/BizModule.vue')),
   meta: { title: m.title, phase: m.phase, moduleCode: m.code, group: m.group, catalog: m.catalog },
 }))
 
