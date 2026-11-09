@@ -33,6 +33,21 @@ async function load() {
     }))
     rows.value = [...extra, ...rows.value]
   } catch (e) { /* 预警接口不可用时不阻断原有通知 */ }
+  // 车辆证照/保险/等级三表联合到期：与 PC 端 B2 /api/flow/vehicle/expiring 同源
+  try {
+    const rv = await request.get('/flow/vehicle/expiring', { params: { days: 30 } })
+    const extraV = (rv.data?.list || []).map((d, i) => ({
+      id: 'vexp_' + (d.vehicleId || '') + '_' + i,
+      title: `车辆到期提醒：${d.plate_no} · ${d.doc_name}（${d.source}）`,
+      created_at: d.expire_date,
+      level: 2,
+      read: 0,
+      source: 'vehicle',
+      expire_date: d.expire_date,
+      daysLeft: d.daysLeft,
+    }))
+    rows.value = [...extraV, ...rows.value]
+  } catch (e) { /* 预警接口不可用时不阻断原有通知 */ }
   finally { loading.value = false }
 }
 onMounted(async () => { await ensureMini(route); await load() })
@@ -43,7 +58,7 @@ function fmt(t) { return String(t || '').replace('T', ' ').slice(0, 16) }
 async function open(n) {
   openId.value = openId.value === String(n.id) ? null : String(n.id)
   if (openId.value && Number(n.read) === 0) {
-    if (n.source !== 'person') {
+    if (n.source !== 'person' && n.source !== 'vehicle') {
       try { await request.post(`/mini/notice/${n.id}/read`, { personId: mini.personId }) }
       catch (e) { /* 静默，下次进入仍可重试 */ }
     }

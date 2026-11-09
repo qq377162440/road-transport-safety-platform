@@ -11,6 +11,7 @@ const router = useRouter()
 const data = ref(null)
 const err = ref('')
 const archiveData = ref(null)
+const vehicleArchive = ref(null)
 
 async function load() {
   try {
@@ -20,6 +21,9 @@ async function load() {
     const pid = data.value?.person?.id || mini.personId || 0
     try { archiveData.value = (await request.get(`/flow/person/${pid}/archive`)).data || null }
     catch { archiveData.value = null }
+    // 我绑定车辆的一车一档完整度：与 PC 端 B2 车辆基础信息同源（/api/flow/vehicle/mine）
+    try { vehicleArchive.value = (await request.get('/flow/vehicle/mine', { params: { personId: pid } })).data || null }
+    catch { vehicleArchive.value = null }
   } catch (e) { err.value = e.message || '加载失败' }
 }
 onMounted(async () => { await ensureMini(route); await load() })
@@ -65,6 +69,31 @@ const rows = computed(() => [
         </div>
         <div v-if="archiveData.missing.length > 6" style="font-size:calc(13px * var(--m-scale));color:#64748B">另有 {{ archiveData.missing.length - 6 }} 项…</div>
         <div class="m-tip" style="margin-top:8px">请安全员在 PC 端「人员基础信息 → 一人一档」上传证件或生成范本，完成后这里实时更新。</div>
+      </div>
+    </div>
+
+    <!-- 我绑定车辆的一车一档完整度（PC 端 B2 同源） -->
+    <div v-if="vehicleArchive?.ok" class="m-card" style="border:2px solid #0D9488">
+      <div style="display:flex;align-items:center;gap:14px">
+        <div style="font-size:calc(36px * var(--m-scale));font-weight:800;color:#0F766E;line-height:1">{{ vehicleArchive.percent }}<span style="font-size:calc(17px * var(--m-scale))">%</span></div>
+        <div style="flex:1;min-width:0">
+          <div style="font-size:calc(17px * var(--m-scale));font-weight:700">我绑定的车辆 · 一车一档</div>
+          <div style="font-size:calc(13px * var(--m-scale));color:#64748B;margin-top:4px">
+            {{ vehicleArchive.plateNo }} · {{ vehicleArchive.vehicleType || '车辆' }} · 已齐 {{ vehicleArchive.done }}/{{ vehicleArchive.required }} 项
+          </div>
+          <div style="height:8px;background:#E2E8F0;border-radius:6px;margin-top:8px;overflow:hidden">
+            <div :style="{ width: vehicleArchive.percent + '%', height: '100%', background: vehicleArchive.percent >= 100 ? '#16A34A' : '#0D9488' }"></div>
+          </div>
+        </div>
+      </div>
+      <div v-if="(vehicleArchive.missing || []).length" style="margin-top:12px;padding-top:12px;border-top:1px solid #E2E8F0">
+        <div style="font-size:calc(14px * var(--m-scale));font-weight:700;margin-bottom:6px">车辆档案待补齐</div>
+        <div v-for="m in vehicleArchive.missing.slice(0, 6)" :key="m.itemCode"
+             style="display:flex;gap:8px;align-items:center;padding:5px 0;font-size:calc(14px * var(--m-scale))">
+          <span style="color:#DC2626">●</span><span style="flex:1">{{ m.itemName }}</span>
+          <span style="color:#64748B;font-size:calc(12px * var(--m-scale))">{{ m.expired ? '已过期' : '待补' }}</span>
+        </div>
+        <div v-if="vehicleArchive.expiring" class="m-tip" style="margin-top:8px">另有 {{ vehicleArchive.expiring }} 项证照 / 保险 / 等级临期，请及时处理。</div>
       </div>
     </div>
 

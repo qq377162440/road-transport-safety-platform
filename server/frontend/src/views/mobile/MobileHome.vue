@@ -16,6 +16,7 @@ const router = useRouter()
 const data = ref(null)
 const err = ref('')
 const personArchive = ref(null)
+const vehicleExpiring = ref(0)
 
 async function load() {
   try {
@@ -27,6 +28,9 @@ async function load() {
   // 一人一档缺项进首页待办：与 PC 端 B1 同源
   try { personArchive.value = (await request.get(`/flow/person/${mini.personId || 0}/archive`)).data || null }
   catch { personArchive.value = null }
+  // 车辆证照/保险/等级三表联合到期：与 PC 端 B2 同源，进首页待办
+  try { vehicleExpiring.value = Number((await request.get('/flow/vehicle/expiring', { params: { days: 30 } })).data?.total || 0) }
+  catch { vehicleExpiring.value = 0 }
 }
 onMounted(async () => { await ensureMini(route); await load() })
 
@@ -34,7 +38,8 @@ const isManager = computed(() => mini.role === 'manager')
 const todos = computed(() => data.value?.todos || [])
 const archiveTodo = computed(() => personArchive.value?.ok && (personArchive.value.missing || []).length
   ? { n: (personArchive.value.missing || []).length, percent: personArchive.value.percent } : null)
-const totalSteps = computed(() => todos.value.length + (archiveTodo.value ? 1 : 0))
+const vehicleTodo = computed(() => vehicleExpiring.value > 0 ? { n: vehicleExpiring.value } : null)
+const totalSteps = computed(() => todos.value.length + (archiveTodo.value ? 1 : 0) + (vehicleTodo.value ? 1 : 0))
 const badges = computed(() => data.value?.badges || {})
 const manager = computed(() => data.value?.manager || {})
 const greeting = computed(() => {
@@ -94,7 +99,7 @@ function stepIco(t) { return t.done ? '✓' : (t.key === 'check' ? '1' : (t.key 
     <div class="m-card" style="border:2px solid #1E40AF">
       <div style="font-size:calc(18px * var(--m-scale));font-weight:800;color:#1D4ED8;margin-bottom:12px">
         今天按顺序做这 {{ totalSteps }} 步
-        <span style="float:right;font-size:calc(14px * var(--m-scale));color:#64748B">还剩 {{ (data?.todoLeft ?? 0) + (archiveTodo ? 1 : 0) }} 件</span>
+        <span style="float:right;font-size:calc(14px * var(--m-scale));color:#64748B">还剩 {{ (data?.todoLeft ?? 0) + (archiveTodo ? 1 : 0) + (vehicleTodo ? 1 : 0) }} 件</span>
       </div>
       <div v-for="t in todos" :key="t.key" class="m-task" :class="t.done ? 'done' : 'active'"
            :style="!t.done ? 'border:2px solid #FCD9B6;background:#FFF8F2' : ''" @click="goMini(router, t.route)">
@@ -112,6 +117,16 @@ function stepIco(t) { return t.done ? '✓' : (t.key === 'check' ? '1' : (t.key 
         <div class="m-t-info">
           <div class="m-t-title">一人一档待补齐</div>
           <div class="m-t-desc">还缺 {{ archiveTodo.n }} 项归档资料（当前 {{ archiveTodo.percent }}%）</div>
+        </div>
+        <span class="m-tag m-tag-blue">去查看 ›</span>
+      </div>
+      <!-- 车辆证照/保险/等级临期：PC 端 B2 联动待办 -->
+      <div v-if="vehicleTodo" class="m-task active" style="border:2px solid #99F6E4;background:#F0FDFA"
+           @click="goMini(router, '/m/profile')">
+        <div class="m-t-ico green">车</div>
+        <div class="m-t-info">
+          <div class="m-t-title">车辆证照 / 保险临期</div>
+          <div class="m-t-desc">有 {{ vehicleTodo.n }} 项证照、保险或等级评定 30 天内到期</div>
         </div>
         <span class="m-tag m-tag-blue">去查看 ›</span>
       </div>

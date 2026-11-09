@@ -36,6 +36,7 @@ const staticChildren = [
 // moduleCode 供专用页定位模块（原 route.params.module 恒为空，导致整批空白）
 const CLOSED_LOOP_PAGES = {
   person: () => import('@/views/biz/person/PersonModule.vue'),
+  vehicle: () => import('@/views/biz/vehicle/VehicleModule.vue'),
 }
 const dynamicChildren = bizModules.map((m) => ({
   path: `biz/${m.code}`,
