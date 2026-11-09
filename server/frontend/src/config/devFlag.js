@@ -7,3 +7,9 @@ export const DEV_LABEL = '测试中 DEV'
 export const AUTO_LOGIN = true
 export const DEV_DEMO_USER = 'aa_gaozhou'
 export const DEV_DEMO_PWD = '123456'
+// 各角色演示账号（角色切换即切换账号；AUTO_LOGIN 默认走企业账号）
+export const DEV_DEMO_ACCOUNTS = {
+  enterprise: { username: 'aa_gaozhou', password: '123456' },
+  provider: { username: 'bb_provider', password: '123456' },
+  admin: { username: 'cc_admin', password: '123456' },
+}

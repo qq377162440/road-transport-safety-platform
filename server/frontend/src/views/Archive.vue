@@ -263,12 +263,14 @@ async function doGenerate(item) {
   }
 }
 
-async function batchGenerate(scope) {
-  const targets = (scope === 'checked'
-    ? rows.value.filter((r) => checked.value.has(r.key))
-    : rows.value).filter((r) => r.tplOptions.length)
+async function batchGenerate() {
+  if (!checked.value.size) {
+    ElMessage.info('请先勾选要生成的归档项（可点「全选本盒」快速选择）')
+    return
+  }
+  const targets = rows.value.filter((r) => checked.value.has(r.key) && r.tplOptions.length)
   if (!targets.length) {
-    ElMessage.info('当前选择没有可按范本生成的归档项（其余请使用「上传」按钮留存）')
+    ElMessage.info('勾选项中没有可按范本生成的归档项（其余请使用「上传」按钮留存）')
     return
   }
   generating.value = true
@@ -712,17 +714,14 @@ function locateItem(boxNo, name) {
             <div class="desc">归档项按自然年度隔离；生成后存 MinIO，可下载 PDF 打印装盒。</div>
           </div>
           <div class="head-actions">
-            <el-button :loading="generating" @click="batchGenerate('all')">
-              <Icon name="zap" :size="15" /> 批量生成全部
-            </el-button>
             <el-button @click="downloadBox"><Icon name="download" :size="15" /> 一键下载整盒</el-button>
           </div>
         </div>
 
         <div class="list-toolbar">
           <el-checkbox class="selall-cb" :model-value="allChecked" @change="toggleBox">全选本盒</el-checkbox>
-          <el-button size="small" type="primary" :loading="generating" @click="batchGenerate('checked')">
-            <Icon name="fileText" :size="14" /> 批量生成（{{ checked.size }}）
+          <el-button size="small" type="primary" :loading="generating" @click="batchGenerate">
+            <Icon name="fileText" :size="14" /> 批量生成勾选（{{ checked.size }}）
           </el-button>
         </div>
 

@@ -5,6 +5,7 @@ import { useAuthStore } from '@/store/auth'
 import { ElMessageBox } from 'element-plus'
 import request from '@/api/request'
 import { bizModules } from '@/config/modules.generated.js'
+import { DEV_DEMO_ACCOUNTS } from '@/config/devFlag'
 import Icon from '@/components/Icon.vue'
 import DevMarker from '@/components/DevMarker.vue'
 
@@ -106,14 +107,18 @@ const roleOptions = [
   { key: 'provider', label: '服务商' },
   { key: 'admin', label: '超管' },
 ]
-function onRole(role) {
+async function onRole(role) {
   if (role === auth.userType) return
-  ElMessageBox.confirm(`切换为「${roleOptions.find(r => r.key === role).label}」账号将退出当前登录，是否继续？`, '切换账号', {
-    type: 'warning',
-  }).then(async () => {
-    await auth.logout()
-    router.push('/login')
-  }).catch(() => {})
+  const label = roleOptions.find(r => r.key === role).label
+  try {
+    await ElMessageBox.confirm(`切换为「${label}」账号将退出当前登录，是否继续？`, '切换账号', {
+      type: 'warning',
+    })
+  } catch { return }
+  // 演示态：切换角色 = 用该角色的演示账号重新登录（AUTO_LOGIN 下跳登录页会被自动登回企业账号）
+  await auth.logout()
+  await auth.devLogin(DEV_DEMO_ACCOUNTS[role])
+  router.push('/dashboard')
 }
 
 // 客户类型切换（演示态，持久化到 localStorage）
