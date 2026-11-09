@@ -31,11 +31,14 @@ const staticChildren = [
 ]
 
 // 由元数据驱动：新增模块只改 tools/gen_biz_meta.py，路由自动出现
+// 18 个模块统一走 BizModule.vue 专用页容器，按 meta.moduleCode 读展示配置；
+// 重点模块按 feature 挂载特色区块（原型对齐），未配置的回退通用表格引擎。
 const dynamicChildren = bizModules.map((m) => ({
   path: `biz/${m.code}`,
   name: `Biz_${m.code}`,
-  component: () => import('@/views/BizView.vue'),
-  meta: { title: m.title, phase: m.phase },
+  component: () => import('@/views/biz/BizModule.vue'),
+  // moduleCode 供专用页定位模块（原 route.params.module 恒为空，导致整批空白）
+  meta: { title: m.title, phase: m.phase, moduleCode: m.code, group: m.group, catalog: m.catalog },
 }))
 
 const routes = [

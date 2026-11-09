@@ -12,7 +12,11 @@ import BizForm from '@/components/BizForm.vue'
  * 新增业务模块只需在 tools/gen_biz_meta.py 配置表清单，无需手写页面。
  */
 const route = useRoute()
-const module = computed(() => bizModules.find((m) => m.code === route.params.module) || null)
+// 动态路由是静态路径 biz/{code}，route.params 中没有 module；
+// 统一从 meta.moduleCode 取（兼容旧的 params.module 写法）
+const module = computed(() => bizModules.find(
+  (m) => m.code === (route.meta.moduleCode || route.params.module),
+) || null)
 const activeTable = ref('')
 const fields = ref([])
 const dialogVisible = ref(false)
