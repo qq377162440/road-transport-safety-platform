@@ -46,7 +46,7 @@ const weeks = [
     <div class="top-banner">
       <div>
         <div class="t1">企业安全管理驾驶舱</div>
-        <div class="t2">{{ auth.tenantName || '佛山市南海区小塘塘安运输服务有限公司' }}</div>
+        <div class="t2">{{ auth.tenantName || '—' }}</div>
       </div>
       <div class="score-box">
         <div>

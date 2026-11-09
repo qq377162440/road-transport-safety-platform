@@ -15,6 +15,9 @@ const auth = useAuthStore()
 // D5 模块授权：基础模块恒可用；增值（三期 D）模块需平台显式开通。
 const dAuth = ref(null)
 onMounted(async () => {
+  // 企业名按当前租户实时获取。AUTO_LOGIN 走路由守卫的 devLogin，不经过登录页，
+  // 若只在 Login.vue 里加载，驾驶舱等页面会拿不到 tenantName 而落到兜底文案。
+  auth.loadTenantName()
   try { dAuth.value = (await request.get('/platform/my-modules')).data }
   catch { dAuth.value = null }
 })
