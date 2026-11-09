@@ -174,7 +174,11 @@ async function loadTplLibrary() {
     ])
     tplList.value = list.data || []
     pageCss.value = cssRes.data || ''
-    currentSetName.value = ovRes.data?.current?.name || '普货通用范本（内置）'
+    const ov = ovRes.data || {}
+    providerSets.value = ov.providers || []
+    mySets.value = ov.mine || []
+    currentSetMeta.value = ov.current || null
+    currentSetName.value = ov.current?.name || '普货通用范本（内置）'
     mappingData.value = mapRes.data || null
   } catch (e) { /* 范本库不可用时退化为纯上传模式 */ }
 }
@@ -510,7 +514,100 @@ function closePreview() {
 }
 
 function goTplManager() { router.push('/template-manager') }
-function refreshTpl() { loadTplLibrary(); loadArchiveItems() }
+
+// ---------- 范本套管理抽屉：在电子档案柜现场切换 / 应用服务商套 / 另存新套 ----------
+// 后端接口与「台账范本管理」完全同源；切换后本柜范本列表、归档行、对应关系一并刷新。
+const showSetPanel = ref(false)
+const setTab = ref('sets')            // sets | mapping
+const providerSets = ref([])
+const mySets = ref([])
+const currentSetMeta = ref(null)
+const setBusy = ref(false)
+const inlineForm = ref('')            // '' | 'saveAs' | 'apply'
+const formName = ref('')
+const formTarget = ref(null)
+
+const mappingGroups = computed(() => {
+  const m = {}
+  ;(mappingData.value?.catalogItems || []).forEach((it) => {
+    const k = it.boxNo || 0
+    ;(m[k] = m[k] || { boxNo: k, boxName: it.boxName, items: [] }).items.push(it)
+  })
+  return Object.keys(m).sort((a, b) => Number(a) - Number(b)).map((k) => m[k])
+})
+
+async function loadSetOverview() {
+  try {
+    const ov = (await request.get('/tpl/ent/overview')).data || {}
+    providerSets.value = ov.providers || []
+    mySets.value = ov.mine || []
+    currentSetMeta.value = ov.current || null
+  } catch (e) { /* 概览不可用时保留既有数据 */ }
+}
+
+async function refreshTpl() {
+  await Promise.all([loadTplLibrary(), loadArchiveItems(), loadSetOverview()])
+}
+
+async function openSetPanel() {
+  showSetPanel.value = true
+  inlineForm.value = ''
+  setTab.value = 'sets'
+  await loadSetOverview()
+}
+function closeSetPanel() { showSetPanel.value = false; inlineForm.value = '' }
+
+function onSetSelect(e) {
+  const row = mySets.value.find((s) => String(s.id) === String(e.target.value))
+  if (row) switchSet(row)
+}
+async function switchSet(row) {
+  if (!row || String(row.id) === String(currentSetMeta.value?.id)) return
+  setBusy.value = true
+  try {
+    await request.put(`/tpl/ent/${row.id}/current`)
+    ElMessage.success(`已切换当前应用范本套为「${row.name}」，本柜已按新套刷新`)
+    await refreshTpl()
+  } finally { setBusy.value = false }
+}
+function openSaveAs() {
+  inlineForm.value = 'saveAs'
+  formName.value = (currentSetMeta.value?.name || '普货通用范本') + '（副本）'
+}
+function openApply(row) {
+  inlineForm.value = 'apply'
+  formTarget.value = row
+  formName.value = row.name + '（企业应用）'
+}
+async function submitInlineForm() {
+  const name = formName.value.trim()
+  if (!name) { ElMessage.warning('请输入范本套名称'); return }
+  setBusy.value = true
+  try {
+    if (inlineForm.value === 'apply') {
+      await request.post('/tpl/ent/apply', { sourceSetId: formTarget.value?.id, name })
+      ElMessage.success(`已以服务商范本套为基础创建「${name}」，并设为当前应用`)
+    } else {
+      await request.post('/tpl/ent/save-as', { name })
+      ElMessage.success(`已另存为新范本套「${name}」，并设为当前应用`)
+    }
+    inlineForm.value = ''
+    await refreshTpl()
+  } finally { setBusy.value = false }
+}
+async function deleteSet(row) {
+  if (row.isCurrent === 1) { ElMessage.warning('当前应用范本套不可删除'); return }
+  await request.delete(`/tpl/ent/${row.id}`)
+  ElMessage.success(`已删除范本套「${row.name}」`)
+  await refreshTpl()
+}
+function locateItem(boxNo, name) {
+  const CN = ['一', '二', '三', '四', '五', '六', '七', '八', '九', '十', '十一']
+  selectedNo.value = CN[boxNo - 1] || '一'
+  locatedItem.value = name
+  closeSetPanel()
+  ElMessage.success(`已定位到档案盒 ${boxNo} · ${name}`)
+}
 </script>
 
 <template>
@@ -536,18 +633,19 @@ function refreshTpl() { loadTplLibrary(); loadArchiveItems() }
       可<b>勾选左侧档案盒或逐条勾选</b>后批量处理；证照/保单/台账扫描件等请使用<b>「上传」</b>按钮留存。
     </div>
 
-    <!-- 同源联动条：明确告知当前台账由哪套范本生成 -->
+    <!-- 同源联动条：明确告知当前台账由哪套范本生成，并可就地切换 -->
     <div class="tpl-linkbar">
       <div class="lb-left">
         <Icon name="bookOpen" :size="19" />
         <div>
           <div class="lb-t">当前应用范本套：<b>{{ currentSetName }}</b> · 已加载 {{ tplList.length }} 份台账范本</div>
-          <div class="lb-d">本柜点「生成」时，<b>利用当前应用的范本套</b>渲染带岗位人名与公司章的成品并归档到此柜；在台账范本管理中切换套、应用服务商套或另存为新套后，点「刷新范本」即生效</div>
+          <div class="lb-d">本柜点「生成」时，<b>利用当前应用的范本套</b>渲染带岗位人名与公司章的成品并归档到此柜；点右侧「范本套管理」即可在本页切换、应用服务商套或另存新套，切换后即时生效</div>
         </div>
       </div>
       <div class="lb-ops">
         <el-button size="small" @click="refreshTpl"><Icon name="refresh" :size="13" /> 刷新范本</el-button>
-        <el-button size="small" type="primary" plain @click="goTplManager"><Icon name="edit" :size="13" /> 去台账范本管理切换</el-button>
+        <el-button size="small" @click="goTplManager"><Icon name="edit" :size="13" /> 台账范本管理</el-button>
+        <el-button size="small" type="primary" @click="openSetPanel"><Icon name="bookOpen" :size="13" /> 范本套管理 / 切换</el-button>
       </div>
     </div>
     <div v-if="locatedItem" class="located-tip">
@@ -771,6 +869,91 @@ function refreshTpl() { loadTplLibrary(); loadArchiveItems() }
         </div>
       </div>
     </div>
+
+    <!-- 范本套管理抽屉：在电子档案柜现场切换 / 应用服务商套 / 另存新套 / 查看对应关系 -->
+    <div class="sd-mask" :class="{ show: showSetPanel }" @click.self="closeSetPanel">
+      <div class="sd-panel">
+        <div class="sd-head">
+          <div>
+            <h2><Icon name="bookOpen" :size="18" /> 范本套管理</h2>
+            <p>切换当前应用范本套、以服务商套为基础新建、或另存为新套；切换后本柜「生成」立即按新套渲染</p>
+          </div>
+          <span class="sd-x" @click="closeSetPanel">×</span>
+        </div>
+        <div class="sd-tabs">
+          <button :class="{ on: setTab === 'sets' }" @click="setTab = 'sets'">范本套切换</button>
+          <button :class="{ on: setTab === 'mapping' }" @click="setTab = 'mapping'">档案柜对应</button>
+        </div>
+
+        <div v-if="setTab === 'sets'" v-loading="setBusy" class="sd-body">
+          <div class="sd-card">
+            <div class="sd-card-t">当前应用范本套</div>
+            <select class="sd-select" :value="String(currentSetMeta?.id || '')" @change="onSetSelect">
+              <option v-for="s in mySets" :key="s.id" :value="String(s.id)">{{ s.name }}（{{ s.templateCount }} 份）</option>
+              <option v-if="!mySets.length" value="">普货通用范本（内置）</option>
+            </select>
+            <div class="sd-note">共 {{ currentSetMeta?.templateCount ?? tplList.length }} 份范本 · 本柜已加载 {{ tplList.length }} 份；切换后档案盒各行的「当前范本」与生成结果同步刷新</div>
+          </div>
+
+          <div class="sd-sec-t">我的范本套 <span>{{ mySets.length }} 套</span></div>
+          <div v-if="!mySets.length" class="sd-empty">暂无，可从下方服务商范本套「应用」，或点「另存为新范本套」创建</div>
+          <div v-for="s in mySets" :key="s.id" class="sd-item"
+               :class="{ on: String(s.id) === String(currentSetMeta?.id) }" @click="switchSet(s)">
+            <Icon name="book" :size="15" />
+            <span class="sd-nm">{{ s.name }}</span>
+            <span class="sd-cnt">{{ s.templateCount }} 份</span>
+            <span v-if="String(s.id) === String(currentSetMeta?.id)" class="sd-tag green">当前应用</span>
+            <span v-else class="sd-del" title="删除此套" @click.stop="deleteSet(s)">×</span>
+          </div>
+          <div class="sd-hint">点击某套即设为「当前应用范本套」；非当前套可点 × 删除</div>
+
+          <div class="sd-sec-t">服务商范本套 <span>基础默认模板 · 只读基线</span></div>
+          <div v-for="s in providerSets" :key="s.id" class="sd-item provider" @click="openApply(s)">
+            <Icon name="bookOpen" :size="15" />
+            <span class="sd-nm">{{ s.name }}</span>
+            <span class="sd-cnt">{{ s.templateCount }} 份</span>
+            <span v-if="s.isDefault === 1" class="sd-tag blue">默认</span>
+            <span class="sd-apply">应用</span>
+          </div>
+          <div class="sd-hint">「应用」会深拷贝整套范本成为企业自己的新范本套，并自动设为当前应用</div>
+
+          <el-button class="sd-saveas" size="small" plain @click="openSaveAs"><Icon name="save" :size="15" /> 另存为新范本套</el-button>
+
+          <div v-if="inlineForm" class="sd-form">
+            <div class="sd-form-t">{{ inlineForm === 'apply' ? '以服务商范本套「' + (formTarget?.name || '') + '」为基础应用' : '把当前范本套另存为新套' }}</div>
+            <input v-model="formName" class="form-input" placeholder="输入新范本套名称" @keyup.enter="submitInlineForm" />
+            <div class="sd-form-ops">
+              <el-button size="small" @click="inlineForm = ''">取消</el-button>
+              <el-button size="small" type="primary" :loading="setBusy" @click="submitInlineForm">确认{{ inlineForm === 'apply' ? '应用' : '另存' }}</el-button>
+            </div>
+          </div>
+        </div>
+
+        <div v-else class="sd-body">
+          <div class="sd-mapstat">
+            <span>范本 <b>{{ mappingData?.summary?.templateCount || 0 }}</b></span>
+            <span>已对应 <b>{{ mappingData?.summary?.mappedCount || 0 }}</b></span>
+            <span>归档项 <b>{{ mappingData?.summary?.catalogItemCount || 0 }}</b></span>
+            <span class="warn">手动上传 <b>{{ mappingData?.summary?.uploadOnlyCount || 0 }}</b></span>
+          </div>
+          <div class="sd-note">当前应用范本套「{{ currentSetName }}」· 每一份范本都有归档去向；证照 / 保单等无范本归档项请用「上传」留存</div>
+          <div v-for="g in mappingGroups" :key="g.boxNo" class="sd-mg">
+            <div class="sd-mgt">盒 {{ g.boxNo }} · {{ g.boxName }}</div>
+            <div v-for="it in g.items" :key="it.id" class="sd-mr" :class="{ off: !it.hasTemplate }">
+              <div class="sd-mrn">{{ it.name }}</div>
+              <div v-if="it.hasTemplate" class="sd-tag auto">按范本生成 · {{ it.tplCodes.length }} 份</div>
+              <div v-else class="sd-tag upload">无范本 · 手动上传留存</div>
+              <el-button size="small" text type="primary" @click="locateItem(g.boxNo, it.name)">定位</el-button>
+            </div>
+          </div>
+        </div>
+
+        <div class="sd-foot">
+          <span>需要在线修改范本正文、印章设置或责任制联动，请前往 <a href="javascript:;" @click="goTplManager">台账范本管理</a></span>
+          <el-button size="small" @click="closeSetPanel">关闭</el-button>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -948,4 +1131,65 @@ function refreshTpl() { loadTplLibrary(); loadArchiveItems() }
 .located-tip { display: flex; align-items: center; gap: 7px; margin: -4px 0 16px; padding: 9px 14px;
   background: #EFF6FF; border: 1px solid #BFDBFE; border-radius: 8px; color: #1E40AF; font-size: 12.5px; }
 .located-tip span { color: var(--text-3); }
+
+/* 范本套管理抽屉（电子档案柜内就地切换模板） */
+/* 高于全局 DEV 角标（z-index:9999），避免抽屉底部「关闭 / 台账范本管理」被遮挡 */
+.sd-mask { position: fixed; inset: 0; background: rgba(20,28,43,.45); display: none; justify-content: flex-end; z-index: 10000; }
+.sd-mask.show { display: flex; }
+.sd-panel { width: 560px; max-width: 96vw; height: 100%; background: #fff; display: flex; flex-direction: column;
+  box-shadow: -8px 0 32px rgba(0,0,0,.18); }
+.sd-head { display: flex; align-items: flex-start; gap: 12px; padding: 18px 20px 14px;
+  border-bottom: 1px solid var(--border); background: var(--brand-50); }
+.sd-head h2 { display: flex; align-items: center; gap: 8px; font-size: 17px; margin: 0 0 6px; color: var(--brand-700); }
+.sd-head p { margin: 0; font-size: 12px; color: var(--text-3); line-height: 1.6; }
+.sd-x { margin-left: auto; font-size: 24px; line-height: 1; color: var(--text-3); cursor: pointer; }
+.sd-x:hover { color: var(--text); }
+.sd-tabs { display: flex; gap: 4px; padding: 10px 20px 0; border-bottom: 1px solid var(--border); }
+.sd-tabs button { border: none; background: none; padding: 9px 16px; font-size: 13.5px; color: var(--text-3);
+  cursor: pointer; border-bottom: 2px solid transparent; }
+.sd-tabs button.on { color: var(--brand-600); font-weight: 700; border-bottom-color: var(--brand-600); }
+.sd-body { flex: 1; overflow: auto; padding: 16px 20px 24px; }
+.sd-card { background: var(--brand-50); border: 1px solid var(--brand-200, #BFDBFE); border-radius: 10px; padding: 14px; }
+.sd-card-t { font-size: 13px; font-weight: 700; color: var(--brand-700); margin-bottom: 8px; }
+.sd-select { width: 100%; height: 34px; padding: 0 8px; border: 1px solid var(--border); border-radius: 6px;
+  background: #fff; color: var(--text); font-size: 13px; cursor: pointer; }
+.sd-note { font-size: 12px; color: var(--text-3); line-height: 1.6; margin-top: 8px; }
+.sd-sec-t { display: flex; align-items: baseline; gap: 8px; font-size: 13.5px; font-weight: 700; margin: 20px 0 8px; }
+.sd-sec-t span { font-size: 11.5px; font-weight: 400; color: var(--text-3); }
+.sd-empty, .sd-hint { font-size: 12px; color: var(--text-3); line-height: 1.6; }
+.sd-hint { margin-top: 6px; }
+.sd-item { display: flex; align-items: center; gap: 8px; padding: 9px 12px; margin-bottom: 6px;
+  border: 1px solid var(--border); border-radius: 8px; cursor: pointer; background: #fff; transition: .12s; }
+.sd-item:hover { border-color: var(--brand-400, #60A5FA); background: #FAFCFF; }
+.sd-item.on { border-color: var(--brand-500); background: var(--brand-50); }
+.sd-nm { flex: 1; font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sd-cnt { font-size: 11.5px; color: var(--text-3); }
+.sd-tag { font-size: 11px; padding: 2px 8px; border-radius: 10px; white-space: nowrap; }
+.sd-tag.green, .sd-tag.auto { background: #DCFCE7; color: #15803D; }
+.sd-tag.blue { background: #DBEAFE; color: #1D4ED8; }
+.sd-tag.upload { background: #F1F5F9; color: #64748B; }
+.sd-del { color: var(--text-3); font-size: 16px; padding: 0 4px; }
+.sd-del:hover { color: #DC2626; }
+.sd-apply { font-size: 12px; color: var(--brand-600); font-weight: 600; }
+.sd-saveas { margin-top: 14px; }
+.sd-form { margin-top: 14px; padding: 14px; border: 1px dashed var(--brand-300, #93C5FD);
+  border-radius: 8px; background: #FAFCFF; }
+.sd-form-t { font-size: 12.5px; font-weight: 600; margin-bottom: 8px; }
+.sd-form .form-input { width: 100%; height: 32px; padding: 0 8px; border: 1px solid var(--border);
+  border-radius: 6px; font-size: 13px; box-sizing: border-box; }
+.sd-form-ops { display: flex; justify-content: flex-end; gap: 8px; margin-top: 10px; }
+.sd-mapstat { display: flex; flex-wrap: wrap; gap: 8px; }
+.sd-mapstat span { font-size: 12px; background: #F1F5F9; border-radius: 8px; padding: 5px 10px; color: var(--text-2); }
+.sd-mapstat b { color: var(--brand-600); font-size: 14px; }
+.sd-mapstat .warn { background: #FEF3C7; color: #92400E; }
+.sd-mg { margin-top: 16px; }
+.sd-mgt { font-size: 12.5px; font-weight: 700; color: var(--brand-700); padding: 6px 0;
+  border-bottom: 1px solid var(--border); }
+.sd-mr { display: flex; align-items: center; gap: 8px; padding: 7px 0; border-bottom: 1px dashed #E2E8F0; }
+.sd-mrn { flex: 1; font-size: 12.5px; }
+.sd-mr.off .sd-mrn { color: var(--text-3); }
+.sd-foot { display: flex; align-items: center; gap: 10px; padding: 12px 20px;
+  border-top: 1px solid var(--border); background: #FAFBFC; }
+.sd-foot span { flex: 1; font-size: 11.5px; color: var(--text-3); line-height: 1.5; }
+.sd-foot a { color: var(--brand-600); font-weight: 600; }
 </style>
