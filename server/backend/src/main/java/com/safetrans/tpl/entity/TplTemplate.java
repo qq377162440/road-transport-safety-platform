@@ -41,6 +41,9 @@ public class TplTemplate {
     /** 对应档案柜归档项名称（生成时按此匹配范本，两模块同源映射键） */
     private String archiveItem;
 
+    /** 对应电子档案柜归档项 archive_catalog.id（0=未映射） */
+    private Long catalogId;
+
     /** 版本说明（如 v1.0 内置 / 2026 修订版） */
     private String versionLabel;
 

@@ -4,9 +4,11 @@ import request from '@/api/request'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import Icon from '@/components/Icon.vue'
 import { ARCHIVE_CATALOG, FREQ_LABEL, STATUS } from '@/config/archiveCatalog'
-import { useRouter } from 'vue-router'
+import { useRouter, useRoute } from 'vue-router'
 
 const router = useRouter()
+const route = useRoute()
+const locatedItem = ref('')
 
 // ---- 同源范本库：「台账范本管理」与「电子档案柜」共用 tpl_template ----
 // 范本管理中保存的修改，会直接决定这里的生成结果与预览正文。
@@ -15,6 +17,7 @@ const pageCss = ref('')
 const currentSetName = ref('')
 const previewPost = ref('')
 const tplChoice = ref({})   // 行 key -> 用户为该归档项挑选的范本 code
+const mappingData = ref(null) // 台账范本管理「档案柜对应」同源映射（catalog_id）
 
 function setTplChoice(key, code) {
   tplChoice.value = { ...tplChoice.value, [key]: code }
@@ -37,7 +40,36 @@ const tplMap = computed(() => {
   return m
 })
 
+// 后端 catalog_id 精确映射：归档项名 -> 该归档项下的范本。
+// 与台账范本管理「档案柜对应」面板同一份数据，保证「每一个范本都有档案柜落点」。
+const catalogTplMap = computed(() => {
+  const byCode = {}
+  tplList.value.forEach((t) => { byCode[t.code] = t })
+  const m = {}
+  ;(mappingData.value?.catalogItems || []).forEach((c) => {
+    const list = (c.tplCodes || []).map((code) => byCode[code]).filter(Boolean)
+    if (!list.length) return
+    // 「安全生产责任书（变量化范本）」作为主范本排最前
+    list.sort((a, b) => (a.code === 'RESP_LETTER' ? 0 : 1) - (b.code === 'RESP_LETTER' ? 0 : 1))
+    m[c.name] = list
+  })
+  return m
+})
+
+function findCatalogKey(name) {
+  const keys = Object.keys(catalogTplMap.value)
+  // 前端展示名常带说明文字（如「安全生产月度会议（会议记录…）」），后端用简名
+  return keys.find((k) => k === name)
+    || keys.find((k) => name.includes(k))
+    || keys.find((k) => k.includes(name))
+    || null
+}
+
 function matchTpl(name) {
+  // 优先按后端 catalog_id 精确取范本（与「档案柜对应」面板同源）
+  const ck = findCatalogKey(name)
+  if (ck) return catalogTplMap.value[ck]
+  // 兜底：既有 archiveItem 名称匹配（无映射数据或平台账号时仍可用）
   if (tplMap.value[name]?.length) return tplMap.value[name]
   const k = Object.keys(tplMap.value).find((x) => x.length >= 4 && (name.includes(x) || x.includes(name)))
   return k ? tplMap.value[k] : []
@@ -94,9 +126,12 @@ const rows = computed(() => {
     let status = STATUS.MISS
     if (pdfId) status = STATUS.DONE
     else if (tplOptions.length) status = STATUS.WAIT
+    // 台账范本管理「定位档案柜」跳转时，高亮对应归档项（含带说明文字的展示名）
+    const q = locatedItem.value
+    const located = !!q && (it.name === q || it.name.includes(q) || q.includes(it.name))
     return {
       key, name: it.name, freq: it.freq || '', tplDriven: !!it.tplDriven,
-      isUploaded, tplOptions, tplCode, status, pdfId,
+      isUploaded, tplOptions, tplCode, status, pdfId, located,
     }
   })
 })
@@ -131,21 +166,30 @@ async function loadArchiveItems() {
 }
 async function loadTplLibrary() {
   try {
-    const [list, cssRes, curRes] = await Promise.all([
+    const [list, cssRes, ovRes, mapRes] = await Promise.all([
       request.get('/tpl/library'),
       request.get('/tpl/library/css'),
-      request.get('/tpl/ent/current').catch(() => ({ data: null })),
+      request.get('/tpl/ent/overview').catch(() => ({ data: null })),
+      request.get('/tpl/library/mapping').catch(() => ({ data: null })),
     ])
     tplList.value = list.data || []
     pageCss.value = cssRes.data || ''
-    currentSetName.value = curRes.data?.name || '普货通用范本（内置）'
+    currentSetName.value = ovRes.data?.current?.name || '普货通用范本（内置）'
+    mappingData.value = mapRes.data || null
   } catch (e) { /* 范本库不可用时退化为纯上传模式 */ }
 }
 
 watch([selectedNo, cargoType, selYear], () => {
   checked.value = new Set(); boxChecked.value = new Set(); tplChoice.value = {}; loadArchiveItems()
 })
-onMounted(() => { loadTplLibrary(); loadArchiveItems() })
+onMounted(() => {
+  // 台账范本管理「定位档案柜」跳转：按盒号定位，并提示对应归档项
+  const CN = ['一', '二', '三', '四', '五', '六', '七', '八', '九', '十', '十一']
+  const box = Number(route.query.box || 0)
+  if (box >= 1 && box <= CN.length) selectedNo.value = CN[box - 1]
+  locatedItem.value = String(route.query.item || '')
+  loadTplLibrary(); loadArchiveItems()
+})
 
 // ---- 三级勾选 ----
 function toggleItem(key, val) {
@@ -497,14 +541,18 @@ function refreshTpl() { loadTplLibrary(); loadArchiveItems() }
       <div class="lb-left">
         <Icon name="bookOpen" :size="19" />
         <div>
-          <div class="lb-t">当前应用范本：<b>{{ currentSetName }}</b> · 已加载 {{ tplList.length }} 份台账范本</div>
-          <div class="lb-d">本柜预览/生成的是带<b>岗位人名与公司章</b>的成品；台账范本管理里是空白范本。修改并保存范本后点右侧刷新即可生效</div>
+          <div class="lb-t">当前应用范本套：<b>{{ currentSetName }}</b> · 已加载 {{ tplList.length }} 份台账范本</div>
+          <div class="lb-d">本柜点「生成」时，<b>利用当前应用的范本套</b>渲染带岗位人名与公司章的成品并归档到此柜；在台账范本管理中切换套、应用服务商套或另存为新套后，点「刷新范本」即生效</div>
         </div>
       </div>
       <div class="lb-ops">
         <el-button size="small" @click="refreshTpl"><Icon name="refresh" :size="13" /> 刷新范本</el-button>
-        <el-button size="small" type="primary" plain @click="goTplManager"><Icon name="edit" :size="13" /> 去台账范本管理</el-button>
+        <el-button size="small" type="primary" plain @click="goTplManager"><Icon name="edit" :size="13" /> 去台账范本管理切换</el-button>
       </div>
+    </div>
+    <div v-if="locatedItem" class="located-tip">
+      <Icon name="link" :size="14" /> 已从台账范本管理定位到归档项：<b>{{ locatedItem }}</b>
+      <span>（证照类归档项无范本，请使用「上传」留存）</span>
     </div>
 
     <div class="year-bar">
@@ -581,7 +629,7 @@ function refreshTpl() { loadTplLibrary(); loadArchiveItems() }
         </div>
 
         <div v-loading="loading" class="item-list">
-          <div v-for="(r, idx) in rows" :key="r.key" class="item-row">
+          <div v-for="(r, idx) in rows" :key="r.key" class="item-row" :class="{ located: r.located }">
             <span class="item-idx">{{ idx + 1 }}</span>
             <el-checkbox class="item-cb" :model-value="checked.has(r.key)" @change="(v) => toggleItem(r.key, v)" />
             <div class="nm">
@@ -803,6 +851,7 @@ function refreshTpl() { loadTplLibrary(); loadArchiveItems() }
 .item-list { background: var(--surface); border: 1px solid var(--border); border-radius: var(--r-lg); overflow: hidden; }
 .item-row { display: flex; align-items: center; gap: 12px; padding: 13px 16px; border-bottom: 1px solid var(--border); }
 .item-row:last-child { border-bottom: none; }
+.item-row.located { background: #EFF6FF; box-shadow: inset 3px 0 0 var(--brand-500, #1D4ED8); }
 .item-row .item-idx { width: 22px; height: 22px; flex-shrink: 0; border-radius: 6px; background: var(--brand-500); color: #fff; font-size: 12px; font-weight: 700; display: flex; align-items: center; justify-content: center; }
 .item-row .item-cb { flex-shrink: 0; }
 .item-row .nm { flex: 1; min-width: 0; }
@@ -896,4 +945,7 @@ function refreshTpl() { loadTplLibrary(); loadArchiveItems() }
   padding: 4px 6px; background: #fff; cursor: pointer; }
 .pdf-page-frame { width: 700px; min-height: 900px; background: #fff; box-shadow: 0 2px 12px rgba(0,0,0,.15); }
 .pdf-doc-frame { width: 100%; min-height: 900px; border: none; display: block; background: #fff; }
+.located-tip { display: flex; align-items: center; gap: 7px; margin: -4px 0 16px; padding: 9px 14px;
+  background: #EFF6FF; border: 1px solid #BFDBFE; border-radius: 8px; color: #1E40AF; font-size: 12.5px; }
+.located-tip span { color: var(--text-3); }
 </style>

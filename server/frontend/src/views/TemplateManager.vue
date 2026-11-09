@@ -9,9 +9,12 @@ const router = useRouter()
 const loading = ref(false)
 const templates = ref([])   // 当前企业生效范本（含 content / baseContent / customized）
 const pageCss = ref('')
-const sets = ref([])        // 服务商全局范本套
-const mySets = ref([])      // 我的范本变体
+const sets = ref([])        // 服务商全局范本套（基础默认模板）
+const mySets = ref([])      // 我的范本套（另存为 / 应用产生的变体）
 const currentSet = ref(null)
+const currentMeta = ref(null)
+const mapping = ref(null)   // 当前套 ↔ 电子档案柜归档项映射
+const view = ref('templates') // templates | mapping
 const curBox = ref(0)       // 0 = 全部
 const keyword = ref('')
 
@@ -37,7 +40,17 @@ const boxGroups = computed(() => {
 })
 
 const customizedCount = computed(() => templates.value.filter((t) => t.customized).length)
-const currentName = computed(() => currentSet.value?.name || '普货通用范本（内置）')
+const currentName = computed(() => currentMeta.value?.name || currentSet.value?.name || '普货通用范本（内置）')
+const currentCount = computed(() => currentMeta.value?.templateCount ?? templates.value.length)
+const defaultProvider = computed(() => sets.value.find((s) => s.isDefault === 1) || sets.value[0] || null)
+const mappingGroups = computed(() => {
+  const m = {}
+  ;(mapping.value?.catalogItems || []).forEach((it) => {
+    const k = it.boxNo || 0
+    ;(m[k] = m[k] || { boxNo: k, boxName: it.boxName, items: [] }).items.push(it)
+  })
+  return Object.keys(m).sort((a, b) => Number(a) - Number(b)).map((k) => m[k])
+})
 
 const filtered = computed(() => {
   const kw = keyword.value.trim().toLowerCase()
@@ -55,18 +68,20 @@ const posts = computed(() => templates.value
 async function loadAll() {
   loading.value = true
   try {
-    const [full, cssRes, setRes, mineRes, curRes] = await Promise.all([
+    const [full, cssRes, ovRes, mapRes] = await Promise.all([
       request.get('/tpl/library/full'),
       request.get('/tpl/library/css'),
-      request.get('/tpl/set').catch(() => ({ data: [] })),
-      request.get('/tpl/ent/mine').catch(() => ({ data: [] })),
-      request.get('/tpl/ent/current').catch(() => ({ data: null })),
+      request.get('/tpl/ent/overview').catch(() => ({ data: null })),
+      request.get('/tpl/library/mapping').catch(() => ({ data: null })),
     ])
     templates.value = full.data || []
     pageCss.value = cssRes.data || ''
-    sets.value = setRes.data || []
-    mySets.value = mineRes.data || []
-    currentSet.value = curRes.data || null
+    const ov = ovRes.data || {}
+    sets.value = ov.providers || []
+    mySets.value = ov.mine || []
+    currentMeta.value = ov.current || null
+    currentSet.value = mySets.value.find((s) => s.isCurrent === 1) || null
+    mapping.value = mapRes.data || null
   } finally {
     loading.value = false
   }
@@ -239,28 +254,68 @@ async function saveResp() {
   await loadAll()
 }
 
-// ---------- 另存为我的范本 / 切换 ----------
+// ---------- 范本套：切换 / 应用服务商套 / 另存为新套 ----------
 const showSaveAs = ref(false)
 const saveAsName = ref('')
+const showApply = ref(false)
+const applySetId = ref(null)
+const applyName = ref('')
+
+function openSaveAs() {
+  saveAsName.value = currentName.value + '（副本）'
+  showSaveAs.value = true
+}
 async function doSaveAs() {
   const name = saveAsName.value.trim()
-  if (!name) { ElMessage.warning('请输入范本名称'); return }
-  if (!currentSet.value) {
-    const base = sets.value.find((s) => s.id === 4001) || sets.value[0]
-    if (base) await request.post('/tpl/ent/apply', { sourceSetId: base.id, name: '普货通用范本' })
-  }
-  await request.post('/tpl/ent/save-as', { name })
-  ElMessage.success(`已另存为「${name}」并设为当前应用范本`)
+  if (!name) { ElMessage.warning('请输入新范本套名称'); return }
+  const res = await request.post('/tpl/ent/save-as', { name })
+  ElMessage.success(`已另存为新范本套「${name}」，并设为当前应用`)
   showSaveAs.value = false
   await loadAll()
+  return res
 }
+
+function openApply(row) {
+  const s = row || defaultProvider.value
+  if (!s) { ElMessage.warning('暂无服务商范本套'); return }
+  applySetId.value = s.id
+  applyName.value = s.name + '（企业应用）'
+  showApply.value = true
+}
+async function doApply() {
+  const name = applyName.value.trim()
+  if (!name) { ElMessage.warning('请输入应用后的范本套名称'); return }
+  await request.post('/tpl/ent/apply', { sourceSetId: applySetId.value, name })
+  ElMessage.success(`已以服务商范本套为基础创建「${name}」，并设为当前应用`)
+  showApply.value = false
+  await loadAll()
+}
+
 async function switchSet(row) {
+  if (!row || String(row.id) === String(currentMeta.value?.id)) return
   await request.put(`/tpl/ent/${row.id}/current`)
-  ElMessage.success(`已切换当前应用范本为「${row.name}」`)
+  ElMessage.success(`已切换当前应用范本套为「${row.name}」`)
+  await loadAll()
+}
+function onSwitchSelect(e) {
+  const row = mySets.value.find((s) => String(s.id) === String(e.target.value))
+  if (row) switchSet(row)
+}
+async function deleteSet(row) {
+  if (row.isCurrent === 1) { ElMessage.warning('当前应用范本套不可删除'); return }
+  await request.delete(`/tpl/ent/${row.id}`)
+  ElMessage.success(`已删除范本套「${row.name}」`)
   await loadAll()
 }
 
 function goArchive() { router.push('/archive') }
+function goArchiveBox(boxNo, name) {
+  router.push({ path: '/archive', query: { box: boxNo || 1, item: name || '' } })
+}
+function catalogNameOf(t) {
+  const hit = (mapping.value?.templates || []).find((x) => x.code === t.code)
+  return hit?.catalogName || t.archiveItem || '—'
+}
 
 // ---------- 印章设置（原型《09-静态资料范本引擎》6.2：两种印章来源） ----------
 const showSeal = ref(false)
@@ -307,24 +362,33 @@ async function resetSeal() {
         <div class="desc">维护企业当前应用的空白范本 · 企业信息、岗位人名与盖章只在电子档案柜生成成品时填入</div>
       </div>
       <div class="actions">
+        <button class="btn btn-outline" @click="openApply()"><Icon name="copy" :size="16" /> 应用服务商范本套</button>
+        <button class="btn btn-outline" @click="openSaveAs"><Icon name="save" :size="16" /> 另存为新范本套</button>
+        <button class="btn btn-outline" @click="view = view === 'mapping' ? 'templates' : 'mapping'">
+          <Icon name="table" :size="16" /> {{ view === 'mapping' ? '返回范本清单' : '档案柜对应' }}
+        </button>
         <button class="btn btn-outline" @click="openSeal"><Icon name="award" :size="16" /> 印章设置</button>
         <button class="btn btn-outline" @click="openResp"><Icon name="users" :size="16" /> 责任制联动编辑</button>
-        <button class="btn btn-outline" @click="saveAsName = currentName + '（副本）'; showSaveAs = true">另存为我的范本</button>
         <button class="btn btn-primary" @click="goArchive"><Icon name="archive" :size="16" /> 去电子档案柜验证</button>
       </div>
     </div>
 
-    <!-- 当前应用范本 / 联动提示条 -->
+    <!-- 当前应用范本套：切换器 + 联动提示条 -->
     <div class="tpl-curbar">
       <div class="cb-left">
         <Icon name="bookOpen" :size="20" />
         <div>
-          <div class="cb-t">当前应用范本：<b>{{ currentName }}</b></div>
-          <div class="cb-d">共 {{ templates.length }} 份范本 · 已定制 {{ customizedCount }} 份 · 来源：服务商全局范本（V10 内置用户范本库）</div>
+          <div class="cb-t">当前应用范本套：
+            <select class="set-select" :value="String(currentMeta?.id || '')" @change="onSwitchSelect">
+              <option v-for="s in mySets" :key="s.id" :value="String(s.id)">{{ s.name }}（{{ s.templateCount }} 份）</option>
+              <option v-if="!mySets.length" value="">普货通用范本（内置）</option>
+            </select>
+          </div>
+          <div class="cb-d">共 {{ currentCount }} 份范本 · 已定制 {{ customizedCount }} 份 · 基础来源：{{ currentSet?.sourceName || '服务商默认范本套' }}</div>
         </div>
       </div>
       <div class="cb-tip">
-        <Icon name="info" :size="15" /> 在「在线修改」保存后，到电子档案柜点「生成 / 重新生成」即可看到新范本内容
+        <Icon name="info" :size="15" /> 切换范本套后，电子档案柜点「生成」即按当前套的范本渲染并归档
       </div>
     </div>
 
@@ -349,53 +413,91 @@ async function resetSeal() {
           <Icon name="folder" :size="16" /> <span :title="g.name">{{ g.name }}</span> <em>{{ g.count }}</em>
         </div>
 
-        <div class="card-title" style="margin-top:22px">我的范本 <span class="more">{{ mySets.length }} 套</span></div>
-        <div v-if="!mySets.length" class="empty-mini">暂无，点「另存为我的范本」创建版本</div>
-        <div v-for="s in mySets" :key="s.id" class="set-item" :class="{ on: s.isCurrent === 1 }" @click="switchSet(s)">
+        <div class="card-title" style="margin-top:22px">当前应用范本套 <span class="more">{{ mySets.length }} 套</span></div>
+        <div v-if="!mySets.length" class="empty-mini">暂无，点「应用服务商范本套」或「另存为新范本套」创建</div>
+        <div v-for="s in mySets" :key="s.id" class="set-item" :class="{ on: s.isCurrent === 1 }" @click="switchSet(s)" :title="`切换为当前应用范本套：${s.name}`">
           <Icon name="book" :size="15" />
           <span>{{ s.name }}</span>
+          <span class="set-cnt">{{ s.templateCount }}</span>
           <span v-if="s.isCurrent === 1" class="tag tag-green">当前</span>
+          <span v-else class="set-del" title="删除此套" @click.stop="deleteSet(s)">×</span>
         </div>
+        <div class="set-hint">点击某套即设为「当前应用范本套」，电子档案柜生成随之切换</div>
 
-        <div class="card-title" style="margin-top:22px">服务商范本套</div>
-        <div v-for="s in sets" :key="s.id" class="set-item">
+        <div class="card-title" style="margin-top:22px">服务商范本套 <span class="more">基础默认模板</span></div>
+        <div v-for="s in sets" :key="s.id" class="set-item provider" @click="openApply(s)" :title="`以「${s.name}」为基础应用为新的当前范本套`">
           <Icon name="bookOpen" :size="15" /> <span>{{ s.name }}</span>
+          <span class="set-cnt">{{ s.templateCount }}</span>
           <span v-if="s.isDefault === 1" class="tag tag-blue">默认</span>
+          <span v-else class="set-apply">应用</span>
         </div>
+        <div class="set-hint">服务商套为只读基线；「应用」会复制整套内容成为企业自己的范本套</div>
       </div>
 
-      <!-- 右：范本卡片 -->
+      <!-- 右：范本清单 / 档案柜对应 -->
       <div class="tpl-right card">
-        <div class="list-head">
-          <div>
-            <h2>{{ curBox ? BOX_NAMES[curBox] : '全部台账范本' }}</h2>
-            <div class="sub">共 {{ filtered.length }} 份 · 预览为空白范本（变量占位、不盖章、无人名）</div>
+        <template v-if="view === 'templates'">
+          <div class="list-head">
+            <div>
+              <h2>{{ curBox ? BOX_NAMES[curBox] : '全部台账范本' }}</h2>
+              <div class="sub">共 {{ filtered.length }} 份 · 当前套「{{ currentName }}」· 预览为空白范本（变量占位、不盖章、无人名）</div>
+            </div>
+            <input v-model="keyword" class="form-input search" placeholder="搜索范本名称 / 编码 / 归档项" />
           </div>
-          <input v-model="keyword" class="form-input search" placeholder="搜索范本名称 / 编码 / 归档项" />
-        </div>
 
-        <div class="tpl-grid">
-          <div v-for="t in filtered" :key="t.code" class="tpl-card">
-            <div class="tc-top">
-              <span class="tc-box">盒 {{ t.boxNo }}</span>
-              <span v-if="t.customized" class="tag tag-yellow">已定制</span>
-              <span v-else class="tag tag-gray">内置</span>
-            </div>
-            <div class="tc-name" :title="t.name">{{ t.name }}</div>
-            <div class="tc-meta">
-              <div><span>编码</span>{{ t.code }}</div>
-              <div><span>类型</span>{{ t.category || '—' }}</div>
-              <div><span>归档项</span>{{ t.archiveItem || '—' }}</div>
-              <div><span>版本</span>{{ t.versionLabel || ('v' + (t.version || 1)) }}</div>
-            </div>
-            <div class="tc-actions">
-              <button class="btn btn-outline btn-sm" @click="openPreview(t)"><Icon name="fileText" :size="14" /> 预览</button>
-              <button class="btn btn-primary btn-sm" @click="openEdit(t)"><Icon name="edit" :size="14" /> 在线修改</button>
-              <button v-if="t.customized" class="btn btn-outline btn-sm" @click="resetTpl(t)"><Icon name="x" :size="14" /> 恢复内置</button>
+          <div class="tpl-grid">
+            <div v-for="t in filtered" :key="t.code" class="tpl-card">
+              <div class="tc-top">
+                <span class="tc-box">盒 {{ t.boxNo }}</span>
+                <span v-if="t.customized" class="tag tag-yellow">已定制</span>
+                <span v-else class="tag tag-gray">内置</span>
+              </div>
+              <div class="tc-name" :title="t.name">{{ t.name }}</div>
+              <div class="tc-meta">
+                <div><span>编码</span>{{ t.code }}</div>
+                <div><span>类型</span>{{ t.category || '—' }}</div>
+                <div><span>归档项</span>{{ catalogNameOf(t) }}</div>
+                <div><span>版本</span>{{ t.versionLabel || ('v' + (t.version || 1)) }}</div>
+              </div>
+              <div class="tc-actions">
+                <button class="btn btn-outline btn-sm" @click="openPreview(t)"><Icon name="fileText" :size="14" /> 预览</button>
+                <button class="btn btn-primary btn-sm" @click="openEdit(t)"><Icon name="edit" :size="14" /> 在线修改</button>
+                <button class="btn btn-outline btn-sm" @click="goArchiveBox(t.boxNo, catalogNameOf(t))"><Icon name="link" :size="14" /> 定位档案柜</button>
+                <button v-if="t.customized" class="btn btn-outline btn-sm" @click="resetTpl(t)"><Icon name="x" :size="14" /> 恢复内置</button>
+              </div>
             </div>
           </div>
-        </div>
-        <div v-if="!filtered.length" class="empty">没有匹配的范本</div>
+          <div v-if="!filtered.length" class="empty">没有匹配的范本</div>
+        </template>
+
+        <template v-else>
+          <div class="list-head">
+            <div>
+              <h2>台账范本 ↔ 电子档案柜对应关系</h2>
+              <div class="sub">当前应用范本套「{{ currentName }}」· 每份范本都有归档去向；档案柜中「营业执照」等证件无范本，需手动上传留存</div>
+            </div>
+            <div class="map-stat">
+              <span>范本 <b>{{ mapping?.summary?.templateCount || 0 }}</b></span>
+              <span>已对应 <b>{{ mapping?.summary?.mappedCount || 0 }}</b></span>
+              <span>归档项 <b>{{ mapping?.summary?.catalogItemCount || 0 }}</b></span>
+              <span class="warn">手动上传 <b>{{ mapping?.summary?.uploadOnlyCount || 0 }}</b></span>
+            </div>
+          </div>
+          <div v-for="g in mappingGroups" :key="g.boxNo" class="map-group">
+            <div class="map-gt">盒 {{ g.boxNo }} · {{ g.boxName }}</div>
+            <div class="map-rows">
+              <div v-for="it in g.items" :key="it.id" class="map-row" :class="{ off: !it.hasTemplate }">
+                <div class="mr-name">{{ it.name }}</div>
+                <div v-if="it.hasTemplate" class="mr-tag auto">
+                  按范本生成 · {{ it.tplCodes.length }} 份
+                  <span class="mr-codes">{{ it.tplCodes.slice(0, 3).join('、') }}{{ it.tplCodes.length > 3 ? '…' : '' }}</span>
+                </div>
+                <div v-else class="mr-tag upload">无范本 · 手动上传留存</div>
+                <button class="btn btn-outline btn-sm" @click="goArchiveBox(g.boxNo, it.name)">去档案柜</button>
+              </div>
+            </div>
+          </div>
+        </template>
       </div>
     </div>
 
@@ -480,16 +582,35 @@ async function resetSeal() {
       </div>
     </div>
 
-    <!-- 另存为我的范本 -->
+    <!-- 另存为新范本套 -->
     <div class="modal-mask" :class="{ show: showSaveAs }" @click.self="showSaveAs = false">
       <div class="modal-box small">
-        <div class="modal-head">另存为我的范本 <span class="x" @click="showSaveAs = false">×</span></div>
+        <div class="modal-head">另存为新范本套 <span class="x" @click="showSaveAs = false">×</span></div>
         <div class="modal-body">
-          <div class="form-item"><label class="form-label">新范本名称 <span style="color:#DC2626">*</span></label>
+          <div class="form-item"><label class="form-label">新范本套名称 <span style="color:#DC2626">*</span></label>
             <input v-model="saveAsName" class="form-input" placeholder="例如：普货通用范本（2026 修订版）" />
           </div>
-          <p class="hint">保存当前全部范本内容为一个新的版本，可在左侧「我的范本」中切换。</p>
-          <div style="text-align:right; margin-top:16px"><button class="btn btn-primary btn-sm" @click="doSaveAs">另存为</button></div>
+          <p class="hint">把当前应用套的<b>全部范本内容（含已定制修改）</b>整体复制成一套独立的新范本套，并自动设为当前应用。原套保留，可在顶部切换器或左侧列表随时切回。</p>
+          <div style="text-align:right; margin-top:16px"><button class="btn btn-primary btn-sm" @click="doSaveAs">另存为新套</button></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 应用服务商范本套 -->
+    <div class="modal-mask" :class="{ show: showApply }" @click.self="showApply = false">
+      <div class="modal-box small">
+        <div class="modal-head">应用服务商范本套 <span class="x" @click="showApply = false">×</span></div>
+        <div class="modal-body">
+          <div class="form-item"><label class="form-label">选择服务商范本套 <span style="color:#DC2626">*</span></label>
+            <select v-model="applySetId" class="form-input">
+              <option v-for="s in sets" :key="s.id" :value="s.id">{{ s.name }}（{{ s.templateCount }} 份）{{ s.isDefault === 1 ? ' · 基础默认' : '' }}</option>
+            </select>
+          </div>
+          <div class="form-item"><label class="form-label">应用后的范本套名称 <span style="color:#DC2626">*</span></label>
+            <input v-model="applyName" class="form-input" placeholder="例如：普货小微范本（企业应用）" />
+          </div>
+          <p class="hint">以服务商账号提供的范本套作为<b>基础默认模板</b>，复制整套内容成为企业自己的「当前应用范本套」，之后可在线修改定制、另存为新套。切换后电子档案柜的生成结果会随之改变。</p>
+          <div style="text-align:right; margin-top:16px"><button class="btn btn-primary btn-sm" @click="doApply">应用并设为当前</button></div>
         </div>
       </div>
     </div>
@@ -625,4 +746,34 @@ async function resetSeal() {
 .form-item { margin-bottom: 14px; }
 .form-label { display: block; font-size: 13px; font-weight: 600; margin-bottom: 6px; color: var(--text-2); }
 .area { min-height: 92px; resize: vertical; line-height: 1.7; }
+
+/* 当前应用范本套切换器 */
+.set-select { margin-left: 4px; min-width: 230px; max-width: 340px; height: 30px; padding: 0 8px;
+  border: 1px solid var(--blue-300, #93C5FD); border-radius: 7px; background: #fff;
+  color: var(--blue-800, #1E40AF); font-size: 13.5px; font-weight: 700; cursor: pointer; }
+.set-cnt { font-size: 11.5px; color: var(--text-3, #94A3B8); }
+.set-del { color: var(--text-3); font-size: 17px; line-height: 1; padding: 0 4px; }
+.set-del:hover { color: #DC2626; }
+.set-apply { font-size: 11.5px; color: var(--blue-700, #1D4ED8); }
+.provider:hover .set-apply { text-decoration: underline; }
+.set-hint { font-size: 11.5px; color: var(--text-3); line-height: 1.65; padding: 4px 10px 0; }
+
+/* 台账范本 ↔ 档案柜对应视图 */
+.map-stat { display: flex; gap: 14px; flex-wrap: wrap; font-size: 12.5px; color: var(--text-2); }
+.map-stat b { color: var(--blue-800); font-size: 15px; }
+.map-stat .warn b { color: #B45309; }
+.map-group { margin-bottom: 18px; }
+.map-gt { font-size: 13.5px; font-weight: 700; color: var(--blue-800); background: var(--blue-50, #EFF6FF);
+  border-radius: 7px; padding: 8px 12px; margin-bottom: 8px; }
+.map-rows { border: 1px solid var(--border, #E2E8F0); border-radius: 9px; overflow: hidden; }
+.map-row { display: flex; align-items: center; gap: 12px; padding: 9px 12px; border-bottom: 1px solid #F1F5F9; font-size: 13px; }
+.map-row:last-child { border-bottom: none; }
+.map-row.off { background: #FFFBEB; }
+.mr-name { flex: 1; min-width: 0; color: var(--text-1); }
+.mr-tag { font-size: 12px; padding: 3px 9px; border-radius: 6px; white-space: nowrap; }
+.mr-tag.auto { background: #EFF6FF; color: #1D4ED8; }
+.mr-tag.upload { background: #FEF3C7; color: #92400E; }
+.mr-codes { display: block; font-size: 11px; color: var(--text-3); margin-top: 2px; max-width: 300px;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.map-row .btn { min-height: 28px; padding: 4px 10px; font-size: 12px; flex-shrink: 0; }
 </style>

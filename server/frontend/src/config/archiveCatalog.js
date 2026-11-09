@@ -42,6 +42,8 @@ const BOX_THREE = {
   items: [
     { name: '安全生产领导小组会议（会议记录、会议PPT、签到、照片）' },
     { name: '安全生产月度会议（会议记录、会议PPT、签到、照片）' },
+    // 与台账范本管理「档案柜对应」联动：会议记录四段式范本的归档去向
+    { name: '安全生产会议记录' },
   ],
 }
 
@@ -88,6 +90,7 @@ const BOX_SEVEN_GENERAL = {
     { name: '应急培训（培训内容、考核、照片）' },
     { name: '应急救援器材配备' },
     { name: '应急演练计划' },
+    { name: '应急值班表' },
     { name: '应急演练（方案、照片、签到）' },
   ],
 }
@@ -98,6 +101,8 @@ const BOX_EIGHT_GENERAL = {
   items: [
     { name: '风险辨识手册' },
     { name: '风险辨识清单' },
+    { name: '全面风险辨识清单' },
+    { name: '安全风险辨识分级管控清单' },
     { name: '风险告知卡（每个岗位一份）' },
     { name: '无重大风险的说明' },
     { name: '隐患排查记录（排查内容、照片、签字）' },
@@ -108,7 +113,10 @@ const BOX_EIGHT_GENERAL = {
 const BOX_NINE_GENERAL = {
   no: '九',
   name: '一日三检',
-  items: [{ name: '（日常车辆三检记录）' }],
+  items: [
+    { name: '（日常车辆三检记录）' },
+    { name: '一日三检记录' },
+  ],
 }
 
 const BOX_TEN = {

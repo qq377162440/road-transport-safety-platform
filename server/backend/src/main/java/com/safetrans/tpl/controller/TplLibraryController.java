@@ -47,6 +47,12 @@ public class TplLibraryController {
         return Result.ok(library.pageCss());
     }
 
+    /** 当前应用范本套 ↔ 电子档案柜归档项映射（含无范本、需手动上传的归档项） */
+    @GetMapping("/mapping")
+    public Result<Map<String, Object>> mapping() {
+        return Result.ok(library.mapping());
+    }
+
     /** 按档案柜归档项名称匹配可用范本（电子档案柜联动用） */
     @GetMapping("/match")
     public Result<List<TplLibraryService.TplVO>> match(@RequestParam("archiveItem") String archiveItem,

@@ -9,6 +9,7 @@ import com.safetrans.tpl.service.EntTplSetService;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Map;
 
 /**
  * 企业范本接口（当前应用范本 + 我的范本）。
@@ -36,21 +37,34 @@ public class EntTplSetController {
         return Result.ok(entService.mySets());
     }
 
-    /** 从服务商套实例化 */
+    /** 切换器概览：服务商范本套 + 我的范本 + 当前应用套（含每套范本份数） */
+    @GetMapping("/overview")
+    public Result<Map<String, Object>> overview() {
+        return Result.ok(entService.overview());
+    }
+
+    /** 从服务商套应用为新的当前应用范本套（深拷贝整套范本） */
     @PostMapping("/apply")
     public Result<EntTplSet> apply(@RequestBody ApplyTplSetReq req) {
         return Result.ok(entService.apply(req));
     }
 
-    /** 另存为我的范本 */
+    /** 另存为新的范本套（深拷贝当前套含定制内容，并设为当前） */
     @PostMapping("/save-as")
     public Result<EntTplSet> saveAs(@RequestBody SaveAsReq req) {
         return Result.ok(entService.saveAs(req));
     }
 
-    /** 切换当前应用范本 */
+    /** 切换当前应用范本套 */
     @PutMapping("/{id}/current")
     public Result<EntTplSet> setCurrent(@PathVariable Long id) {
         return Result.ok(entService.setCurrent(id));
+    }
+
+    /** 删除非当前应用范本套 */
+    @DeleteMapping("/{id}")
+    public Result<Void> delete(@PathVariable Long id) {
+        entService.delete(id);
+        return Result.ok();
     }
 }

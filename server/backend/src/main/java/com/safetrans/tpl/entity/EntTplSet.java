@@ -38,8 +38,16 @@ public class EntTplSet {
     /** 是否已定制（0未改 1已改/已另存） */
     private Integer customized;
 
-    /** 本套文件清单快照（JSON） */
+    /** 本套文件清单快照（JSON，V17 起内容改由 tpl_template 承载，此字段仅保留兼容） */
     private String filesSnapshot;
+
+    /** 本套范本份数（非表字段，接口聚合时填充） */
+    @TableField(exist = false)
+    private Integer templateCount;
+
+    /** 来源服务商范本套名称（非表字段，接口聚合时填充） */
+    @TableField(exist = false)
+    private String sourceName;
 
     /** 从服务商套实例化日期 */
     private LocalDate appliedAt;

@@ -5,36 +5,42 @@ import com.safetrans.common.pdf.PdfService;
 import com.safetrans.common.tenant.TenantContextHolder;
 import com.safetrans.common.web.BizException;
 import com.safetrans.tenant.service.TenantService;
+import com.safetrans.tpl.entity.EntTplSet;
 import com.safetrans.tpl.entity.TplTemplate;
 import com.safetrans.tpl.mapper.TplTemplateMapper;
 import lombok.Data;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
+import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
  * 台账范本库服务 —— 「台账范本管理」与「电子档案柜」的唯一同源数据层。
  *
- * <p>数据模型：
+ * <p>范本套作用域（V17 起）：
  * <ul>
- *   <li>服务商全局范本：tenant_id=0、group_id=4001、status=1（V10 落库的用户真实范本，只读基线）</li>
- *   <li>企业当前应用范本：tenant_id=当前企业、source_id=全局范本 id，同 code 覆盖全局内容</li>
+ *   <li>企业「当前应用范本套」由 ent_tpl_set.is_current=1 决定；其范本内容落在
+ *       tpl_template（tenant_id=企业、group_id=ent_tpl_set.id），是该套的独立副本。</li>
+ *   <li>切换范本套 → 本服务所有读取（清单/正文/匹配）随之改变 → 电子档案柜按当前套生成归档。</li>
+ *   <li>企业尚未创建应用套（或平台账号）→ 回退到服务商全局默认套 4001 + 按 code 私有覆盖的旧行为，
+ *       保证既有数据与回归完全兼容。</li>
  * </ul>
- * 查询一律「企业覆盖优先、全局兜底」，因此在范本管理中保存修改后，
- * 电子档案柜的生成与预览会立刻读到同一份新内容，实现两模块联动。
  */
 @Service
 public class TplLibraryService {
 
     /** 服务商默认范本套 id（V2 seed: 4001 普货通用范本） */
-    private static final long GLOBAL_SET_ID = 4001L;
+    private static final long GLOBAL_SET_ID = TplSetScope.GLOBAL_SET_ID;
 
     private final TplTemplateMapper templateMapper;
     private final TplRenderEngine renderEngine;
@@ -42,26 +48,46 @@ public class TplLibraryService {
     private final TenantService tenantService;
     private final SealService sealService;
     private final TplPersonResolver personResolver;
+    private final TplSetScope setScope;
+    private final JdbcTemplate jdbc;
 
     public TplLibraryService(TplTemplateMapper templateMapper, TplRenderEngine renderEngine,
                              PdfService pdfService, TenantService tenantService, SealService sealService,
-                             TplPersonResolver personResolver) {
+                             TplPersonResolver personResolver, TplSetScope setScope, JdbcTemplate jdbc) {
         this.templateMapper = templateMapper;
         this.renderEngine = renderEngine;
         this.pdfService = pdfService;
         this.tenantService = tenantService;
         this.sealService = sealService;
         this.personResolver = personResolver;
+        this.setScope = setScope;
+        this.jdbc = jdbc;
     }
 
     /** 当前企业 id（平台账号无租户，返回 null，仅使用全局范本） */
     private Long tid() {
-        Long t = TenantContextHolder.tenantId();
-        return (t == null || t == 0L) ? null : t;
+        return setScope.tid();
     }
 
-    /** 全局范本（服务商内置，只读基线） */
-    private List<TplTemplate> globals() {
+    /** 当前应用范本套的内容作用域；null 表示走全局默认套旧行为 */
+    private Long groupId() {
+        return setScope.currentGroupId();
+    }
+
+    /**
+     * 「当前生效」的范本基线：
+     * 有当前应用套 → 该企业该套的独立副本；无 → 服务商全局默认套 4001。
+     */
+    private List<TplTemplate> baseTemplates() {
+        Long g = groupId();
+        if (g != null) {
+            return templateMapper.selectList(new LambdaQueryWrapper<TplTemplate>()
+                    .eq(TplTemplate::getTenantId, tid())
+                    .eq(TplTemplate::getGroupId, g)
+                    .eq(TplTemplate::getStatus, 1)
+                    .orderByAsc(TplTemplate::getBoxNo)
+                    .orderByAsc(TplTemplate::getId));
+        }
         return templateMapper.selectList(new LambdaQueryWrapper<TplTemplate>()
                 .eq(TplTemplate::getTenantId, 0L)
                 .eq(TplTemplate::getGroupId, GLOBAL_SET_ID)
@@ -70,21 +96,47 @@ public class TplLibraryService {
                 .orderByAsc(TplTemplate::getId));
     }
 
-    /** 本企业对全局范本的私有覆盖 */
+    /**
+     * 旧模式（无应用套）下企业对全局范本的按 code 私有覆盖。
+     * 有应用套时范本内容本身即企业私有行，不再需要覆盖层，返回空。
+     */
     private Map<String, TplTemplate> overrides() {
         Long t = tid();
-        if (t == null) return Map.of();
+        // 必须返回可变 Map：list()/effectiveList() 会对它做 remove 消费。
+        // 有当前应用套时无覆盖层，但仍需可变的空 Map，不能返回 Map.of()。
+        if (t == null || groupId() != null) return new LinkedHashMap<>();
         List<TplTemplate> list = templateMapper.selectList(new LambdaQueryWrapper<TplTemplate>()
                 .eq(TplTemplate::getTenantId, t)
+                .eq(TplTemplate::getGroupId, GLOBAL_SET_ID)
                 .eq(TplTemplate::getStatus, 1));
         Map<String, TplTemplate> map = new LinkedHashMap<>();
         for (TplTemplate x : list) map.put(x.getCode(), x);
         return map;
     }
 
-    /** 按 code 取「当前生效」范本（企业覆盖优先） */
+    /** 应用套内某范本的「内置基线正文」（source_id 指向的全局范本），用于定制判定与恢复内置 */
+    private TplTemplate sourceOf(TplTemplate row) {
+        if (row.getSourceId() == null) return null;
+        return templateMapper.selectById(row.getSourceId());
+    }
+
+    /** 按 code 取「当前生效」范本（企业套内容 / 旧模式覆盖 / 全局兜底） */
     public TplTemplate effective(String code) {
-        TplTemplate own = overrides().get(code);
+        Long g = groupId();
+        if (g != null) {
+            return templateMapper.selectOne(new LambdaQueryWrapper<TplTemplate>()
+                    .eq(TplTemplate::getTenantId, tid())
+                    .eq(TplTemplate::getGroupId, g)
+                    .eq(TplTemplate::getCode, code)
+                    .eq(TplTemplate::getStatus, 1)
+                    .last("limit 1"));
+        }
+        TplTemplate own = templateMapper.selectOne(new LambdaQueryWrapper<TplTemplate>()
+                .eq(TplTemplate::getTenantId, tid() == null ? -1L : tid())
+                .eq(TplTemplate::getGroupId, GLOBAL_SET_ID)
+                .eq(TplTemplate::getCode, code)
+                .eq(TplTemplate::getStatus, 1)
+                .last("limit 1"));
         if (own != null) return own;
         return templateMapper.selectOne(new LambdaQueryWrapper<TplTemplate>()
                 .eq(TplTemplate::getTenantId, 0L)
@@ -112,19 +164,27 @@ public class TplLibraryService {
         return fuzzy;
     }
 
-    /**
-     * 当前企业生效的完整范本清单（全局 + 私有覆盖合并），按档案盒分组排序。
-     * customized=true 表示该范本已被本企业修改过，可「恢复内置」。
-     */
+    /** 当前生效的完整范本清单（按档案盒分组排序） */
     public List<TplVO> list() {
+        Long g = groupId();
         Map<String, TplTemplate> own = overrides();
         List<TplVO> out = new ArrayList<>();
-        for (TplTemplate g : globals()) {
-            TplTemplate e = own.remove(g.getCode());
-            TplTemplate active = e != null ? e : g;
-            out.add(toVO(active, e != null, g));
+        for (TplTemplate base : baseTemplates()) {
+            TplTemplate e = own.remove(base.getCode());
+            TplTemplate active = e != null ? e : base;
+            boolean customized;
+            String baseContent;
+            if (g != null) {
+                TplTemplate src = sourceOf(base);
+                baseContent = src == null ? null : src.getContent();
+                customized = baseContent == null || !Objects.equals(baseContent, active.getContent());
+            } else {
+                customized = e != null;
+                baseContent = base.getContent();
+            }
+            out.add(toVO(active, customized, baseContent));
         }
-        // 企业自建（全局没有的）范本也一并列出
+        // 旧模式下企业自建（全局没有的）范本也一并列出
         for (TplTemplate e : own.values()) out.add(toVO(e, true, null));
         out.sort(Comparator.comparingInt((TplVO v) -> v.getBoxNo() == null ? 99 : v.getBoxNo())
                 .thenComparing(v -> v.getCode() == null ? "" : v.getCode()));
@@ -141,15 +201,15 @@ public class TplLibraryService {
     private List<TplTemplate> effectiveList() {
         List<TplTemplate> out = new ArrayList<>();
         Map<String, TplTemplate> own = overrides();
-        for (TplTemplate g : globals()) {
-            TplTemplate e = own.remove(g.getCode());
-            out.add(e != null ? e : g);
+        for (TplTemplate base : baseTemplates()) {
+            TplTemplate e = own.remove(base.getCode());
+            out.add(e != null ? e : base);
         }
         out.addAll(own.values());
         return out;
     }
 
-    private TplVO toVO(TplTemplate t, boolean customized, TplTemplate base) {
+    private TplVO toVO(TplTemplate t, boolean customized, String baseContent) {
         TplVO v = new TplVO();
         v.setId(t.getId());
         v.setCode(t.getCode());
@@ -158,27 +218,49 @@ public class TplLibraryService {
         v.setBoxNo(t.getBoxNo());
         v.setArchiveItem(t.getArchiveItem());
         v.setArchiveCode(t.getArchiveCode());
+        v.setCatalogId(t.getCatalogId());
         v.setVersion(t.getVersion());
         v.setVersionLabel(t.getVersionLabel());
         v.setCustomized(customized);
-        v.setBaseContent(base == null ? null : base.getContent());
+        v.setBaseContent(baseContent);
         return v;
     }
 
-    /** 保存本范本：写/更新本企业私有覆盖；全局基线不动 */
+    /** 保存本范本：有应用套则改本套副本；旧模式则写按 code 私有覆盖 */
     @Transactional
     public TplVO save(String code, String content, String versionLabel) {
+        Long t = tid();
+        Long g = groupId();
+        String label = versionLabel == null || versionLabel.isBlank() ? "本企业定制" : versionLabel;
+
+        if (g != null) {
+            TplTemplate row = templateMapper.selectOne(new LambdaQueryWrapper<TplTemplate>()
+                    .eq(TplTemplate::getTenantId, t)
+                    .eq(TplTemplate::getGroupId, g)
+                    .eq(TplTemplate::getCode, code)
+                    .last("limit 1"));
+            if (row == null) throw new BizException("当前应用范本套内不存在范本：" + code);
+            row.setContent(content);
+            row.setVersionLabel(label);
+            row.setVersion((row.getVersion() == null ? 1 : row.getVersion()) + 1);
+            row.setStatus(1);
+            templateMapper.updateById(row);
+            TplTemplate src = sourceOf(row);
+            return toVO(row, true, src == null ? null : src.getContent());
+        }
+
+        // ---- 旧行为（无应用套）----
         TplTemplate global = templateMapper.selectOne(new LambdaQueryWrapper<TplTemplate>()
                 .eq(TplTemplate::getTenantId, 0L)
                 .eq(TplTemplate::getCode, code)
                 .eq(TplTemplate::getStatus, 1)
                 .last("limit 1"));
         if (global == null) throw new BizException("内置范本不存在：" + code);
-        Long t = tid();
         if (t == null) throw new BizException("平台账号请通过服务商范本套维护全局范本");
 
         TplTemplate own = templateMapper.selectOne(new LambdaQueryWrapper<TplTemplate>()
                 .eq(TplTemplate::getTenantId, t)
+                .eq(TplTemplate::getGroupId, GLOBAL_SET_ID)
                 .eq(TplTemplate::getCode, code)
                 .last("limit 1"));
         if (own == null) {
@@ -191,6 +273,7 @@ public class TplLibraryService {
             own.setCategory(global.getCategory());
             own.setArchiveCode(global.getArchiveCode());
             own.setArchiveItem(global.getArchiveItem());
+            own.setCatalogId(global.getCatalogId());
             own.setBoxNo(global.getBoxNo());
             own.setPostScope(global.getPostScope());
             own.setNeedSeal(global.getNeedSeal());
@@ -203,26 +286,114 @@ public class TplLibraryService {
             own.setStatus(1);
         }
         own.setContent(content);
-        own.setVersionLabel(versionLabel == null || versionLabel.isBlank() ? "本企业定制" : versionLabel);
+        own.setVersionLabel(label);
         if (own.getId() == null) templateMapper.insert(own);
         else templateMapper.updateById(own);
-        return toVO(own, true, global);
+        return toVO(own, true, global.getContent());
     }
 
-    /** 恢复内置：删除本企业私有覆盖，回到服务商全局范本 */
+    /** 恢复内置：套内副本还原为来源全局范本正文；旧模式删除私有覆盖 */
     @Transactional
     public void reset(String code) {
         Long t = tid();
         if (t == null) return;
+        Long g = groupId();
+        if (g != null) {
+            TplTemplate row = templateMapper.selectOne(new LambdaQueryWrapper<TplTemplate>()
+                    .eq(TplTemplate::getTenantId, t)
+                    .eq(TplTemplate::getGroupId, g)
+                    .eq(TplTemplate::getCode, code)
+                    .last("limit 1"));
+            if (row == null) return;
+            TplTemplate src = sourceOf(row);
+            if (src == null) return;
+            row.setContent(src.getContent());
+            row.setVersionLabel(src.getVersionLabel());
+            row.setVersion((row.getVersion() == null ? 1 : row.getVersion()) + 1);
+            row.setStatus(1);
+            templateMapper.updateById(row);
+            return;
+        }
         templateMapper.delete(new LambdaQueryWrapper<TplTemplate>()
                 .eq(TplTemplate::getTenantId, t)
+                .eq(TplTemplate::getGroupId, GLOBAL_SET_ID)
                 .eq(TplTemplate::getCode, code));
+    }
+
+    // ===== 范本 ↔ 电子档案柜归档项映射 =====
+
+    /**
+     * 当前应用范本套与电子档案柜的对应关系。
+     * 范本侧：每份范本对应哪个归档项（catalog_id）；
+     * 档案柜侧：每个归档项是否有范本（无范本 = 营业执照等需手动上传的证件）。
+     */
+    public Map<String, Object> mapping() {
+        List<Map<String, Object>> catalog = jdbc.queryForList(
+                "SELECT c.`id`, c.`name`, c.`parent_id`, p.`sort_no` AS box_no, p.`name` AS box_name " +
+                        "FROM `archive_catalog` c JOIN `archive_catalog` p ON p.`id`=c.`parent_id` " +
+                        "WHERE c.`biz_type`='GENERAL' AND c.`level`=2 AND c.`deleted`=0 AND p.`deleted`=0 " +
+                        "ORDER BY p.`sort_no`, c.`sort_no`, c.`id`");
+        Map<Long, String> nameById = new LinkedHashMap<>();
+        for (Map<String, Object> c : catalog) nameById.put(((Number) c.get("id")).longValue(), String.valueOf(c.get("name")));
+
+        List<TplVO> tpls = list();
+        Map<Long, List<String>> tplByCatalog = new LinkedHashMap<>();
+        List<Map<String, Object>> tplRows = new ArrayList<>();
+        int mapped = 0;
+        for (TplVO v : tpls) {
+            Long cid = v.getCatalogId() == null ? 0L : v.getCatalogId();
+            String cname = nameById.getOrDefault(cid, "");
+            boolean exact = cname.equals(v.getArchiveItem() == null ? "" : v.getArchiveItem());
+            if (cid != 0 && !cname.isEmpty()) mapped++;
+            tplByCatalog.computeIfAbsent(cid, k -> new ArrayList<>()).add(v.getCode());
+            Map<String, Object> row = new LinkedHashMap<>();
+            row.put("code", v.getCode());
+            row.put("name", v.getName());
+            row.put("boxNo", v.getBoxNo());
+            row.put("archiveItem", v.getArchiveItem());
+            row.put("catalogId", cid);
+            row.put("catalogName", cname);
+            row.put("matchType", cid == 0 ? "none" : (exact ? "exact" : "grouped"));
+            row.put("customized", v.isCustomized());
+            tplRows.add(row);
+        }
+
+        List<Map<String, Object>> catalogRows = new ArrayList<>();
+        List<Map<String, Object>> uploadOnly = new ArrayList<>();
+        for (Map<String, Object> c : catalog) {
+            long cid = ((Number) c.get("id")).longValue();
+            List<String> codes = tplByCatalog.getOrDefault(cid, List.of());
+            Map<String, Object> row = new LinkedHashMap<>();
+            row.put("id", cid);
+            row.put("name", c.get("name"));
+            row.put("boxNo", c.get("box_no"));
+            row.put("boxName", c.get("box_name"));
+            row.put("tplCodes", codes);
+            row.put("hasTemplate", !codes.isEmpty());
+            catalogRows.add(row);
+            if (codes.isEmpty()) uploadOnly.add(row);
+        }
+
+        EntTplSet cur = setScope.current();
+        Map<String, Object> out = new LinkedHashMap<>();
+        out.put("currentSetId", cur == null ? null : String.valueOf(cur.getId()));
+        out.put("currentSetName", cur == null ? "普货通用范本（内置）" : cur.getName());
+        out.put("currentSourceSetId", cur == null ? GLOBAL_SET_ID : cur.getSourceSetId());
+        out.put("templates", tplRows);
+        out.put("catalogItems", catalogRows);
+        out.put("uploadOnly", uploadOnly);
+        Map<String, Object> summary = new LinkedHashMap<>();
+        summary.put("templateCount", tpls.size());
+        summary.put("mappedCount", mapped);
+        summary.put("catalogItemCount", catalogRows.size());
+        summary.put("uploadOnlyCount", uploadOnly.size());
+        out.put("summary", summary);
+        return out;
     }
 
     /**
      * 当前范本是否盖章：原型规则「所有台账（PDF）都要盖公司章」。
      * <b>只在成品层生效</b> —— 台账范本管理的空白范本不盖章。
-     * need_seal 缺省或非空均视为盖章，仅显式 0 才不盖。
      */
     private String sealFor(TplTemplate tpl) {
         Integer need = tpl.getNeedSeal();
@@ -236,7 +407,6 @@ public class TplLibraryService {
     }
 
     private Map<String, String> blankVars(String post) {
-        // 空白范本不展示任何真实值；变量表仅供条件段判断岗位分支
         return renderEngine.defaultVars(null, java.time.Year.now().getValue(), post, null);
     }
 
@@ -275,7 +445,7 @@ public class TplLibraryService {
         return renderEngine.renderDocument(tpl.getContent(), vars, sealFor(tpl));
     }
 
-    /** 直接渲染为成品 PDF（电子档案柜生成归档用） */
+    /** 直接渲染为成品 PDF（电子档案柜生成归档用，自动使用当前应用范本套） */
     public byte[] renderPdf(String code, String itemName, int year, String post) {
         return pdfService.render(renderDocument(code, itemName, year, post));
     }
@@ -311,7 +481,6 @@ public class TplLibraryService {
     public void saveResponsibility(String post, List<String> target, List<String> duty, List<String> assess) {
         if (post == null || post.isBlank()) throw new BizException("请选择岗位");
 
-        // 1) 责任制：只替换该岗位区块，保留其他岗位与用户的其他修改
         TplTemplate sys = effective("RESPONSIBILITY");
         if (sys != null) {
             String html = sys.getContent() == null ? "" : sys.getContent();
@@ -327,7 +496,6 @@ public class TplLibraryService {
             save("RESPONSIBILITY", html, "联动编辑 · " + post);
         }
 
-        // 2) 该岗位责任书：整份重建，与责任制三段内容保持一致
         TplTemplate letter = null;
         for (TplVO v : list()) {
             if (v.getCode() != null && v.getCode().startsWith("RESP_LETTER_P")
@@ -418,6 +586,8 @@ public class TplLibraryService {
         private Integer boxNo;
         private String archiveItem;
         private String archiveCode;
+        /** 对应电子档案柜归档项 id */
+        private Long catalogId;
         private Integer version;
         private String versionLabel;
         private boolean customized;
