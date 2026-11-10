@@ -1,0 +1,312 @@
+{
+  "module": "B4 一日三检",
+  "total": 61,
+  "passed": 61,
+  "results": [
+    {
+      "name": "三类账号登录成功 + 专用测试车辆与活跃人车绑定就绪",
+      "ok": true,
+      "detail": "vehicleId=9900000000000001"
+    },
+    {
+      "name": "V21 迁移成功（字典租户隔离 / 未出车留痕 / 流转日志表）",
+      "ok": true,
+      "detail": "success=1"
+    },
+    {
+      "name": "check_item_dict.tenant_id 字段已补齐",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "check_flow_log 状态流转日志表已建立",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "概览返回统计/任务/状态机/配置/预警/归档六类结构",
+      "ok": true,
+      "detail": "company=佛山市高明高洲燃气有限公司 tasks=2"
+    },
+    {
+      "name": "状态机为 未出车 → 出车中 → 已完成",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "检查项按车型拼装且三时段分组齐全",
+      "ok": true,
+      "detail": "total=14 out/mid/in=6/4/4"
+    },
+    {
+      "name": "三检开关配置可读（惰性初始化）",
+      "ok": true,
+      "detail": "{'defaultPolicy': 'not_out', 'forceCamera': False, 'allowDeclare': False}"
+    },
+    {
+      "name": "三检开关写入生效（C12/C15/C16）",
+      "ok": true,
+      "detail": "{'defaultPolicy': 'not_check', 'forceCamera': True, 'allowDeclare': True}"
+    },
+    {
+      "name": "车牌模糊搜索输入数字即弹出匹配项（C13）",
+      "ok": true,
+      "detail": "hits=1"
+    },
+    {
+      "name": "车辆选项带出当前活跃绑定驾驶员（C4 人车绑定预填）",
+      "ok": true,
+      "detail": "{'id': '9900000000000001', 'plateNo': 'B4验证-粤TEST', 'label': 'B4验证-粤TEST', 'vehicleClass': 'heavy', 'bizType': 'freight', 'businessStatus': '运营', 'isTrailer': 0, 'driverId': '8808000000000001', 'driverName': '陈刚'}"
+    },
+    {
+      "name": "驾驶员候选取自 B1 人员主表",
+      "ok": true,
+      "detail": "count=4"
+    },
+    {
+      "name": "标记出车生成任务且状态 doing（C12 出车才生成）",
+      "ok": true,
+      "detail": "{'ok': True, 'taskId': '2120001159286042624', 'idempotent': False, 'status': 'doing', 'boundDriver': '8808000000000001'}"
+    },
+    {
+      "name": "任务生成时按人车绑定自动预填驾驶员（C9 默认预填）",
+      "ok": true,
+      "detail": "driverId=8808000000000001"
+    },
+    {
+      "name": "同车同日重复出车幂等（uk_task，不产生重复任务）",
+      "ok": true,
+      "detail": "{'ok': True, 'taskId': '2120001159286042624', 'idempotent': True, 'status': 'doing'}"
+    },
+    {
+      "name": "任务详情含行车日志/按天三时段/明细/提醒/日志/隐患/选项",
+      "ok": true,
+      "detail": "nextPhase=out days=1"
+    },
+    {
+      "name": "行车日志字段与线下台账逐字段对齐（里程/货物/起止地）",
+      "ok": true,
+      "detail": "{'mileage_start': '1000', 'mileage_end': '1200', 'mileage': '', 'cargo_name': 'B4验证货物', 'cargo_qty': '', 'origin': '佛山', 'stopover': '', 'destination': '广州', 'start_date': '2026-11-10', 'end_date': ''}"
+    },
+    {
+      "name": "C11 三检串行：跳过出车前直接提交行车中被拒",
+      "ok": true,
+      "detail": "{'ok': False, 'msg': '请先完成「出车前」检查（三检串行）'}"
+    },
+    {
+      "name": "提交出车前检查成功，写入子表 check_item_result",
+      "ok": true,
+      "detail": "{'ok': True, 'recordId': '2120001159734833152', 'phase': 'out', 'result': 'pass', 'dangerId': None, 'progress': {'out': {'id': '2120001159734833152', 'result': 'pass', 'check_time': '2026-11-10T11:50:39'}, 'mid': None, 'in': None, 'done': 1, 'total': 3, 'complete': False}, 'status': 'doing', 'nextPhase': 'mid'}"
+    },
+    {
+      "name": "逐项检查明细真实落库（子表验收线②）",
+      "ok": true,
+      "detail": "rows=3"
+    },
+    {
+      "name": "重复提交同一时段幂等（司机误触/断网重试不产生重复记录）",
+      "ok": true,
+      "detail": "{'ok': True, 'recordId': '2120001159734833152', 'idempotent': True, 'phase': 'out', 'result': 'pass', 'progress': {'out': {'id': '2120001159734833152', 'result': 'pass', 'check_time': '2026-11-10T11:50:39'}, 'mid': None, 'in': None, 'done': 1, 'total': 3, 'complete': False}, 'status': 'doing'}"
+    },
+    {
+      "name": "提交行车中检查成功",
+      "ok": true,
+      "detail": "{'ok': True, 'recordId': '2120001160821157888', 'phase': 'mid', 'result': 'pass', 'dangerId': None, 'progress': {'out': {'id': '2120001159734833152', 'result': 'pass', 'check_time': '2026-11-10T11:50:39'}, 'mid': {'id': '2120001160821157888', 'result': 'pass', 'check_time': '2026-11-10T11:50:39'}, 'in': None, 'done': 2, 'total': 3, 'complete': False}, 'status': 'doing', 'nextPhase': 'in'}"
+    },
+    {
+      "name": "提交收车后检查并结束出车周期 → status=done",
+      "ok": true,
+      "detail": "{'ok': True, 'recordId': '2120001161077010432', 'phase': 'in', 'result': 'pass', 'dangerId': None, 'progress': {'out': {'id': '2120001159734833152', 'result': 'pass', 'check_time': '2026-11-10T11:50:39'}, 'mid': {'id': '2120001160821157888', 'result': 'pass', 'check_time': '2026-11-10T11:50:39'}, 'in': {'id': '2120001161077010432', 'result': 'pass', 'check_time': '2026-11-10T11:50:39'}, 'done': 3, 'total': 3, 'complete': True}, 'status': 'done', 'nextPhase': 'out'}"
+    },
+    {
+      "name": "状态与收车日期真实回写数据库",
+      "ok": true,
+      "detail": "['done', '2026-11-10']"
+    },
+    {
+      "name": "已完成任务不可再提交（需重新出车或超管纠错）",
+      "ok": true,
+      "detail": "{'ok': False, 'msg': '该出车周期已完成，请先重新出车或由超管纠错'}"
+    },
+    {
+      "name": "车头/挂分离：挂车生成独立任务（C5）",
+      "ok": true,
+      "detail": "{'ok': True, 'taskId': '2120001161802625024', 'idempotent': False, 'status': 'doing', 'boundDriver': '8808000000000001'}"
+    },
+    {
+      "name": "异常检查自动生成 B5 隐患单",
+      "ok": true,
+      "detail": "{'ok': True, 'recordId': '2120001161995563008', 'phase': 'out', 'result': 'abnormal', 'dangerId': '2120001162071060480', 'progress': {'out': {'id': '2120001161995563008', 'result': 'abnormal', 'check_time': '2026-11-10T11:50:39'}, 'mid': None, 'in': None, 'done': 1, 'total': 3, 'complete': False}, 'status': 'doing', 'nextPhase': 'mid'}"
+    },
+    {
+      "name": "隐患单带出车辆 / 语音 + 文字 + 照片（零打字联动）",
+      "ok": true,
+      "detail": "['check_daily', '9900000000000001', 'voice/b4test.mp3', 'photo/b4test1.jpg,photo/b4test2.jpg']"
+    },
+    {
+      "name": "PC 标记未出车 → 当日豁免三检并留痕（C12）",
+      "ok": true,
+      "detail": "{'ok': True, 'status': 'not_out', 'way': 'pc'}"
+    },
+    {
+      "name": "已有三检记录时司机声明不生效（防滥用）",
+      "ok": true,
+      "detail": "{'ok': False, 'msg': '当天已有三检记录，声明不生效（以实际三检为准）'}"
+    },
+    {
+      "name": "C16 开关关闭时司机声明未出车被拒",
+      "ok": true,
+      "detail": "{'ok': False, 'msg': '企业未开启「司机声明未出车」开关'}"
+    },
+    {
+      "name": "C16 开关开启后司机声明未出车成功并留痕",
+      "ok": true,
+      "detail": "{'ok': True, 'status': 'not_out', 'way': 'declare'}"
+    },
+    {
+      "name": "未出车声明写入 not_out_way 留痕",
+      "ok": true,
+      "detail": "way=declare"
+    },
+    {
+      "name": "C16 声明后又做三检，声明自动作废恢复出车中",
+      "ok": true,
+      "detail": "status=doing"
+    },
+    {
+      "name": "C10/C11 跨日：前一天三时段未集齐时不能开始新一天",
+      "ok": true,
+      "detail": "{'ok': False, 'msg': '请先结束上一次检查（2026-11-10 三时段未集齐）'}"
+    },
+    {
+      "name": "切换当天驾驶员不改长期人车绑定（C9）",
+      "ok": true,
+      "detail": "{'ok': True, 'driverName': '陈刚'}"
+    },
+    {
+      "name": "补录行车日志并自动计算里程",
+      "ok": true,
+      "detail": "{'ok': True, 'mileage': 500}"
+    },
+    {
+      "name": "收车公里数小于出车公里数被校验拦截",
+      "ok": true,
+      "detail": "{'ok': False, 'msg': '收车公里数不能小于出车公里数'}"
+    },
+    {
+      "name": "一键提醒写入 check_remind 并累加 remind_count",
+      "ok": true,
+      "detail": "{'ok': True, 'remindId': '2120001165665579008', 'remindCount': 1}"
+    },
+    {
+      "name": "提醒记录可查询",
+      "ok": true,
+      "detail": "rows=1"
+    },
+    {
+      "name": "状态流转日志逐条留痕（出车/提交/收车/切换/补录/提醒）",
+      "ok": true,
+      "detail": "['一键提醒', '切换当天驾驶员', '提交出车前检查', '提交收车后检查', '提交行车中检查', '标记出车', '补录行车日志']"
+    },
+    {
+      "name": "企业自定义检查项新增并在清单生效（C7）",
+      "ok": true,
+      "detail": "1"
+    },
+    {
+      "name": "企业自定义检查项可删除且不影响平台预置项",
+      "ok": true,
+      "detail": "removed=1 total=14"
+    },
+    {
+      "name": "月报汇总数据按车按月（C14 装盒版）",
+      "ok": true,
+      "detail": "vehicles=5 checks=5"
+    },
+    {
+      "name": "月报汇总表 PDF 真实生成（%PDF 文件头）",
+      "ok": true,
+      "detail": "bytes=20446"
+    },
+    {
+      "name": "单车单日行车日志 PDF 现查现打（不装盒）",
+      "ok": true,
+      "detail": "bytes=26872"
+    },
+    {
+      "name": "月报归档生成 PDF 并上传对象存储",
+      "ok": true,
+      "detail": "key=5001/check/monthly_2099-01_1794282641196.pdf size=13631"
+    },
+    {
+      "name": "归档项落在盒九 · 一日三检目录",
+      "ok": true,
+      "detail": "catalog=GENERAL_BOX9"
+    },
+    {
+      "name": "archive_pdf 成品记录关联归档项",
+      "ok": true,
+      "detail": "rows=1"
+    },
+    {
+      "name": "同月重复归档幂等（不重复生成归档项）",
+      "ok": true,
+      "detail": "items=1"
+    },
+    {
+      "name": "跨模块联动覆盖 B1/B2/B3/B5/B7 五个模块",
+      "ok": true,
+      "detail": "['person', 'vehicle', 'institution', 'danger', 'archive']"
+    },
+    {
+      "name": "options 提供制度依据 / 车辆 / 驾驶员数据源",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "小程序仅预留 expiring / mine 两个聚合 GET 接口",
+      "ok": true,
+      "detail": "expiring=4 mine=5"
+    },
+    {
+      "name": "企业账号不可修改三检记录（C8 纠错权限收口）",
+      "ok": true,
+      "detail": "无权限访问该资源"
+    },
+    {
+      "name": "服务商/超管可纠错且写入流转日志",
+      "ok": true,
+      "detail": "{'code': 0, 'msg': 'ok', 'data': {'ok': True, 'result': 'abnormal'}}"
+    },
+    {
+      "name": "B4 专用页可打开且标题/统计卡渲染",
+      "ok": true,
+      "detail": "cards=4"
+    },
+    {
+      "name": "任务清单表格渲染出测试车辆",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "任务详情抽屉与 6 个 Tab 可打开",
+      "ok": true,
+      "detail": "tabs=6"
+    },
+    {
+      "name": "抽屉内逐条操作条按钮齐全（全部正常/报修/收车/切换/补录/提醒/PDF/纠错）",
+      "ok": true,
+      "detail": "buttons=10"
+    },
+    {
+      "name": "三检开关弹窗含 C12/C15/C16 三项配置",
+      "ok": true,
+      "detail": "switches=3"
+    },
+    {
+      "name": "前端无控制台错误",
+      "ok": true,
+      "detail": "[]"
+    }
+  ]
+}

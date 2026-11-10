@@ -17,10 +17,10 @@ request.interceptors.request.use(
       // 部分托管反向代理会剥离 Authorization 头，冗余携带自定义头兜底
       config.headers['X-Token'] = `Bearer ${token}`
     }
-    // 服务商 / 超管代企业操作范本时，把租户上下文切到「当前服务企业」。
-    // 仅对范本与档案柜路径注入，避免影响 D5 平台侧的跨租户统计与全量查询。
+    // 服务商 / 超管代企业操作范本与业务台账时，把租户上下文切到「当前服务企业」。
+    // 仅对范本、档案柜与业务闭环路径注入，避免影响 D5 平台侧的跨租户统计与全量查询。
     const target = localStorage.getItem('targetTenantId')
-    const scoped = ['/archive/', '/tpl/'].some((p) => (config.url || '').startsWith(p))
+    const scoped = ['/archive/', '/tpl/', '/flow/'].some((p) => (config.url || '').startsWith(p))
     if (target && scoped) config.headers['X-Target-Tenant'] = target
     return config
   },
