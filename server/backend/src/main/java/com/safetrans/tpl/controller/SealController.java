@@ -34,16 +34,18 @@ public class SealController {
         return Result.ok(sealService.current());
     }
 
-    /** 上传真实印章图（透明底 PNG，前端转 data URI 传入） */
+    /** 上传真实印章图（透明底 PNG，前端转 data URI 传入）。仅服务商 / 超管（增值服务）。 */
     @PostMapping("/upload")
+    @RequireRole({"provider", "admin"})
     public Result<SealService.SealInfo> upload(@RequestBody Map<String, Object> body) {
         Object image = body.get("image");
         sealService.upload(image == null ? "" : String.valueOf(image));
         return Result.ok(sealService.current());
     }
 
-    /** 恢复系统自动生成的圆形红章 */
+    /** 恢复系统自动生成的圆形红章。仅服务商 / 超管。 */
     @DeleteMapping
+    @RequireRole({"provider", "admin"})
     public Result<SealService.SealInfo> reset() {
         sealService.reset();
         return Result.ok(sealService.current());

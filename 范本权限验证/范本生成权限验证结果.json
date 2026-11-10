@@ -1,0 +1,272 @@
+[
+  {
+    "name": "三类演示账号登录成功（enterprise / provider / admin）",
+    "ok": true,
+    "detail": "enterprise/provider/admin"
+  },
+  {
+    "name": "企业只读可达：当前应用范本套概览",
+    "ok": true,
+    "detail": "code=0"
+  },
+  {
+    "name": "企业只读可达：当前应用范本套",
+    "ok": true,
+    "detail": "code=0"
+  },
+  {
+    "name": "企业只读可达：范本清单",
+    "ok": true,
+    "detail": "code=0"
+  },
+  {
+    "name": "企业只读可达：范本↔档案柜对应",
+    "ok": true,
+    "detail": "code=0"
+  },
+  {
+    "name": "企业只读可达：当前印章",
+    "ok": true,
+    "detail": "code=0"
+  },
+  {
+    "name": "企业只读可达：空白范本预览",
+    "ok": true,
+    "detail": "code=0"
+  },
+  {
+    "name": "企业只读可达：生成前人名检查",
+    "ok": true,
+    "detail": "code=0"
+  },
+  {
+    "name": "企业被拒（403）：按范本生成台账",
+    "ok": true,
+    "detail": "code=403 msg=无权限访问该资源"
+  },
+  {
+    "name": "企业被拒（403）：责任制生成",
+    "ok": true,
+    "detail": "code=403 msg=无权限访问该资源"
+  },
+  {
+    "name": "企业被拒（403）：应用服务商范本套",
+    "ok": true,
+    "detail": "code=403 msg=无权限访问该资源"
+  },
+  {
+    "name": "企业被拒（403）：另存为新范本套",
+    "ok": true,
+    "detail": "code=403 msg=无权限访问该资源"
+  },
+  {
+    "name": "企业被拒（403）：切换当前应用范本套",
+    "ok": true,
+    "detail": "code=403 msg=无权限访问该资源"
+  },
+  {
+    "name": "企业被拒（403）：删除范本套",
+    "ok": true,
+    "detail": "code=403 msg=无权限访问该资源"
+  },
+  {
+    "name": "企业被拒（403）：在线修改范本",
+    "ok": true,
+    "detail": "code=403 msg=无权限访问该资源"
+  },
+  {
+    "name": "企业被拒（403）：恢复内置范本",
+    "ok": true,
+    "detail": "code=403 msg=无权限访问该资源"
+  },
+  {
+    "name": "企业被拒（403）：责任制联动编辑",
+    "ok": true,
+    "detail": "code=403 msg=无权限访问该资源"
+  },
+  {
+    "name": "企业被拒（403）：上传真实印章",
+    "ok": true,
+    "detail": "code=403 msg=无权限访问该资源"
+  },
+  {
+    "name": "企业被拒（403）：恢复自动章",
+    "ok": true,
+    "detail": "code=403 msg=无权限访问该资源"
+  },
+  {
+    "name": "企业被拒（403）：新建服务商范本套",
+    "ok": true,
+    "detail": "code=403 msg=无权限访问该资源"
+  },
+  {
+    "name": "企业被拒（403）：目标企业清单",
+    "ok": true,
+    "detail": "code=403 msg=无权限访问该资源"
+  },
+  {
+    "name": "企业保留：手动上传证件 / 扫描件（非 403）",
+    "ok": true,
+    "detail": "code=0"
+  },
+  {
+    "name": "服务商可获取目标企业清单",
+    "ok": true,
+    "detail": "2 家，含 佛山市高明高洲燃气有限公司"
+  },
+  {
+    "name": "超管可获取目标企业清单",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "企业不可获取目标企业清单",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "服务商未选目标企业时生成被拒",
+    "ok": true,
+    "detail": "请先在右上角选择要生成台账的企业"
+  },
+  {
+    "name": "超管未选目标企业时生成被拒",
+    "ok": true,
+    "detail": "请先在右上角选择要生成台账的企业"
+  },
+  {
+    "name": "服务商带头后读到目标企业的当前应用范本套",
+    "ok": true,
+    "detail": "tenantId=5001 name=普货通用范本（企业应用）"
+  },
+  {
+    "name": "服务商带头后印章按目标企业全称生成",
+    "ok": true,
+    "detail": "佛山市高明高洲燃气有限公司"
+  },
+  {
+    "name": "服务商带头后读到目标企业 50 份范本",
+    "ok": true,
+    "detail": "50 份"
+  },
+  {
+    "name": "服务商带目标企业生成成功且成品归属 5001",
+    "ok": true,
+    "detail": "tenantId=5001 filePath=5001/2026/1/eeb31aa533ae_权限验证-人员任命书-临时.pdf"
+  },
+  {
+    "name": "服务商生成的成品 PDF 可下载且正文为目标企业",
+    "ok": true,
+    "detail": "bytes=68501 企业名命中=True"
+  },
+  {
+    "name": "服务商：企业账号可下载该成品（只读保留）",
+    "ok": true,
+    "detail": "http=200 bytes=68501"
+  },
+  {
+    "name": "超管带目标企业生成成功且成品归属 5001",
+    "ok": true,
+    "detail": "tenantId=5001 filePath=5001/2026/1/a1f1a3e667f9_权限验证-人员任命书-临时.pdf"
+  },
+  {
+    "name": "超管生成的成品 PDF 可下载且正文为目标企业",
+    "ok": true,
+    "detail": "bytes=68501 企业名命中=True"
+  },
+  {
+    "name": "超管：企业账号可下载该成品（只读保留）",
+    "ok": true,
+    "detail": "http=200 bytes=68501"
+  },
+  {
+    "name": "归档项与成品 PDF 均落在目标企业档案柜",
+    "ok": true,
+    "detail": "5001\t2 / 2"
+  },
+  {
+    "name": "服务商指定不存在的企业时回落跨租户并被生成守卫拒绝",
+    "ok": true,
+    "detail": "请先在右上角选择要生成台账的企业"
+  },
+  {
+    "name": "企业伪造目标企业头被忽略（无法越权读别家范本套）",
+    "ok": true,
+    "detail": "tenantId=5001"
+  },
+  {
+    "name": "D5 平台侧跨租户统计不受目标企业切换影响",
+    "ok": true,
+    "detail": "18 个模块"
+  },
+  {
+    "name": "企业档案柜：显示增值服务只读提示",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "企业档案柜：隐藏「批量生成勾选」",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "企业档案柜：保留手动「上传」入口",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "企业范本管理：显示增值服务只读提示",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "企业范本管理：隐藏全部 5 类写按钮",
+    "ok": true,
+    "detail": "仍可见："
+  },
+  {
+    "name": "企业范本管理：保留空白范本预览入口",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "服务商档案柜：顶栏「服务企业」下拉可见",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "服务商档案柜：下拉默认选中目标企业",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "服务商档案柜：显示「正在为…管理台账范本」",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "服务商档案柜：批量生成勾选按钮可见",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "切换服务企业后目标租户持久化到本机",
+    "ok": true,
+    "detail": "targetTenantId=2118557917524865024"
+  },
+  {
+    "name": "服务商范本管理：5 类写按钮齐全",
+    "ok": true,
+    "detail": "缺失："
+  },
+  {
+    "name": "服务商范本管理：显示目标企业提示",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "前端无控制台错误",
+    "ok": true,
+    "detail": ""
+  }
+]

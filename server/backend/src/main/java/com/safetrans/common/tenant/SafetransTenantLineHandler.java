@@ -47,9 +47,11 @@ public class SafetransTenantLineHandler implements TenantLineHandler {
         if (IGNORE_TABLES.contains(t)) {
             return true;
         }
-        // 平台账号跨租户：不注入
+        // 平台账号：未选目标企业时跨租户不注入；已通过 X-Target-Tenant 选定企业时按该企业隔离，
+        // 保证服务商代企业生成台账时读到的范本套、岗位人名、印章、归档项都属于该企业。
         if (TenantContextHolder.isPlatform()) {
-            return true;
+            Long curTenant = TenantContextHolder.tenantId();
+            return curTenant == null || curTenant == 0L;
         }
         return false;
     }

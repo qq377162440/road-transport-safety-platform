@@ -40,8 +40,9 @@ public class ArchiveController {
         return Result.ok(archiveService.listResponsibilityItems());
     }
 
-    /** 登记 + 生成责任制 PDF（一步完成，旧链路保留兼容） */
+    /** 登记 + 生成责任制 PDF（一步完成，旧链路保留兼容）。范本生成为服务商 / 超管增值服务。 */
     @PostMapping("/responsibility/generate")
+    @RequireRole({"provider", "admin"})
     public Result<ArchivePdf> generate() {
         return Result.ok(archiveService.registerAndGenerate());
     }
@@ -49,8 +50,11 @@ public class ArchiveController {
     /**
      * 按「台账范本管理」当前应用范本生成/重新生成台账 PDF。
      * 改了范本后再次调用本接口，产出的 PDF 即为新范本内容。
+     * 权限：仅服务商 / 超管（增值服务）；平台账号须用 X-Target-Tenant 指定目标企业，
+     * 成品按目标企业的范本套 / 岗位人名 / 公司章渲染并归档到该企业的档案柜。
      */
     @PostMapping("/template/generate")
+    @RequireRole({"provider", "admin"})
     public Result<ArchivePdf> generateByTemplate(@RequestBody Map<String, Object> body) {
         String code = body.get("code") == null ? "" : String.valueOf(body.get("code"));
         String itemName = body.get("itemName") == null ? "" : String.valueOf(body.get("itemName"));

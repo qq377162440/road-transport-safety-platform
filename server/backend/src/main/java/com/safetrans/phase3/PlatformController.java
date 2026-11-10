@@ -138,6 +138,18 @@ public class PlatformController extends PhaseDSupport {
         return Result.ok(Map.of("tenantId", tenantId, "opened", opened, "closed", closed));
     }
 
+    /**
+     * 服务商 / 超管代企业生成台账时可选的目标企业清单。
+     * 前端选中后用 X-Target-Tenant 请求头带上，AuthInterceptor 会把租户上下文切到该企业，
+     * 使成品使用目标企业的范本套、岗位人名与公司章，并归档到目标企业的电子档案柜。
+     */
+    @GetMapping("/target-tenants")
+    @RequireRole({"provider", "admin"})
+    public Result<List<Map<String, Object>>> targetTenants() {
+        return Result.ok(jdbc.queryForList(
+                "SELECT `id`,`name` FROM `sys_tenant` WHERE `deleted`=0 AND `status`=1 ORDER BY `id`"));
+    }
+
     /** 企业侧查询自己的可用模块（基础模块恒可用；增值模块需授权且未过期）。 */
     @GetMapping("/my-modules")
     public Result<Map<String, Object>> myModules() {

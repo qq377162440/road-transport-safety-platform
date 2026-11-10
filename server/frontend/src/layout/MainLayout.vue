@@ -15,12 +15,33 @@ const auth = useAuthStore()
 
 // D5 模块授权：基础模块恒可用；增值（三期 D）模块需平台显式开通。
 const dAuth = ref(null)
+
+// 服务商 / 超管「当前服务企业」：范本定制与生成为增值服务，成品须落到指定企业档案柜
+const targetTenants = ref([])
+async function loadTargetTenants() {
+  if (!auth.isPlatform) { targetTenants.value = []; return }
+  try { targetTenants.value = (await request.get('/platform/target-tenants')).data || [] }
+  catch { targetTenants.value = [] }
+  const cur = String(auth.targetTenantId || '')
+  if (targetTenants.value.length && !targetTenants.value.some((t) => String(t.id) === cur)) {
+    const first = targetTenants.value[0]
+    auth.setTargetTenant({ id: first.id, name: first.name })
+  }
+}
+function onTargetTenant(id) {
+  const t = targetTenants.value.find((x) => String(x.id) === String(id))
+  auth.setTargetTenant({ id, name: t?.name || '' })
+  // 已加载的范本 / 档案柜数据需按新企业重新拉取
+  window.location.reload()
+}
+
 onMounted(async () => {
   // 企业名按当前租户实时获取。AUTO_LOGIN 走路由守卫的 devLogin，不经过登录页，
   // 若只在 Login.vue 里加载，驾驶舱等页面会拿不到 tenantName 而落到兜底文案。
   auth.loadTenantName()
   try { dAuth.value = (await request.get('/platform/my-modules')).data }
   catch { dAuth.value = null }
+  await loadTargetTenants()
 })
 function dModuleAllowed(code) {
   const a = dAuth.value
@@ -118,6 +139,7 @@ async function onRole(role) {
   // 演示态：切换角色 = 用该角色的演示账号重新登录（AUTO_LOGIN 下跳登录页会被自动登回企业账号）
   await auth.logout()
   await auth.devLogin(DEV_DEMO_ACCOUNTS[role])
+  await loadTargetTenants()
   router.push('/dashboard')
 }
 
@@ -168,7 +190,16 @@ async function handleLogout() {
         >{{ r.label }}</button>
       </div>
 
-      <div class="cargo-switch" id="cargoSwitch">
+      <div v-if="auth.isPlatform" class="cargo-switch" id="tenantSwitch">
+        <span class="cs-label">服务企业</span>
+        <select class="tenant-select" :value="auth.targetTenantId" @change="onTargetTenant($event.target.value)">
+          <option value="">请选择企业</option>
+          <option v-for="t in targetTenants" :key="t.id" :value="String(t.id)">{{ t.name }}</option>
+        </select>
+      </div>
+
+      <!-- 客户类型是企业视角的业务属性；服务商/超管视角改由「服务企业」下拉承载，避免顶栏拥挤 -->
+      <div v-if="!auth.isPlatform" class="cargo-switch" id="cargoSwitch">
         <span class="cs-label">客户类型</span>
         <button
           v-for="c in cargoOptions"
@@ -229,7 +260,7 @@ async function handleLogout() {
   padding: 0 20px; color: #fff; box-shadow: 0 2px 8px rgba(0,0,0,.15); position: relative; z-index: 10;
   flex-shrink: 0;
 }
-.topbar .logo { font-size: 17px; font-weight: 700; letter-spacing: .5px; display: flex; align-items: center; gap: 10px; }
+.topbar .logo { font-size: 17px; font-weight: 700; letter-spacing: .5px; display: flex; align-items: center; gap: 10px; white-space: nowrap; flex-shrink: 0; }
 .topbar .logo .mark { width: 30px; height: 30px; border-radius: 8px; background: var(--blue-800); display: flex; align-items: center; justify-content: center; }
 .topbar .logo .mark :deep(.ico) { font-size: 17px; color: #fff; }
 .topbar .sub { font-size: 12.5px; opacity: .75; margin-left: 14px; white-space: nowrap; }
@@ -245,6 +276,7 @@ async function handleLogout() {
 .cs-label { font-size: 12px; opacity: .8; padding: 0 8px; white-space: nowrap; }
 .cs-btn { border: none; background: transparent; color: #fff; font-size: 12.5px; font-weight: 600; padding: 5px 12px; border-radius: 7px; cursor: pointer; transition: .12s; }
 .cs-btn.on { background: #fff; color: var(--blue-900); }
+.tenant-select { border: none; background: #fff; color: var(--blue-900, #1E3A8A); font-size: 12.5px; font-weight: 600; padding: 5px 8px; border-radius: 7px; max-width: 170px; cursor: pointer; }
 
 /* ── PC / 小程序 tabs ── */
 .tabs { height: 46px; background: #fff; border-bottom: 1px solid var(--border); display: flex; align-items: center; padding: 0 16px; gap: 6px; flex-shrink: 0; }

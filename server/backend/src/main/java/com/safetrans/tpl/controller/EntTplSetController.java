@@ -43,26 +43,30 @@ public class EntTplSetController {
         return Result.ok(entService.overview());
     }
 
-    /** 从服务商套应用为新的当前应用范本套（深拷贝整套范本） */
+    /** 从服务商套应用为新的当前应用范本套（深拷贝整套范本）。仅服务商 / 超管（增值服务）。 */
     @PostMapping("/apply")
+    @RequireRole({"provider", "admin"})
     public Result<EntTplSet> apply(@RequestBody ApplyTplSetReq req) {
         return Result.ok(entService.apply(req));
     }
 
-    /** 另存为新的范本套（深拷贝当前套含定制内容，并设为当前） */
+    /** 另存为新的范本套（深拷贝当前套含定制内容，并设为当前）。仅服务商 / 超管。 */
     @PostMapping("/save-as")
+    @RequireRole({"provider", "admin"})
     public Result<EntTplSet> saveAs(@RequestBody SaveAsReq req) {
         return Result.ok(entService.saveAs(req));
     }
 
-    /** 切换当前应用范本套 */
+    /** 切换当前应用范本套。仅服务商 / 超管。 */
     @PutMapping("/{id}/current")
+    @RequireRole({"provider", "admin"})
     public Result<EntTplSet> setCurrent(@PathVariable Long id) {
         return Result.ok(entService.setCurrent(id));
     }
 
-    /** 删除非当前应用范本套 */
+    /** 删除非当前应用范本套。仅服务商 / 超管。 */
     @DeleteMapping("/{id}")
+    @RequireRole({"provider", "admin"})
     public Result<Void> delete(@PathVariable Long id) {
         entService.delete(id);
         return Result.ok();

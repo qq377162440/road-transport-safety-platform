@@ -1,0 +1,32 @@
+{
+  "scope": "TplRevisionLogController PUT /tpl/revision/{id}/status 补收权定向验证",
+  "total": 5,
+  "passed": 5,
+  "results": [
+    {
+      "name": "企业可只读查看修订记录",
+      "ok": true,
+      "detail": "200"
+    },
+    {
+      "name": "企业处理修订被拒（code=403）",
+      "ok": true,
+      "detail": "(200, 403, '无权限访问该资源')"
+    },
+    {
+      "name": "企业伪造 X-Target-Tenant 仍被拒",
+      "ok": true,
+      "detail": "(200, 403, '无权限访问该资源')"
+    },
+    {
+      "name": "服务商+目标企业放行进入业务层",
+      "ok": true,
+      "detail": "(200, 1, '修订记录不存在')"
+    },
+    {
+      "name": "超管+目标企业放行进入业务层",
+      "ok": true,
+      "detail": "(200, 1, '修订记录不存在')"
+    }
+  ]
+}

@@ -41,8 +41,9 @@ public class TplRevisionLogController {
         return Result.ok(revisionService.all(tid()));
     }
 
-    /** 处理修订：1保存到当前 / 2另存为 / 3稍后 */
+    /** 处理修订：1保存到当前 / 2另存为 / 3稍后。仅服务商 / 超管（增值服务）。 */
     @PutMapping("/{id}/status")
+    @RequireRole({"provider", "admin"})
     public Result<Void> updateStatus(@PathVariable Long id, @RequestBody Map<String, Integer> body) {
         Integer status = body.get("status");
         if (status == null || status < 1 || status > 3) {

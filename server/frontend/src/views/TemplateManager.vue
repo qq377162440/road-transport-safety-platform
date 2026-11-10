@@ -4,8 +4,12 @@ import { useRouter } from 'vue-router'
 import request from '@/api/request'
 import { ElMessage } from 'element-plus'
 import Icon from '@/components/Icon.vue'
+import { useAuthStore } from '@/store/auth'
 
 const router = useRouter()
+const auth = useAuthStore()
+// 范本定制与生成为服务商 / 超管增值服务；企业账号只读
+const canEdit = computed(() => auth.canGenerateTpl)
 const loading = ref(false)
 const templates = ref([])   // 当前企业生效范本（含 content / baseContent / customized）
 const pageCss = ref('')
@@ -362,15 +366,25 @@ async function resetSeal() {
         <div class="desc">维护企业当前应用的空白范本 · 企业信息、岗位人名与盖章只在电子档案柜生成成品时填入</div>
       </div>
       <div class="actions">
-        <button class="btn btn-outline" @click="openApply()"><Icon name="copy" :size="16" /> 应用服务商范本套</button>
-        <button class="btn btn-outline" @click="openSaveAs"><Icon name="save" :size="16" /> 另存为新范本套</button>
+        <button v-if="canEdit" class="btn btn-outline" @click="openApply()"><Icon name="copy" :size="16" /> 应用服务商范本套</button>
+        <button v-if="canEdit" class="btn btn-outline" @click="openSaveAs"><Icon name="save" :size="16" /> 另存为新范本套</button>
         <button class="btn btn-outline" @click="view = view === 'mapping' ? 'templates' : 'mapping'">
           <Icon name="table" :size="16" /> {{ view === 'mapping' ? '返回范本清单' : '档案柜对应' }}
         </button>
-        <button class="btn btn-outline" @click="openSeal"><Icon name="award" :size="16" /> 印章设置</button>
-        <button class="btn btn-outline" @click="openResp"><Icon name="users" :size="16" /> 责任制联动编辑</button>
+        <button v-if="canEdit" class="btn btn-outline" @click="openSeal"><Icon name="award" :size="16" /> 印章设置</button>
+        <button v-if="canEdit" class="btn btn-outline" @click="openResp"><Icon name="users" :size="16" /> 责任制联动编辑</button>
         <button class="btn btn-primary" @click="goArchive"><Icon name="archive" :size="16" /> 去电子档案柜验证</button>
       </div>
+    </div>
+
+    <!-- 增值服务权限提示 -->
+    <div v-if="!canEdit" class="vas-tip">
+      <Icon name="info" :size="15" />
+      <span><b>台账范本定制与生成为服务商增值服务</b>：企业账号可只读查看当前应用范本套、预览空白范本、查看档案柜对应关系与下载成品；如需应用 / 另存范本套、在线修改范本、设置印章或生成台账，请联系服务商。</span>
+    </div>
+    <div v-else class="vas-tip vas-tip-ok">
+      <Icon name="building" :size="15" />
+      <span><b>正在为「{{ auth.targetTenantName || '未选择企业' }}」维护台账范本</b>：改动将作用于该企业的当前应用范本套，电子档案柜生成成品时按此套渲染。可在右上角「服务企业」切换。</span>
     </div>
 
     <!-- 当前应用范本套：切换器 + 联动提示条 -->
@@ -379,7 +393,7 @@ async function resetSeal() {
         <Icon name="bookOpen" :size="20" />
         <div>
           <div class="cb-t">当前应用范本套：
-            <select class="set-select" :value="String(currentMeta?.id || '')" @change="onSwitchSelect">
+            <select class="set-select" :disabled="!canEdit" :value="String(currentMeta?.id || '')" @change="onSwitchSelect">
               <option v-for="s in mySets" :key="s.id" :value="String(s.id)">{{ s.name }}（{{ s.templateCount }} 份）</option>
               <option v-if="!mySets.length" value="">普货通用范本（内置）</option>
             </select>
@@ -415,17 +429,17 @@ async function resetSeal() {
 
         <div class="card-title" style="margin-top:22px">当前应用范本套 <span class="more">{{ mySets.length }} 套</span></div>
         <div v-if="!mySets.length" class="empty-mini">暂无，点「应用服务商范本套」或「另存为新范本套」创建</div>
-        <div v-for="s in mySets" :key="s.id" class="set-item" :class="{ on: s.isCurrent === 1 }" @click="switchSet(s)" :title="`切换为当前应用范本套：${s.name}`">
+        <div v-for="s in mySets" :key="s.id" class="set-item" :class="{ on: s.isCurrent === 1 }" @click="canEdit && switchSet(s)" :title="`切换为当前应用范本套：${s.name}`">
           <Icon name="book" :size="15" />
           <span>{{ s.name }}</span>
           <span class="set-cnt">{{ s.templateCount }}</span>
           <span v-if="s.isCurrent === 1" class="tag tag-green">当前</span>
-          <span v-else class="set-del" title="删除此套" @click.stop="deleteSet(s)">×</span>
+          <span v-else-if="canEdit" class="set-del" title="删除此套" @click.stop="deleteSet(s)">×</span>
         </div>
         <div class="set-hint">点击某套即设为「当前应用范本套」，电子档案柜生成随之切换</div>
 
         <div class="card-title" style="margin-top:22px">服务商范本套 <span class="more">基础默认模板</span></div>
-        <div v-for="s in sets" :key="s.id" class="set-item provider" @click="openApply(s)" :title="`以「${s.name}」为基础应用为新的当前范本套`">
+        <div v-for="s in sets" :key="s.id" class="set-item provider" @click="canEdit && openApply(s)" :title="`以「${s.name}」为基础应用为新的当前范本套`">
           <Icon name="bookOpen" :size="15" /> <span>{{ s.name }}</span>
           <span class="set-cnt">{{ s.templateCount }}</span>
           <span v-if="s.isDefault === 1" class="tag tag-blue">默认</span>
@@ -461,9 +475,9 @@ async function resetSeal() {
               </div>
               <div class="tc-actions">
                 <button class="btn btn-outline btn-sm" @click="openPreview(t)"><Icon name="fileText" :size="14" /> 预览</button>
-                <button class="btn btn-primary btn-sm" @click="openEdit(t)"><Icon name="edit" :size="14" /> 在线修改</button>
+                <button v-if="canEdit" class="btn btn-primary btn-sm" @click="openEdit(t)"><Icon name="edit" :size="14" /> 在线修改</button>
                 <button class="btn btn-outline btn-sm" @click="goArchiveBox(t.boxNo, catalogNameOf(t))"><Icon name="link" :size="14" /> 定位档案柜</button>
-                <button v-if="t.customized" class="btn btn-outline btn-sm" @click="resetTpl(t)"><Icon name="x" :size="14" /> 恢复内置</button>
+                <button v-if="t.customized && canEdit" class="btn btn-outline btn-sm" @click="resetTpl(t)"><Icon name="x" :size="14" /> 恢复内置</button>
               </div>
             </div>
           </div>
@@ -705,6 +719,12 @@ async function resetSeal() {
 .tc-actions { display: flex; gap: 6px; flex-wrap: wrap; }
 .tc-actions .btn { min-height: 30px; padding: 5px 10px; font-size: 12.5px; }
 .empty { text-align: center; color: var(--text-3); padding: 60px 0; }
+/* 增值服务权限提示条 */
+.vas-tip { display: flex; align-items: flex-start; gap: 8px; padding: 10px 14px; margin: 0 0 14px; border-radius: 8px;
+  background: #fff7ed; border: 1px solid #fed7aa; color: #9a3412; font-size: 13px; line-height: 1.7; }
+.vas-tip b { color: #7c2d12; }
+.vas-tip-ok { background: #eff6ff; border-color: #bfdbfe; color: #1e40af; }
+.vas-tip-ok b { color: #1e3a8a; }
 .modal-mask { position: fixed; inset: 0; background: rgba(20,28,43,.5); display: none; align-items: center;
   justify-content: center; z-index: 300; }
 .modal-mask.show { display: flex; }

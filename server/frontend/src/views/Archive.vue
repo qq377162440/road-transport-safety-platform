@@ -5,7 +5,11 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import Icon from '@/components/Icon.vue'
 import { ARCHIVE_CATALOG, FREQ_LABEL, STATUS } from '@/config/archiveCatalog'
 import { useRouter, useRoute } from 'vue-router'
+import { useAuthStore } from '@/store/auth'
 
+const auth = useAuthStore()
+// 范本定制与生成为服务商 / 超管增值服务；企业账号只读（可查看/下载成品、手动上传证件）
+const canGenerateTpl = computed(() => auth.canGenerateTpl)
 const router = useRouter()
 const route = useRoute()
 const locatedItem = ref('')
@@ -635,6 +639,16 @@ function locateItem(boxNo, name) {
       可<b>勾选左侧档案盒或逐条勾选</b>后批量处理；证照/保单/台账扫描件等请使用<b>「上传」</b>按钮留存。
     </div>
 
+    <!-- 增值服务权限提示：企业只读，服务商/超管需指定目标企业 -->
+    <div v-if="!canGenerateTpl" class="vas-tip">
+      <Icon name="info" :size="15" />
+      <span><b>台账范本定制与生成为服务商增值服务</b>：企业账号可查看范本、下载 / 打印已生成的成品，并自行上传营业执照等证件材料；如需按范本生成或调整范本套、印章，请联系服务商。</span>
+    </div>
+    <div v-else class="vas-tip vas-tip-ok">
+      <Icon name="building" :size="15" />
+      <span><b>正在为「{{ auth.targetTenantName || '未选择企业' }}」管理台账范本</b>：生成的成品按该企业的范本套、岗位人名与公司章渲染，并归档到该企业的电子档案柜。可在右上角「服务企业」切换。</span>
+    </div>
+
     <!-- 同源联动条：明确告知当前台账由哪套范本生成，并可就地切换 -->
     <div class="tpl-linkbar">
       <div class="lb-left">
@@ -720,7 +734,7 @@ function locateItem(boxNo, name) {
 
         <div class="list-toolbar">
           <el-checkbox class="selall-cb" :model-value="allChecked" @change="toggleBox">全选本盒</el-checkbox>
-          <el-button size="small" type="primary" :loading="generating" @click="batchGenerate">
+          <el-button v-if="canGenerateTpl" size="small" type="primary" :loading="generating" @click="batchGenerate">
             <Icon name="fileText" :size="14" /> 批量生成勾选（{{ checked.size }}）
           </el-button>
         </div>
@@ -757,7 +771,7 @@ function locateItem(boxNo, name) {
               'st-print': r.status === STATUS.PRINT,
             }">{{ ['待上传/缺失', '待生成', '已生成/已上传', '已归档'][r.status] }}</span>
             <div class="ops">
-              <el-button v-if="r.tplOptions.length" size="small" @click="doGenerate(r)">
+              <el-button v-if="r.tplOptions.length && canGenerateTpl" size="small" @click="doGenerate(r)">
                 <Icon name="plus" :size="13" /> {{ r.pdfId ? '重新生成' : '生成' }}
               </el-button>
               <el-button v-if="r.pdfId" size="small" type="primary" @click="download(r)">
@@ -815,7 +829,7 @@ function locateItem(boxNo, name) {
             <option value="">默认岗位</option>
             <option v-for="p in previewPosts" :key="p" :value="p">{{ p }}</option>
           </select>
-          <el-button v-if="currentTpl(preview) && !preview?.isUploaded" size="small" @click="generateFromPreview">
+          <el-button v-if="currentTpl(preview) && !preview?.isUploaded && canGenerateTpl" size="small" @click="generateFromPreview">
             <Icon name="refresh" :size="13" /> 生成 / 重新生成
           </el-button>
           <el-button v-if="preview?.pdfId" size="small" type="primary" @click="download(preview)">
@@ -897,26 +911,26 @@ function locateItem(boxNo, name) {
           <div class="sd-sec-t">我的范本套 <span>{{ mySets.length }} 套</span></div>
           <div v-if="!mySets.length" class="sd-empty">暂无，可从下方服务商范本套「应用」，或点「另存为新范本套」创建</div>
           <div v-for="s in mySets" :key="s.id" class="sd-item"
-               :class="{ on: String(s.id) === String(currentSetMeta?.id) }" @click="switchSet(s)">
+               :class="{ on: String(s.id) === String(currentSetMeta?.id) }" @click="canGenerateTpl && switchSet(s)">
             <Icon name="book" :size="15" />
             <span class="sd-nm">{{ s.name }}</span>
             <span class="sd-cnt">{{ s.templateCount }} 份</span>
             <span v-if="String(s.id) === String(currentSetMeta?.id)" class="sd-tag green">当前应用</span>
-            <span v-else class="sd-del" title="删除此套" @click.stop="deleteSet(s)">×</span>
+            <span v-else-if="canGenerateTpl" class="sd-del" title="删除此套" @click.stop="deleteSet(s)">×</span>
           </div>
-          <div class="sd-hint">点击某套即设为「当前应用范本套」；非当前套可点 × 删除</div>
+          <div class="sd-hint">{{ canGenerateTpl ? '点击某套即设为「当前应用范本套」；非当前套可点 × 删除' : '当前应用范本套由服务商维护，企业账号只读' }}</div>
 
           <div class="sd-sec-t">服务商范本套 <span>基础默认模板 · 只读基线</span></div>
-          <div v-for="s in providerSets" :key="s.id" class="sd-item provider" @click="openApply(s)">
+          <div v-for="s in providerSets" :key="s.id" class="sd-item provider" @click="canGenerateTpl && openApply(s)">
             <Icon name="bookOpen" :size="15" />
             <span class="sd-nm">{{ s.name }}</span>
             <span class="sd-cnt">{{ s.templateCount }} 份</span>
             <span v-if="s.isDefault === 1" class="sd-tag blue">默认</span>
-            <span class="sd-apply">应用</span>
+            <span v-if="canGenerateTpl" class="sd-apply">应用</span>
           </div>
           <div class="sd-hint">「应用」会深拷贝整套范本成为企业自己的新范本套，并自动设为当前应用</div>
 
-          <el-button class="sd-saveas" size="small" plain @click="openSaveAs"><Icon name="save" :size="15" /> 另存为新范本套</el-button>
+          <el-button v-if="canGenerateTpl" class="sd-saveas" size="small" plain @click="openSaveAs"><Icon name="save" :size="15" /> 另存为新范本套</el-button>
 
           <div v-if="inlineForm" class="sd-form">
             <div class="sd-form-t">{{ inlineForm === 'apply' ? '以服务商范本套「' + (formTarget?.name || '') + '」为基础应用' : '把当前范本套另存为新套' }}</div>
@@ -1131,6 +1145,12 @@ function locateItem(boxNo, name) {
   background: #EFF6FF; border: 1px solid #BFDBFE; border-radius: 8px; color: #1E40AF; font-size: 12.5px; }
 .located-tip span { color: var(--text-3); }
 
+/* 增值服务权限提示条 */
+.vas-tip { display: flex; align-items: flex-start; gap: 8px; padding: 10px 14px; margin: 0 0 14px; border-radius: 8px;
+  background: #fff7ed; border: 1px solid #fed7aa; color: #9a3412; font-size: 13px; line-height: 1.7; }
+.vas-tip b { color: #7c2d12; }
+.vas-tip-ok { background: #eff6ff; border-color: #bfdbfe; color: #1e40af; }
+.vas-tip-ok b { color: #1e3a8a; }
 /* 范本套管理抽屉（电子档案柜内就地切换模板） */
 /* 高于全局 DEV 角标（z-index:9999），避免抽屉底部「关闭 / 台账范本管理」被遮挡 */
 .sd-mask { position: fixed; inset: 0; background: rgba(20,28,43,.45); display: none; justify-content: flex-end; z-index: 10000; }

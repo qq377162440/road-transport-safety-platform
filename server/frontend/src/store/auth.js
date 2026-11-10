@@ -7,10 +7,16 @@ export const useAuthStore = defineStore('auth', {
     userType: localStorage.getItem('userType') || '',
     username: localStorage.getItem('username') || '',
     tenantName: localStorage.getItem('tenantName') || '',
+    // 服务商 / 超管「当前服务企业」：范本定制与生成为增值服务，需指定归档到哪家企业
+    targetTenantId: localStorage.getItem('targetTenantId') || '',
+    targetTenantName: localStorage.getItem('targetTenantName') || '',
   }),
 
   getters: {
     isLoggedIn: (state) => !!state.token,
+    isPlatform: (state) => state.userType === 'provider' || state.userType === 'admin',
+    // 范本定制与生成能力：服务商 / 超管专属（企业只读）
+    canGenerateTpl: (state) => state.userType === 'provider' || state.userType === 'admin',
     roleLabel: (state) => {
       const map = { enterprise: '企业', provider: '服务商', admin: '超管' }
       return map[state.userType] || state.userType
@@ -84,6 +90,25 @@ export const useAuthStore = defineStore('auth', {
       localStorage.removeItem('userType')
       localStorage.removeItem('username')
       localStorage.removeItem('tenantName')
+      this.clearTargetTenant()
+    },
+
+    // 「当前服务企业」：仅服务商 / 超管使用，用于把范本生成结果落到指定企业
+    setTargetTenant({ id, name }) {
+      this.targetTenantId = id ? String(id) : ''
+      this.targetTenantName = name || ''
+      if (id) {
+        localStorage.setItem('targetTenantId', String(id))
+        localStorage.setItem('targetTenantName', name || '')
+      } else {
+        this.clearTargetTenant()
+      }
+    },
+    clearTargetTenant() {
+      this.targetTenantId = ''
+      this.targetTenantName = ''
+      localStorage.removeItem('targetTenantId')
+      localStorage.removeItem('targetTenantName')
     },
   },
 })

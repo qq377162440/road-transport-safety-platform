@@ -132,23 +132,26 @@ public class TplLibraryController {
                 .body(bytes);
     }
 
-    /** 保存本范本（写本企业当前应用范本，档案柜生成随即同步） */
+    /** 保存本范本（写本企业当前应用范本，档案柜生成随即同步）。仅服务商 / 超管（增值服务）。 */
     @PutMapping("/doc/{code}")
+    @RequireRole({"provider", "admin"})
     public Result<TplLibraryService.TplVO> save(@PathVariable String code, @RequestBody Map<String, Object> body) {
         String content = body.get("content") == null ? "" : String.valueOf(body.get("content"));
         String label = body.get("versionLabel") == null ? "" : String.valueOf(body.get("versionLabel"));
         return Result.ok(library.save(code, content, label));
     }
 
-    /** 恢复内置范本（删除本企业定制） */
+    /** 恢复内置范本（删除本企业定制）。仅服务商 / 超管。 */
     @DeleteMapping("/doc/{code}")
+    @RequireRole({"provider", "admin"})
     public Result<Void> reset(@PathVariable String code) {
         library.reset(code);
         return Result.ok();
     }
 
-    /** 联动编辑：一次修改同时更新《安全生产责任制》与该岗位《安全生产责任书》 */
+    /** 联动编辑：一次修改同时更新《安全生产责任制》与该岗位《安全生产责任书》。仅服务商 / 超管。 */
     @PostMapping("/responsibility")
+    @RequireRole({"provider", "admin"})
     public Result<Void> responsibility(@RequestBody Map<String, Object> body) {
         String post = str(body.get("post"));
         library.saveResponsibility(post, lines(body.get("target")), lines(body.get("duty")), lines(body.get("assess")));
