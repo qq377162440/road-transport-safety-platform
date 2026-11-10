@@ -216,16 +216,6 @@ public class EmergencyFlowController {
         return Result.ok(out);
     }
 
-    /**
-     * 预案详情（抽屉「基本信息 / 预案正文（只读预览）/ 归档」的数据源）。
-     * 此前只实现了 /plan/{id}/preview，前端详情抽屉调用的 /plan/{id} 一直 404，
-     * 导致「预案详情」空白并报 Request failed，此处复用 preview 返回结构补齐。
-     */
-    @GetMapping("/plan/{id}")
-    public Result<Map<String, Object>> planDetail(@PathVariable long id) {
-        return previewPlan(id);
-    }
-
     @GetMapping("/plan/{id}/preview")
     public Result<Map<String, Object>> previewPlan(@PathVariable long id) {
         Map<String, Object> m = one("SELECT * FROM `emergency_plan` WHERE `id`=? AND `tenant_id`=? AND `deleted`=0", id, tid());

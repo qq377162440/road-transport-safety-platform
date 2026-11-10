@@ -191,22 +191,6 @@ async function genToc() {
     await load()
   } finally { busy.value = false }
 }
-async function genLawCatalog() {
-  busy.value = true
-  try {
-    const r = await request.post('/flow/institution/law-catalog', {})
-    if (r.data?.ok) ElMessage.success(`《适用安全生产法律法规标准目录清单》已生成（${r.data.count} 部），已归档盒二`)
-    else ElMessage.warning(r.data?.msg || '生成失败')
-  } finally { busy.value = false }
-}
-async function genAssemble() {
-  busy.value = true
-  try {
-    const r = await request.post('/flow/institution/assemble-pdf', { bizType: 'GENERAL' })
-    if (r.data?.ok) ElMessage.success(`《制度汇编（含操作规程）》已生成（${r.data.count} 项），已归档盒二`)
-    else ElMessage.warning(r.data?.msg || '生成失败')
-  } finally { busy.value = false }
-}
 const assembleDialog = ref(false)
 const assembleForm = ref({ bizType: 'GENERAL', vehicleTypes: '' })
 const assembleResult = ref(null)
@@ -243,8 +227,7 @@ function dateText(v) { return v ? String(v).slice(0, 10) : '—' }
       <div class="actions">
         <button class="btn btn-outline" @click="goArchive"><Icon name="archive" :size="15" /> 存档到电子档案柜（盒二）</button>
         <button class="btn btn-outline" :disabled="busy" @click="genToc"><Icon name="fileText" :size="15" /> 生成制度目录</button>
-        <button class="btn btn-outline" :disabled="busy" @click="genLawCatalog"><Icon name="book" :size="15" /> 生成法律法规标准目录</button>
-        <button class="btn btn-outline" :disabled="busy" @click="genAssemble"><Icon name="clipboard" :size="15" /> 生成制度汇编</button>
+        <button class="btn btn-outline" @click="openAssemble"><Icon name="clipboard" :size="15" /> 制度包拼装</button>
         <button class="btn btn-outline" @click="load()"><Icon name="refresh" :size="15" /> 刷新</button>
       </div>
     </div>

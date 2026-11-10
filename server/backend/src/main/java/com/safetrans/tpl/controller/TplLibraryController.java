@@ -35,10 +35,10 @@ public class TplLibraryController {
         return Result.ok(library.list());
     }
 
-    /** 清单 + 正文（前端一次拉取，用于编辑/预览）。cargo=普货/危货 时按业务类型只读查看 */
+    /** 清单 + 正文（前端一次拉取，用于编辑/预览） */
     @GetMapping("/full")
-    public Result<List<TplLibraryService.TplVO>> full(@RequestParam(value = "cargo", required = false) String cargo) {
-        return Result.ok(library.listWithContent(cargo));
+    public Result<List<TplLibraryService.TplVO>> full() {
+        return Result.ok(library.listWithContent());
     }
 
     /** 统一 A4 版式 CSS（前端预览容器注入，保证屏幕与 PDF 一致） */
@@ -47,10 +47,10 @@ public class TplLibraryController {
         return Result.ok(library.pageCss());
     }
 
-    /** 当前应用范本套 ↔ 电子档案柜归档项映射。cargo=普货/危货 时切到对应业务类型档案盒与范本 */
+    /** 当前应用范本套 ↔ 电子档案柜归档项映射（含无范本、需手动上传的归档项） */
     @GetMapping("/mapping")
-    public Result<Map<String, Object>> mapping(@RequestParam(value = "cargo", required = false) String cargo) {
-        return Result.ok(library.mapping(cargo));
+    public Result<Map<String, Object>> mapping() {
+        return Result.ok(library.mapping());
     }
 
     /** 按档案柜归档项名称匹配可用范本（电子档案柜联动用） */

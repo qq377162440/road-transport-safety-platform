@@ -8,9 +8,8 @@ spring:
     name: safetrans-backend
   servlet:
     multipart:
-      # 法规原文库含 38MB 的 JT/T 617 合集与 22MB 单册标准，放宽至 60MB/80MB
-      max-file-size: 60MB
-      max-request-size: 80MB
+      max-file-size: 20MB
+      max-request-size: 25MB
   datasource:
     driver-class-name: com.mysql.cj.jdbc.Driver
     url: jdbc:mysql://${MYSQL_HOST:localhost}:${MYSQL_PORT:3306}/${MYSQL_DB:safetrans}?useUnicode=true&characterEncoding=utf8&useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true

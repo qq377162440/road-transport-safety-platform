@@ -51,8 +51,7 @@ server {
     add_header Referrer-Policy "strict-origin-when-cross-origin" always;
     add_header Permissions-Policy "camera=(), microphone=(), geolocation=(self)" always;
 
-    # 法规原文库支持大体积标准原文（JT/T 617 系列单册 22MB），放宽至 80m
-    client_max_body_size 80m;
+    client_max_body_size 25m;
     root /usr/share/nginx/html;
     index index.html;
     access_log /var/log/nginx/access.log;

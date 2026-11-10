@@ -27,9 +27,6 @@ public class ArchiveItem {
     /** 生成方式：1真实流程 2先台账后执行 3上传留存 */
     private Integer genMode;
 
-    /** 归档来源：0未知 1档案柜手动上传 2B3流程产出 3服务商强制生成（用户 2026-11-12 需求三） */
-    private Integer source;
-
     private Long serviceId;
 
     /** 来源模块 */

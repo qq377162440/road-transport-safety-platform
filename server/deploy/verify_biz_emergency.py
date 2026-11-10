@@ -189,12 +189,6 @@ else:
             ok("预案正文为只读渲染（无手输表单控件）")
         else:
             soft("预案预览含表单控件，需确认是否只读")
-    # 前端「预案详情」抽屉数据源：GET /plan/{id}（曾缺失导致详情抽屉 404 空白）
-    det = dget(f"/api/flow/emergency/plan/{planId}", AAT)
-    if det and det.get("plan_name"):
-        ok(f"预案详情抽屉数据源 /plan/{{id}} 正常：{det.get('plan_name')} 状态={det.get('statusName')} 签名={(det.get('signInfo') or []) and len(det['signInfo'])} 条")
-    else:
-        bad(f"预案详情抽屉数据源 /plan/{{id}} 缺失或为空 -> {det}")
     # 一键签名
     sg = dpost(f"/api/flow/emergency/plan/{planId}/sign", AAT)
     si = sg.get("signInfo") if isinstance(sg, dict) else None

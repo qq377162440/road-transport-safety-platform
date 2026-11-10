@@ -15,10 +15,14 @@ const BOX_ONE = {
     { name: '关于成立安全生产领导小组的通知' },
     { name: '二级维护计划' },
     { name: '安全生产责任险' },
-    // 三书（责任书/承诺书/告知书）、岗前三级培训、两类人员考核、年度责任制考核、
-    // 人员任命书 均并入「管理人员档案」按人一人一档（ManagerArchiveService 分章纳入），
-    // 不再作为盒一的独立并列项。责任书上下级双签入口迁入管理人员档案面板。
-    { name: '管理人员档案', real: 'manager' },
+    { name: '管理人员档案' },
+    { name: '安全生产责任书', freq: F.yearly, real: 'responsibility' },
+    { name: '安全生产承诺书', freq: F.yearly, real: 'responsibility' },
+    { name: '岗位危害告知书' },
+    { name: '岗前三级培训', freq: F.once },
+    { name: '两类人员考核合格证明' },
+    { name: '年度责任制考核记录' },
+    { name: '人员任命书' },
     { name: '复工复产方案' },
   ],
 }
@@ -126,18 +130,6 @@ const BOX_TEN = {
   ],
 }
 
-// 盒十一：从业人员一人一档（驾驶员 / 押运员等） + 一车一档。点击文件名预览真实 PDF。
-// special:'crew' 告知前端走专属浏览面板，而非普通归档行。
-const BOX_ELEVEN_CREW = {
-  no: '十一',
-  name: '从业人员一人一档及一车一档',
-  special: 'crew',
-  items: [
-    { name: '从业人员一人一档（驾驶员、押运员等）' },
-    { name: '一车一档' },
-  ],
-}
-
 // 危货专属：盒七 停车场管理 / 盒八 应急管理（带备案回执等）/ 盒九 风险（带安全评估等）/ 盒十一 事故档案
 const BOX_SEVEN_DANGER = {
   no: '七',
@@ -196,11 +188,11 @@ const BOX_ELEVEN = {
 export const ARCHIVE_CATALOG = {
   普货: [
     BOX_ONE, BOX_TWO, BOX_THREE, BOX_FOUR, BOX_FIVE, BOX_SIX,
-    BOX_SEVEN_GENERAL, BOX_EIGHT_GENERAL, BOX_NINE_GENERAL, BOX_TEN, BOX_ELEVEN_CREW,
+    BOX_SEVEN_GENERAL, BOX_EIGHT_GENERAL, BOX_NINE_GENERAL, BOX_TEN,
   ],
   危货: [
     BOX_ONE, BOX_TWO, BOX_THREE, BOX_FOUR, BOX_FIVE, BOX_SIX,
-    BOX_SEVEN_DANGER, BOX_EIGHT_DANGER, BOX_NINE_DANGER, BOX_NINE_GENERAL, BOX_ELEVEN, BOX_ELEVEN_CREW,
+    BOX_SEVEN_DANGER, BOX_EIGHT_DANGER, BOX_NINE_DANGER, BOX_NINE_GENERAL, BOX_ELEVEN,
   ],
 }
 

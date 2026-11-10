@@ -209,77 +209,8 @@ public class ArchiveService {
         return pdf;
     }
 
-    /**
-     * 按「外部实时生成的 PDF 字节」归档 —— 组织架构联动等无范本归档项的通道。
-     *
-     * <p>与 {@link #generateByTemplate} 同一套登记规则：同盒同年度同标题只保留一条
-     * archive_item，重新生成即刷新 pdfId；旧 archive_pdf 记录默认保留（历史版本可下载）。
-     */
-    public ArchivePdf generateByBytes(String title, int boxNo, int year, byte[] pdfBytes, String tplCode) {
-        return generateByBytes(title, boxNo, year, pdfBytes, tplCode, null, "tpl");
-    }
-
-    /**
-     * 按人归档（管理人员档案 / 责任书签订生效件）：
-     * 标题里带姓名，因此每人一条 archive_item，person_id 落到实体字段，按人分类可查。
-     */
-    @Transactional
-    public ArchivePdf generateByBytes(String title, int boxNo, int year, byte[] pdfBytes, String tplCode,
-                                      Long personId, String bizModule) {
-        if (pdfBytes == null || pdfBytes.length == 0) {
-            throw new BizException("PDF 内容为空，归档失败");
-        }
-        Long tenant = tid();
-        String hash = sha256(pdfBytes);
-        String safeTitle = title.replaceAll("[\\\\/?:*\"<>|]", "_");
-        String objectName = String.format("%d/%d/%d/%s_%s.pdf",
-                tenant, year, boxNo, hash.substring(0, 12), safeTitle);
-        storageService.upload(objectName, pdfBytes, "application/pdf");
-
-        ArchivePdf pdf = new ArchivePdf();
-        pdf.setTenantId(tenant);
-        pdf.setArchiveYear(year);
-        pdf.setFileName(safeTitle + "_" + year + ".pdf");
-        pdf.setFilePath(objectName);
-        pdf.setFileSize((long) pdfBytes.length);
-        pdf.setTemplateCode(tplCode == null || tplCode.isBlank() ? "UPLOAD" : tplCode);
-        pdf.setGenTime(LocalDateTime.now());
-        pdf.setHash(hash);
-        pdfMapper.insert(pdf);
-
-        Long catalogId = BOX_CATALOG_BASE + boxNo;
-        ArchiveItem item = itemMapper.selectOne(new LambdaQueryWrapper<ArchiveItem>()
-                .eq(ArchiveItem::getTenantId, tenant)
-                .eq(ArchiveItem::getCatalogId, catalogId)
-                .eq(ArchiveItem::getTitle, title)
-                .eq(ArchiveItem::getArchiveYear, year)
-                .last("limit 1"));
-        if (item == null) {
-            item = new ArchiveItem();
-            item.setTenantId(tenant);
-            item.setCatalogId(catalogId);
-            item.setDataType(1);
-            item.setGenMode(2);
-            item.setBizModule(bizModule == null || bizModule.isBlank() ? "tpl" : bizModule);
-            item.setPersonId(personId);
-            item.setTitle(title);
-            item.setArchiveYear(year);
-            item.setSignedYear(year);
-            item.setStatus(1);
-            item.setPdfId(pdf.getId());
-            itemMapper.insert(item);
-        } else {
-            item.setStatus(1);
-            item.setPdfId(pdf.getId());
-            if (personId != null) item.setPersonId(personId);
-            itemMapper.updateById(item);
-        }
-        pdf.setItemId(item.getId());
-        pdfMapper.updateById(pdf);
-        return pdf;
-    }
-
-    /** 当前年度责任制归档项列表 */    public List<ArchiveItem> listResponsibilityItems() {
+    /** 当前年度责任制归档项列表 */
+    public List<ArchiveItem> listResponsibilityItems() {
         return itemMapper.selectList(new LambdaQueryWrapper<ArchiveItem>()
                 .eq(ArchiveItem::getTenantId, tid())
                 .eq(ArchiveItem::getCatalogId, CATALOG_RESPONSIBILITY)
@@ -354,7 +285,6 @@ public class ArchiveService {
         item.setCatalogId(BOX_CATALOG_BASE + boxNo);
         item.setDataType(3);       // 证件
         item.setGenMode(3);        // 上传留存
-        item.setSource(1);         // 档案柜手动上传
         item.setTitle(itemTitle);
         item.setArchiveYear(year);
         item.setStatus(1);         // 已生成

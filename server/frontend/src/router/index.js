@@ -28,8 +28,6 @@ const staticChildren = [
   { path: 'risk-control', name: 'RiskControl', component: () => import('@/views/RiskControl.vue'), meta: { title: '风险分级管控', phase: 'D3' } },
   { path: 'danger-special', name: 'DangerSpecial', component: () => import('@/views/DangerSpecial.vue'), meta: { title: '危货专项深化', phase: 'D4' } },
   { path: 'platform-admin', name: 'PlatformAdmin', component: () => import('@/views/PlatformAdmin.vue'), meta: { title: '平台侧能力', phase: 'D5', roles: ['provider', 'admin'] } },
-  // C4 旧链接兼容：考核奖惩真实模块 code 为 assess
-  { path: 'biz/credit', redirect: '/biz/assess' },
 ]
 
 // 由元数据驱动：新增模块只改 tools/gen_biz_meta.py，路由自动出现
@@ -44,12 +42,6 @@ const CLOSED_LOOP_PAGES = {
   danger: () => import('@/views/biz/danger/DangerModule.vue'),
   meeting: () => import('@/views/biz/meeting/MeetingModule.vue'),
   emergency: () => import('@/views/biz/meeting/EmergencyModule.vue'),
-  accident: () => import('@/views/biz/meeting/AccidentModule.vue'),
-  // 考核奖惩的模块 code 是 assess（见 modules.generated.js），必须用 code 作为 key，
-  // 否则动态路由 biz/assess 会落到通用 BizModule.vue，专用页永远不会被加载。
-  assess: () => import('@/views/biz/meeting/CreditModule.vue'),
-  sign: () => import('@/views/biz/meeting/SignModule.vue'),
-  law: () => import('@/views/biz/law/LawModule.vue'),
 }
 const dynamicChildren = bizModules.map((m) => ({
   path: `biz/${m.code}`,

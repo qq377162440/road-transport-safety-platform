@@ -21,7 +21,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
-import java.util.stream.Collectors;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -70,41 +69,8 @@ public class TplLibraryService {
         return setScope.tid();
     }
 
-    /**
-     * 只读「按业务类型查看」覆盖：非空时所有读取（清单/正文/匹配/映射）改为取服务商默认套
-     * 中对应业务类型的范本（tenant_id=0、group_id=服务商套 id），不改动企业已应用套。
-     * 用于「顶部切换普货/危货 → 台账范本管理与电子档案柜随之切换」的演示态联动。
-     */
-    private final ThreadLocal<String> viewCargo = new ThreadLocal<>();
-
-    private String normalizeCargo(String cargo) {
-        if (cargo == null) return null;
-        String c = cargo.trim();
-        if (c.isEmpty()) return null;
-        if ("GENERAL".equalsIgnoreCase(c) || "普货".equals(c)) return "GENERAL";
-        if ("DANGER".equalsIgnoreCase(c) || "危货".equals(c)) return "DANGER";
-        return null;
-    }
-
-    /** 当前查看业务类型对应的服务商默认套 id（即其范本 group_id）；无覆盖或找不到返回 null */
-    private Long viewGroupId() {
-        String vc = viewCargo.get();
-        if (vc == null) return null;
-        List<Long> ids = jdbc.queryForList(
-                "SELECT `id` FROM `tpl_set` WHERE `tenant_id`=0 AND `status`=1 AND `biz_type`=? " +
-                        "ORDER BY `is_default` DESC, `sort_no` ASC, `id` ASC LIMIT 1",
-                Long.class, vc);
-        return ids.isEmpty() ? null : ids.get(0);
-    }
-
-    private boolean isViewMode() {
-        return viewCargo.get() != null;
-    }
-
     /** 当前应用范本套的内容作用域；null 表示走全局默认套旧行为 */
     private Long groupId() {
-        Long vg = viewGroupId();
-        if (vg != null) return vg;
         return setScope.currentGroupId();
     }
 
@@ -115,32 +81,12 @@ public class TplLibraryService {
     private List<TplTemplate> baseTemplates() {
         Long g = groupId();
         if (g != null) {
-            if (isViewMode()) {
-                // 只读查看某业务类型服务商默认套：企业无副本，直接取服务商套范本
-                return templateMapper.selectList(new LambdaQueryWrapper<TplTemplate>()
-                        .eq(TplTemplate::getTenantId, 0L)
-                        .eq(TplTemplate::getGroupId, g)
-                        .eq(TplTemplate::getStatus, 1)
-                        .orderByAsc(TplTemplate::getBoxNo)
-                        .orderByAsc(TplTemplate::getId));
-            }
-            List<TplTemplate> inSet = templateMapper.selectList(new LambdaQueryWrapper<TplTemplate>()
+            return templateMapper.selectList(new LambdaQueryWrapper<TplTemplate>()
                     .eq(TplTemplate::getTenantId, tid())
                     .eq(TplTemplate::getGroupId, g)
                     .eq(TplTemplate::getStatus, 1)
                     .orderByAsc(TplTemplate::getBoxNo)
                     .orderByAsc(TplTemplate::getId));
-            // 迁移新增的内置范本（如 V30 的二级维护计划）不在历史企业套副本里：
-            // 把全局组中套内缺失的 code 补进基线，保证新范本对已应用套的企业立即可见、可生成。
-            Set<String> codes = inSet.stream().map(TplTemplate::getCode).collect(Collectors.toSet());
-            List<TplTemplate> globals = templateMapper.selectList(new LambdaQueryWrapper<TplTemplate>()
-                    .eq(TplTemplate::getTenantId, 0L)
-                    .eq(TplTemplate::getGroupId, GLOBAL_SET_ID)
-                    .eq(TplTemplate::getStatus, 1));
-            for (TplTemplate gl : globals) {
-                if (gl.getCode() != null && !codes.contains(gl.getCode())) inSet.add(gl);
-            }
-            return inSet;
         }
         return templateMapper.selectList(new LambdaQueryWrapper<TplTemplate>()
                 .eq(TplTemplate::getTenantId, 0L)
@@ -155,7 +101,6 @@ public class TplLibraryService {
      * 有应用套时范本内容本身即企业私有行，不再需要覆盖层，返回空。
      */
     private Map<String, TplTemplate> overrides() {
-        if (isViewMode()) return new LinkedHashMap<>();
         Long t = tid();
         // 必须返回可变 Map：list()/effectiveList() 会对它做 remove 消费。
         // 有当前应用套时无覆盖层，但仍需可变的空 Map，不能返回 Map.of()。
@@ -175,28 +120,16 @@ public class TplLibraryService {
         return templateMapper.selectById(row.getSourceId());
     }
 
-    /** 按 code 取「当前生效」范本（企业套内容 / 旧模式覆盖 / 全局兜底，含套内缺失的全局新增范本） */
+    /** 按 code 取「当前生效」范本（企业套内容 / 旧模式覆盖 / 全局兜底） */
     public TplTemplate effective(String code) {
         Long g = groupId();
-        if (g != null && isViewMode()) {
-            // 只读查看模式：取服务商默认套对应业务类型的范本
-            TplTemplate p = templateMapper.selectOne(new LambdaQueryWrapper<TplTemplate>()
-                    .eq(TplTemplate::getTenantId, 0L)
-                    .eq(TplTemplate::getGroupId, g)
-                    .eq(TplTemplate::getCode, code)
-                    .eq(TplTemplate::getStatus, 1)
-                    .last("limit 1"));
-            if (p != null) return p;
-        }
         if (g != null) {
-            TplTemplate inSet = templateMapper.selectOne(new LambdaQueryWrapper<TplTemplate>()
+            return templateMapper.selectOne(new LambdaQueryWrapper<TplTemplate>()
                     .eq(TplTemplate::getTenantId, tid())
                     .eq(TplTemplate::getGroupId, g)
                     .eq(TplTemplate::getCode, code)
                     .eq(TplTemplate::getStatus, 1)
                     .last("limit 1"));
-            if (inSet != null) return inSet;
-            // 套内没有（迁移新增的内置范本未同步进历史企业套）→ 兜底全局
         }
         TplTemplate own = templateMapper.selectOne(new LambdaQueryWrapper<TplTemplate>()
                 .eq(TplTemplate::getTenantId, tid() == null ? -1L : tid())
@@ -260,22 +193,9 @@ public class TplLibraryService {
 
     /** 清单 + 每个范本的正文（供前端一次性缓存，避免逐条请求） */
     public List<TplVO> listWithContent() {
-        return listWithContent(null);
-    }
-
-    /** 按业务类型只读查看（cargo=普货/危货/GENERAL/DANGER）：不改企业已应用套 */
-    public List<TplVO> listWithContent(String cargo) {
-        try {
-            if (normalizeCargo(cargo) != null) viewCargo.set(normalizeCargo(cargo));
-            List<TplVO> list = list();
-            for (TplVO v : list) {
-                TplTemplate t = effective(v.getCode());
-                if (t != null) v.setContent(t.getContent());
-            }
-            return list;
-        } finally {
-            viewCargo.remove();
-        }
+        List<TplVO> list = list();
+        for (TplVO v : list) v.setContent(effective(v.getCode()).getContent());
+        return list;
     }
 
     private List<TplTemplate> effectiveList() {
@@ -319,34 +239,7 @@ public class TplLibraryService {
                     .eq(TplTemplate::getGroupId, g)
                     .eq(TplTemplate::getCode, code)
                     .last("limit 1"));
-            if (row == null) {
-                // 套内缺失的迁移新增范本：首次定制时把全局行复制进套，再按定制内容保存
-                TplTemplate global = templateMapper.selectOne(new LambdaQueryWrapper<TplTemplate>()
-                        .eq(TplTemplate::getTenantId, 0L)
-                        .eq(TplTemplate::getCode, code)
-                        .eq(TplTemplate::getStatus, 1)
-                        .last("limit 1"));
-                if (global == null) throw new BizException("当前应用范本套内不存在范本：" + code);
-                row = new TplTemplate();
-                row.setTenantId(t);
-                row.setGroupId(g);
-                row.setSourceId(global.getId());
-                row.setCode(global.getCode());
-                row.setName(global.getName());
-                row.setCategory(global.getCategory());
-                row.setArchiveCode(global.getArchiveCode());
-                row.setBoxNo(global.getBoxNo());
-                row.setArchiveItem(global.getArchiveItem());
-                row.setCatalogId(global.getCatalogId());
-                row.setVersionLabel(global.getVersionLabel());
-                row.setPostScope(global.getPostScope());
-                row.setContent(global.getContent());
-                row.setNeedSeal(global.getNeedSeal());
-                row.setVersion(1);
-                row.setStatus(1);
-                row.setCreatedBy(0L);
-                templateMapper.insert(row);
-            }
+            if (row == null) throw new BizException("当前应用范本套内不存在范本：" + code);
             row.setContent(content);
             row.setVersionLabel(label);
             row.setVersion((row.getVersion() == null ? 1 : row.getVersion()) + 1);
@@ -435,26 +328,17 @@ public class TplLibraryService {
      * 档案柜侧：每个归档项是否有范本（无范本 = 营业执照等需手动上传的证件）。
      */
     public Map<String, Object> mapping() {
-        return mapping(null);
-    }
+        List<Map<String, Object>> catalog = jdbc.queryForList(
+                "SELECT c.`id`, c.`name`, c.`parent_id`, p.`sort_no` AS box_no, p.`name` AS box_name " +
+                        "FROM `archive_catalog` c JOIN `archive_catalog` p ON p.`id`=c.`parent_id` " +
+                        "WHERE c.`biz_type`='GENERAL' AND c.`level`=2 AND c.`deleted`=0 AND p.`deleted`=0 " +
+                        "ORDER BY p.`sort_no`, c.`sort_no`, c.`id`");
+        Map<Long, String> nameById = new LinkedHashMap<>();
+        for (Map<String, Object> c : catalog) nameById.put(((Number) c.get("id")).longValue(), String.valueOf(c.get("name")));
 
-    /** 按业务类型只读查看（cargo=普货/危货）：档案柜目录与范本均切到对应业务类型 */
-    public Map<String, Object> mapping(String cargo) {
-        String vc = normalizeCargo(cargo);
-        try {
-            if (vc != null) viewCargo.set(vc);
-            String biz = (vc != null) ? vc : "GENERAL";
-            List<Map<String, Object>> catalog = jdbc.queryForList(
-                    "SELECT c.`id`, c.`name`, c.`parent_id`, p.`sort_no` AS box_no, p.`name` AS box_name " +
-                            "FROM `archive_catalog` c JOIN `archive_catalog` p ON p.`id`=c.`parent_id` " +
-                            "WHERE c.`biz_type`='" + biz + "' AND c.`level`=2 AND c.`deleted`=0 AND p.`deleted`=0 " +
-                            "ORDER BY p.`sort_no`, c.`sort_no`, c.`id`");
-            Map<Long, String> nameById = new LinkedHashMap<>();
-            for (Map<String, Object> c : catalog) nameById.put(((Number) c.get("id")).longValue(), String.valueOf(c.get("name")));
-
-            List<TplVO> tpls = list();
-            Map<Long, List<String>> tplByCatalog = new LinkedHashMap<>();
-            List<Map<String, Object>> tplRows = new ArrayList<>();
+        List<TplVO> tpls = list();
+        Map<Long, List<String>> tplByCatalog = new LinkedHashMap<>();
+        List<Map<String, Object>> tplRows = new ArrayList<>();
         int mapped = 0;
         for (TplVO v : tpls) {
             Long cid = v.getCatalogId() == null ? 0L : v.getCatalogId();
@@ -505,9 +389,6 @@ public class TplLibraryService {
         summary.put("uploadOnlyCount", uploadOnly.size());
         out.put("summary", summary);
         return out;
-        } finally {
-            viewCargo.remove();
-        }
     }
 
     /**
@@ -567,27 +448,6 @@ public class TplLibraryService {
     /** 直接渲染为成品 PDF（电子档案柜生成归档用，自动使用当前应用范本套） */
     public byte[] renderPdf(String code, String itemName, int year, String post) {
         return pdfService.render(renderDocument(code, itemName, year, post));
-    }
-
-    /**
-     * 带变量覆盖的成品 PDF（责任书上下级双签专用）。
-     *
-     * <p>在默认变量表 + 真实人名解析之后，用 overrides 覆盖指定变量，主要用于把范本的
-     * 签字栏从「空白手写线」换成双方电子签名、把「责任主体/责任管理人」换成组织架构里
-     * 解析出的真实上级（或公司），从而在生成 PDF 时体现"上级与下级都签署才生效"。
-     * 条件段仍按 post 正常解析，覆盖值只影响变量填充，不改变范本版式。
-     */
-    public byte[] renderPdf(String code, String itemName, int year, String post,
-                            Map<String, String> overrides) {
-        TplTemplate tpl = mustGet(code);
-        Map<String, String> vars = renderEngine.defaultVars(
-                tenantService.currentTenantName(), year, post, itemName);
-        String resolved = renderEngine.resolveConditions(tpl.getContent(), vars);
-        personResolver.apply(vars, resolved, post);
-        if (overrides != null) vars.putAll(overrides);
-        // resolved 已不含条件标签，renderDocument 内部的二次解析是空操作；
-        // 这样能复用统一 A4 版式包裹 + 公司章注入，且覆盖值只影响变量填充。
-        return pdfService.render(renderEngine.renderDocument(resolved, vars, sealFor(tpl)));
     }
 
     /** 生成前检查：该范本在当前岗位下读不到人名的字段清单 */

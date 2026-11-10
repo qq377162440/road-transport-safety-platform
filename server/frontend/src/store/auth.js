@@ -45,8 +45,6 @@ export const useAuthStore = defineStore('auth', {
       this.userType = info.userType
       this.username = info.username
       localStorage.setItem('token', data.accessToken)
-      // refreshToken（7 天）用于 access token（2 小时）过期后静默续期，避免用户被反复踢回登录页
-      localStorage.setItem('refreshToken', data.refreshToken || '')
       localStorage.setItem('userType', info.userType || '')
       localStorage.setItem('username', info.username || '')
       return data
@@ -61,8 +59,6 @@ export const useAuthStore = defineStore('auth', {
       this.userType = info.userType
       this.username = info.username
       localStorage.setItem('token', data.accessToken)
-      // 与 login 同步保存 refreshToken，见上方注释
-      localStorage.setItem('refreshToken', data.refreshToken || '')
       localStorage.setItem('userType', info.userType || '')
       localStorage.setItem('username', info.username || '')
       return data
@@ -91,7 +87,6 @@ export const useAuthStore = defineStore('auth', {
       this.username = ''
       this.tenantName = ''
       localStorage.removeItem('token')
-      localStorage.removeItem('refreshToken')
       localStorage.removeItem('userType')
       localStorage.removeItem('username')
       localStorage.removeItem('tenantName')

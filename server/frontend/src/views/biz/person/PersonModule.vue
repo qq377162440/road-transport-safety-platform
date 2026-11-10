@@ -71,9 +71,6 @@ function statusText(it) {
   if (it.status === 2) return '已过期'
   return it.optional ? '选填 · 缺' : '待补齐'
 }
-function sourceText(src) {
-  return { upload: '证件扫描件', print: '空白表手写', sign: '签订生成', tpl: '范本生成', credit: '考核汇总' }[src] || '系统范本生成'
-}
 function statusClass(it) {
   if (it.status === 1) return 'tag-green'
   if (it.status === 2) return 'tag-red'
@@ -271,7 +268,7 @@ function levelText(l) { return { expired: '已过期', d7: '7天内', d15: '15�
               <td><b>{{ p.name }}</b></td>
               <td>{{ personTypeText(p.person_type) }}</td>
               <td>{{ p.telephone || '—' }}</td>
-              <td class="pf-ellipsis">{{ p.post_name || '—' }}</td>
+              <td class="pf-ellipsis">{{ p.post_ids || '—' }}</td>
               <td>
                 <div class="pf-bar"><div class="pf-bar-in" :class="p.percent >= 100 ? 'done' : ''" :style="{ width: (p.percent || 0) + '%' }"></div></div>
                 <span class="pf-pct">{{ p.percent || 0 }}%</span>
@@ -321,10 +318,10 @@ function levelText(l) { return { expired: '已过期', d7: '7天内', d15: '15�
                   <span class="tag" :class="statusClass(it)">{{ statusText(it) }}</span>
                   <span v-if="it.optional" class="tag tag-gray">选填</span>
                 </div>
-                <div class="pf-sub">{{ sourceText(it.sourceType) }} · 有效期 {{ expireText(it) }}</div>
+                <div class="pf-sub">{{ it.sourceType === 'upload' ? '证件扫描件' : it.sourceType === 'print' ? '空白表手写' : '系统范本生成' }} · 有效期 {{ expireText(it) }}</div>
               </div>
               <div class="pf-item-actions">
-                <button v-if="it.sourceType === 'upload'" class="btn btn-primary btn-sm" @click="openDoc(it)">上传证件</button>
+                <button v-if="it.group === '证件上传区'" class="btn btn-primary btn-sm" @click="openDoc(it)">上传证件</button>
                 <template v-else>
                   <button class="btn btn-primary btn-sm" @click="generate(it, false)">生成并归档</button>
                   <button class="btn btn-outline btn-sm" @click="generate(it, true)">空白表</button>
@@ -337,7 +334,7 @@ function levelText(l) { return { expired: '已过期', d7: '7天内', d15: '15�
 
           <div class="card pf-group">
             <div class="card-title">我的证件（{{ (detail.docs || []).length }}）<span class="pf-sub">person_doc 子表 · 到期自动进入预警</span></div>
-            <div v-if="!(detail.docs || []).length" class="pf-sub" style="padding:8px 0">暂无证件记录，到「证照」分组上传。</div>
+            <div v-if="!(detail.docs || []).length" class="pf-sub" style="padding:8px 0">暂无证件记录，到「证件上传区」上传。</div>
             <div v-for="d in (detail.docs || [])" :key="d.id" class="pf-doc">
               <span class="tag" :class="d.warning ? 'tag-yellow' : 'tag-green'">{{ d.warning ? '临期' : '有效' }}</span>
               <span class="nm">{{ d.doc_name }}</span>

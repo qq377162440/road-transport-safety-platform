@@ -4,10 +4,8 @@ import request from '@/api/request'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import Icon from '@/components/Icon.vue'
 import { ARCHIVE_CATALOG, FREQ_LABEL, STATUS } from '@/config/archiveCatalog'
-import { classifyItem, CATEGORY_LIST } from '@/config/archiveCategory'
 import { useRouter, useRoute } from 'vue-router'
 import { useAuthStore } from '@/store/auth'
-import { useCargoStore } from '@/store/cargo'
 
 const auth = useAuthStore()
 // 范本定制与生成为服务商 / 超管增值服务；企业账号只读（可查看/下载成品、手动上传证件）
@@ -95,12 +93,7 @@ const boxTwoTplItems = computed(() => {
   return out
 })
 
-const cargoStore = useCargoStore()
-// 与顶栏切换共用同一来源：读取展示、改动即持久化并切换档案盒目录
-const cargoType = computed({
-  get: () => cargoStore.cargoType,
-  set: (v) => cargoStore.setCargo(v),
-})
+const cargoType = ref('普货')
 const boxes = computed(() => {
   const base = ARCHIVE_CATALOG[cargoType.value] || []
   return base.map((b, idx) => idx === 1
@@ -111,9 +104,6 @@ const selectedNo = ref('一')
 const selectedBox = computed(() => boxes.value.find((b) => b.no === selectedNo.value) || boxes.value[0])
 const boxNoNum = (no) => boxes.value.findIndex((b) => b.no === no) + 1
 const selBoxNo = computed(() => boxNoNum(selectedNo.value))
-
-// 盒十一「从业人员一人一档 + 一车一档」走专属浏览面板
-const isCrewBox = computed(() => selectedBox.value?.special === 'crew')
 
 const currentYear = new Date().getFullYear()
 const years = [currentYear, currentYear - 1, currentYear - 2]
@@ -127,19 +117,14 @@ const boxChecked = ref(new Set())
 
 // 把目录子项与后端真实归档状态、当前应用范本合并成渲染行
 const rows = computed(() => {
-  // 标题归并：优先取带来源（B3 流程 / 服务商代生成）的归档项，覆盖无来源的占位项
   const recMap = {}
-  archiveItems.value.forEach((it) => {
-    const prev = recMap[it.title]
-    if (!prev || (prev.source || 0) === 0) recMap[it.title] = it
-  })
+  archiveItems.value.forEach((it) => { recMap[it.title] = it })
   const bno = selBoxNo.value
-  const out = selectedBox.value.items.map((it, idx) => {
+  return selectedBox.value.items.map((it, idx) => {
     const key = `${bno}-${idx}`
     const rec = recMap[it.name]
     const pdfId = rec?.pdfId || null
     const isUploaded = rec?.genMode === 3
-    const source = rec?.source || 0
     const tplOptions = matchTpl(it.name)
     const tplCode = tplOptions.length ? tplOptions[0].code : ''
     let status = STATUS.MISS
@@ -149,42 +134,11 @@ const rows = computed(() => {
     const q = locatedItem.value
     const located = !!q && (it.name === q || it.name.includes(q) || q.includes(it.name))
     return {
-      key, seq: idx + 1, name: it.name, freq: it.freq || '', tplDriven: !!it.tplDriven,
-      isUploaded, source, tplOptions, tplCode, status, pdfId, located,
-      ...classifyItem(it.name),
+      key, name: it.name, freq: it.freq || '', tplDriven: !!it.tplDriven,
+      isUploaded, tplOptions, tplCode, status, pdfId, located,
     }
   })
-  // 补充行：后端已归档、但标题未命中目录占位项（如 B3 流程/服务商强制生成的单个制度，
-  // 标题带版本号等后缀），仍以独立行展示并带来源徽标，确保盒二与 B3 制度引擎一一对应。
-  const covered = new Set(selectedBox.value.items.map((i) => i.name))
-  archiveItems.value.forEach((it) => {
-    if (covered.has(it.title)) return
-    const pdfId = it.pdfId || null
-    out.push({
-      key: `${bno}-x-${it.bizModule || it.id || out.length}`,
-      seq: out.length + 1, name: it.title, freq: '', tplDriven: false,
-      isUploaded: it.genMode === 3, source: it.source || 0,
-      tplOptions: [], tplCode: '', status: pdfId ? STATUS.DONE : STATUS.MISS,
-      pdfId, located: false, engineArchived: true,
-      ...classifyItem(it.title),
-    })
-  })
-  return out
 })
-
-// ---- 文件分类（08 三大类 + ②′ 上传留存）----
-// 类别只决定「怎么生产」；是否按岗位是独立维度，只有责任书/承诺书/告知书/任命书/
-// 风险告知卡等按岗位拆分的文件才允许切换岗位，证件类与动态记录一律不带岗位参数。
-const categoryFilter = ref('all')
-const categoryCounts = computed(() => {
-  const c = { all: rows.value.length }
-  CATEGORY_LIST.forEach((x) => { c[x.key] = rows.value.filter((r) => r.categoryKey === x.key).length })
-  return c
-})
-const visibleRows = computed(() => categoryFilter.value === 'all'
-  ? rows.value
-  : rows.value.filter((r) => r.categoryKey === categoryFilter.value))
-const postFor = (item) => (item?.postRelated ? previewPost.value : '')
 
 // 四色统计
 const summary = computed(() => {
@@ -216,12 +170,11 @@ async function loadArchiveItems() {
 }
 async function loadTplLibrary() {
   try {
-    const cargo = cargoStore.bizType
     const [list, cssRes, ovRes, mapRes] = await Promise.all([
-      request.get('/tpl/library', { params: { cargo } }),
+      request.get('/tpl/library'),
       request.get('/tpl/library/css'),
       request.get('/tpl/ent/overview').catch(() => ({ data: null })),
-      request.get('/tpl/library/mapping', { params: { cargo } }).catch(() => ({ data: null })),
+      request.get('/tpl/library/mapping').catch(() => ({ data: null })),
     ])
     tplList.value = list.data || []
     pageCss.value = cssRes.data || ''
@@ -235,8 +188,7 @@ async function loadTplLibrary() {
 }
 
 watch([selectedNo, cargoType, selYear], () => {
-  checked.value = new Set(); boxChecked.value = new Set(); tplChoice.value = {}; loadArchiveItems(); loadTplLibrary()
-  if (isCrewBox.value) loadCrew()
+  checked.value = new Set(); boxChecked.value = new Set(); tplChoice.value = {}; loadArchiveItems()
 })
 onMounted(() => {
   // 台账范本管理「定位档案柜」跳转：按盒号定位，并提示对应归档项
@@ -254,9 +206,10 @@ function toggleItem(key, val) {
   checked.value = new Set(checked.value)
 }
 function toggleBox(val) {
-  // 分类筛选后只操作当前可见项，避免「全选」把被筛掉的项一起勾上
-  visibleRows.value.forEach((r) => {
-    if (val) checked.value.add(r.key); else checked.value.delete(r.key)
+  const bno = selBoxNo.value
+  selectedBox.value.items.forEach((_, idx) => {
+    const k = `${bno}-${idx}`
+    if (val) checked.value.add(k); else checked.value.delete(k)
   })
   checked.value = new Set(checked.value)
 }
@@ -271,8 +224,11 @@ function toggleBoxCheck(no, val) {
   boxChecked.value = new Set(boxChecked.value)
   checked.value = new Set(checked.value)
 }
-const allChecked = computed(() =>
-  visibleRows.value.length > 0 && visibleRows.value.every((r) => checked.value.has(r.key)))
+const allChecked = computed(() => {
+  const bno = selBoxNo.value
+  return selectedBox.value.items.length > 0 &&
+    selectedBox.value.items.every((_, idx) => checked.value.has(`${bno}-${idx}`))
+})
 
 // ---- 生成：一律按「台账范本管理」当前应用范本渲染 PDF ----
 function currentTpl(item) {
@@ -284,14 +240,14 @@ function currentTpl(item) {
 async function generateOne(item, silent = false) {
   const tpl = currentTpl(item)
   if (!tpl) return false
-  // 单行生成：仅「按岗位拆分」的文件需要检查岗位人名（批量生成由 batchGenerate 统一提醒一次）
-  if (!silent && item.postRelated && !await confirmMissing(await checkMissing(tpl, item))) return false
+  // 单行生成：先检查岗位人名，读不到则提醒（批量生成由 batchGenerate 统一提醒一次）
+  if (!silent && !await confirmMissing(await checkMissing(tpl))) return false
   await request.post('/archive/template/generate', {
     code: tpl.code,
     itemName: item.name,
     boxNo: selBoxNo.value,
     year: selYear.value,
-    post: postFor(item),
+    post: previewPost.value,
   })
   if (!silent) ElMessage.success(`已按「${tpl.name}」生成并归档`)
   return true
@@ -316,19 +272,16 @@ async function batchGenerate() {
     ElMessage.info('请先勾选要生成的归档项（可点「全选本盒」快速选择）')
     return
   }
-  const targets = visibleRows.value.filter((r) => checked.value.has(r.key) && r.tplOptions.length)
+  const targets = rows.value.filter((r) => checked.value.has(r.key) && r.tplOptions.length)
   if (!targets.length) {
     ElMessage.info('勾选项中没有可按范本生成的归档项（其余请使用「上传」按钮留存）')
     return
   }
   generating.value = true
   try {
-    // 批量只提醒一次：先汇总【按岗位拆分】的归档项缺失的人名字段；
-    // 证件 / 动态记录 / 上传留存不参与岗位人名检查，避免误弹补录提示。
+    // 批量只提醒一次：先汇总所有归档项缺失的人名字段
     const allMissing = []
-    for (const r of targets) {
-      if (r.postRelated) allMissing.push(...await checkMissing(currentTpl(r), r))
-    }
+    for (const r of targets) allMissing.push(...await checkMissing(currentTpl(r)))
     if (!await confirmMissing(allMissing)) return
     let n = 0
     for (const r of targets) if (await generateOne(r, true)) n++
@@ -364,265 +317,12 @@ async function download(item) {
   URL.revokeObjectURL(url)
 }
 async function downloadBox() {
-  if (!checked.value.size) { ElMessage.info('请先勾选要下载的归档项（可点「全选本盒」快速选择）'); return }
-  const done = rows.value.filter((r) => checked.value.has(r.key) && r.pdfId)
-  if (!done.length) { ElMessage.warning('勾选项中没有已生成/已上传的文件'); return }
+  const done = rows.value.filter((r) => r.pdfId)
+  if (!done.length) { ElMessage.warning('本盒暂无已生成/已上传文件'); return }
   for (const r of done) await download(r)
 }
 
 function selectBox(no) { selectedNo.value = no }
-
-// ---- 盒一「管理人员档案」：按人分类的一人一档 PDF 集合 ----
-// 数据来源是人员基础信息里 person_type=manager 的管理人员，每人一份档案册 PDF，
-// 册内含岗前培训、考核记录、三书、任命书、证照等，归档时 person_id 落到本人。
-const showManagerPanel = ref(false)
-const managerData = ref({ persons: [], total: 0, generated: 0 })
-const managerBusy = ref(false)
-const managerGenerating = ref(0)
-const expandedManager = ref(0)
-
-async function loadManagerOverview() {
-  const res = await request.get('/archive/manager/overview', { params: { year: selYear.value } })
-  managerData.value = res.data || { persons: [], total: 0, generated: 0 }
-}
-async function openManagerPanel() {
-  showRespPanel.value = false
-  showManagerPanel.value = true
-  managerBusy.value = true
-  try { await loadManagerOverview() }
-  catch (e) { ElMessage.error('读取管理人员档案失败') }
-  finally { managerBusy.value = false }
-}
-async function generateManager(personId = null) {
-  managerGenerating.value = personId || -1
-  try {
-    const res = await request.post('/archive/manager/generate', { year: selYear.value, personId })
-    ElMessage.success(`已生成 ${res.data?.length || 0} 份管理人员档案册并按人归档`)
-    await loadManagerOverview()
-    await loadArchiveItems()
-  } catch (e) { ElMessage.error('生成失败：' + (e?.message || '请重试')) }
-  finally { managerGenerating.value = 0 }
-}
-function downloadPdf(pdfId, name) { return download({ pdfId, name }) }
-
-// ---- 盒十一「从业人员一人一档 + 一车一档」：按人/按车浏览，点击文件名预览真实 PDF ----
-const crewData = ref({ employees: [], vehicles: [] })
-const crewBusy = ref(false)
-const crewTab = ref('emp')           // emp=从业人员一人一档 | veh=一车一档
-const expandedCrew = ref(new Set())  // 展开的人员/车辆 id 集合
-const crewPreview = ref(null)        // { name, blobUrl, kind }
-const crewPreviewing = ref(false)
-const crewDownloading = ref(false)    // 盒十一一键下载整盒（ZIP）
-const albumLoading = ref('')         // 合并版档案册下载中的人员/车辆 key：'e'+id / 'v'+id
-
-function toggleCrew(id) {
-  const s = new Set(expandedCrew.value)
-  s.has(id) ? s.delete(id) : s.add(id)
-  expandedCrew.value = s
-}
-
-async function loadCrew() {
-  crewBusy.value = true
-  try {
-    const [e, v] = await Promise.all([
-      request.get('/archive/employee-archive/overview'),
-      request.get('/archive/vehicle-archive/overview'),
-    ])
-    crewData.value = { employees: e.data?.employees || [], vehicles: v.data?.vehicles || [] }
-  } catch (err) {
-    ElMessage.error('读取盒十一档案失败')
-  } finally {
-    crewBusy.value = false
-  }
-}
-
-// 点击文件名：按 MinIO 对象名下载真实 PDF 并内嵌预览
-async function previewCrewFile(fileUrl, name) {
-  if (!fileUrl) { ElMessage.warning('该归档项暂无文件'); return }
-  crewPreviewing.value = true
-  clearCrewPreviewBlob()
-  crewPreview.value = { name, blobUrl: '', kind: '' }
-  try {
-    const token = localStorage.getItem('token')
-    const res = await fetch(`/api/archive/file?path=${encodeURIComponent(fileUrl)}`, {
-      headers: { Authorization: `Bearer ${token}`, 'X-Token': `Bearer ${token}` },
-    })
-    if (!res.ok) throw new Error('fetch failed')
-    const blob = await res.blob()
-    crewPreview.value = { name, blobUrl: URL.createObjectURL(blob), kind: blob.type.startsWith('image/') ? 'image' : 'pdf' }
-  } catch (e) {
-    crewPreview.value = { name, blobUrl: '', kind: 'error' }
-  } finally {
-    crewPreviewing.value = false
-  }
-}
-
-function clearCrewPreviewBlob() {
-  if (crewPreview.value?.blobUrl) { URL.revokeObjectURL(crewPreview.value.blobUrl); crewPreview.value = null }
-}
-
-function closeCrewPreview() {
-  clearCrewPreviewBlob()
-}
-
-// 通用：带鉴权拉取二进制并触发浏览器下载（整盒 ZIP / 合并版档案册 PDF 共用）
-async function downloadBlob(urlPath, fname, mime) {
-  const token = localStorage.getItem('token')
-  const res = await fetch(urlPath, {
-    headers: { Authorization: `Bearer ${token}`, 'X-Token': `Bearer ${token}` },
-  })
-  if (!res.ok) {
-    let msg = '下载失败'
-    try { const j = await res.json(); if (j && j.message) msg = j.message } catch (_) { /* ignore */ }
-    throw new Error(msg)
-  }
-  const blob = await res.blob()
-  const url = URL.createObjectURL(blob)
-  const a = document.createElement('a')
-  a.href = url
-  a.download = fname
-  document.body.appendChild(a)
-  a.click()
-  a.remove()
-  setTimeout(() => URL.revokeObjectURL(url), 3000)
-}
-
-// 盒十一「一键下载整盒」：全部从业人员 + 车辆归档 PDF 打包成 ZIP
-async function downloadCrewAll() {
-  crewDownloading.value = true
-  try {
-    await downloadBlob('/api/archive/crew/download-all',
-      `盒十一_从业人员一人一档及一车一档.zip`, 'application/zip')
-    ElMessage.success('整盒打包下载已开始')
-  } catch (e) {
-    ElMessage.error('整盒下载失败：' + (e?.message || '请重试'))
-  } finally {
-    crewDownloading.value = false
-  }
-}
-
-// 盒十一「合并版档案册」：把某人/某车的分散归档项合并成一本 PDF 下载
-async function downloadCrewAlbum(kind, id, name) {
-  const key = (kind === 'emp' ? 'e' : 'v') + id
-  albumLoading.value = key
-  try {
-    const qs = kind === 'emp' ? `personId=${id}` : `vehicleId=${id}`
-    const path = kind === 'emp' ? `/api/archive/crew/employee-album?${qs}` : `/api/archive/crew/vehicle-album?${qs}`
-    const fname = kind === 'emp' ? `${name}_一人一档档案册.pdf` : `${name}_一车一档档案册.pdf`
-    await downloadBlob(path, fname, 'application/pdf')
-    ElMessage.success('档案册已开始下载')
-  } catch (e) {
-    ElMessage.error('档案册下载失败：' + (e?.message || '请重试'))
-  } finally {
-    albumLoading.value = ''
-  }
-}
-
-// ---- 盒一「安全生产责任书」：组织架构上下级双签生效 ----
-// 上级来自 org_post.parent_id 汇报线（跳过禁用岗位后上提），最顶层主要负责人与公司签；
-// 只有 sup/sub 双方都签署才 effective，此时才生成带双方签名与公司章的 PDF。
-const showRespPanel = ref(false)
-const respData = ref({ rows: [], total: 0, effective: 0, partial: 0, pending: 0 })
-const respBusy = ref(false)
-const respSigning = ref(0)
-const respHistory = ref({ show: false, rows: [], name: '' })
-
-async function loadRespOverview() {
-  const res = await request.get('/archive/resp-sign/overview', { params: { year: selYear.value } })
-  respData.value = res.data || { rows: [], total: 0, effective: 0, partial: 0, pending: 0 }
-}
-async function openRespPanel() {
-  showManagerPanel.value = false
-  showRespPanel.value = true
-  respBusy.value = true
-  try { await loadRespOverview() }
-  catch (e) { ElMessage.error('读取责任书签订状态失败') }
-  finally { respBusy.value = false }
-}
-// 从「管理人员档案」面板进入责任书上下级双签（三书已并入一人一档，双签为组织级流程保留入口）
-async function openRespPanelFromManager() {
-  showManagerPanel.value = false
-  await openRespPanel()
-}
-async function signResp(row, side) {
-  respSigning.value = row.id
-  try {
-    const res = await request.post('/archive/resp-sign/sign', {
-      id: row.id,
-      side,
-      signName: side === 'sup' ? row.supName : row.subName,
-    })
-    if (res.data?.status === 'effective') {
-      ElMessage.success('上下级双方均已签署，责任书生效并已归档 PDF')
-    } else {
-      ElMessage.success('已记录签署，等待另一方签署后生效')
-    }
-    await loadRespOverview()
-  } catch (e) { ElMessage.error('签署失败：' + (e?.message || '请重试')) }
-  finally { respSigning.value = 0 }
-}
-async function openRespHistory(row) {
-  try {
-    const res = await request.get('/archive/resp-sign/history', {
-      params: { subPersonId: row.subPersonId, year: selYear.value },
-    })
-    respHistory.value = { show: true, rows: res.data || [], name: row.subName }
-  } catch (e) { ElMessage.error('读取历史版本失败') }
-}
-
-// ---- 三书签订（承诺书 / 告知书）：动态记录 ----
-// 企业视角：承诺书=公司与本人签、告知书=本人签，一次签署即生效；
-// 服务商/超管视角：从范本直接生成成品（不走签订）。
-const showTriplePanel = ref(false)
-const tripleBookType = ref('PROMISE') // PROMISE 承诺书 / NOTICE 告知书
-const tripleData = ref({ rows: [], total: 0, effective: 0, title: '', company: '' })
-const tripleBusy = ref(false)
-const tripleSigning = ref(0)
-const tripleGenerating = ref(0)
-
-const tripleBookMeta = computed(() => tripleBookType.value === 'PROMISE'
-  ? { title: '安全生产承诺书', itemCode: 'P06', desc: '与公司签订：公司盖章 + 本人签字，一次签署即生效' }
-  : { title: '岗位危害告知书', itemCode: 'P07', desc: '本人签订：本人签字即生效' })
-
-async function loadTripleOverview() {
-  const res = await request.get('/archive/triple-book/overview', {
-    params: { bookType: tripleBookType.value, year: selYear.value },
-  })
-  tripleData.value = res.data || { rows: [], total: 0, effective: 0, title: '', company: '' }
-}
-async function openTriplePanel(bookType) {
-  showManagerPanel.value = false
-  tripleBookType.value = bookType
-  showTriplePanel.value = true
-  tripleBusy.value = true
-  try { await loadTripleOverview() }
-  catch (e) { ElMessage.error('读取签订状态失败') }
-  finally { tripleBusy.value = false }
-}
-async function signTripleBook(row) {
-  tripleSigning.value = row.personId
-  try {
-    await request.post('/archive/triple-book/sign', {
-      bookType: tripleBookType.value, personId: row.personId, year: selYear.value,
-      signName: row.personName,
-    })
-    ElMessage.success(`${row.personName} 已签订并归档`)
-    await loadTripleOverview()
-    if (showManagerPanel.value || !showTriplePanel.value) { /* 保持面板 */ }
-  } catch (e) { ElMessage.error('签署失败：' + (e?.message || '请重试')) }
-  finally { tripleSigning.value = 0 }
-}
-async function generateTripleBook(row) {
-  tripleGenerating.value = row.personId
-  try {
-    await request.post('/archive/triple-book/generate', {
-      bookType: tripleBookType.value, personId: row.personId, year: selYear.value,
-    })
-    ElMessage.success(`已从范本生成 ${row.personName} 的成品并归档`)
-    await loadTripleOverview()
-  } catch (e) { ElMessage.error('生成失败：' + (e?.message || '请重试')) }
-  finally { tripleGenerating.value = 0 }
-}
 
 // ---- 上传留存 ----
 const showUpload = ref(false)
@@ -689,12 +389,11 @@ const assigning = ref(false)
 const missingLabels = computed(() =>
   [...new Set(missingPersons.value.map((m) => m.label))].join('、'))
 
-async function checkMissing(tpl, item) {
+async function checkMissing(tpl) {
   if (!tpl) return []
   try {
     const res = await request.get('/archive/template/check', {
-      // 非岗位相关文件一律不传 post，避免把上一份责任书的岗位串到证件/记录类
-      params: { code: tpl.code, post: postFor(item) },
+      params: { code: tpl.code, post: previewPost.value },
     })
     return res.data || []
   } catch (e) { return [] }
@@ -761,9 +460,6 @@ function clearPreviewBlob() {
 
 async function openPreview(item) {
   if (!item) return
-  // 切到另一份文件时清空岗位选择，避免把上一份责任书的岗位串到证件/记录类文件；
-  // 同一份文件内由岗位下拉触发的刷新不重置。
-  if (preview.value && preview.value.key !== item.key) previewPost.value = ''
   preview.value = item
   clearPreviewBlob()
   previewDoc.value = ''
@@ -798,13 +494,10 @@ async function openPreview(item) {
   previewDoc.value = srcdoc('<div class="doc-p">正在按当前应用范本生成成品预览…</div>')
   // rows 是 computed，对象引用会被重算替换，用稳定的 key 判断是否为当前预览项
   const key = item.key
-  // 只有按岗位拆分的文件才需要「未读取到岗位人名」提醒；证件/记录类不弹这个提示
-  if (item.postRelated) {
-    checkMissing(tpl, item).then((list) => { if (preview.value?.key === key) missingPersons.value = list })
-  }
+  checkMissing(tpl).then((list) => { if (preview.value?.key === key) missingPersons.value = list })
   try {
     const res = await request.get(`/tpl/library/render/${encodeURIComponent(tpl.code)}`, {
-      params: { mode: 'final', itemName: item.name, year: selYear.value, post: postFor(item) },
+      params: { mode: 'final', itemName: item.name, year: selYear.value, post: previewPost.value },
     })
     if (preview.value?.key !== key) return  // 快速切换时丢弃过期响应
     previewDoc.value = srcdoc(res.data || '')
@@ -1035,154 +728,28 @@ function locateItem(boxNo, name) {
             <div class="desc">归档项按自然年度隔离；生成后存 MinIO，可下载 PDF 打印装盒。</div>
           </div>
           <div class="head-actions">
-            <el-button v-if="!isCrewBox" @click="downloadBox"><Icon name="download" :size="15" /> 一键下载已选中</el-button>
-            <el-button v-else :loading="crewDownloading" @click="downloadCrewAll">
-              <Icon name="download" :size="15" /> 一键下载整盒
-            </el-button>
+            <el-button @click="downloadBox"><Icon name="download" :size="15" /> 一键下载整盒</el-button>
           </div>
         </div>
 
-        <!-- 文件分类：依据《08》三大类资料 + ②′ 上传留存；类别决定生产方式，与岗位无关 -->
-        <div class="cat-filter" v-if="!isCrewBox">
-          <span class="cat-filter-t">文件分类</span>
-          <button :class="['cat-pill', categoryFilter === 'all' && 'on']" @click="categoryFilter = 'all'">
-            全部 <b>{{ categoryCounts.all }}</b>
-          </button>
-          <button v-for="c in CATEGORY_LIST" :key="c.key"
-                  :class="['cat-pill', categoryFilter === c.key && 'on']"
-                  :title="c.desc" @click="categoryFilter = c.key">
-            {{ c.label }} <b>{{ categoryCounts[c.key] || 0 }}</b>
-          </button>
-          <span class="cat-filter-tip">依据《08》三大类 + ②′ 上传留存划分；证件 / 动态记录 / 上传留存与岗位无关，不提供岗位切换</span>
-        </div>
-
-        <div class="list-toolbar" v-if="!isCrewBox">
-          <el-checkbox class="selall-cb" :model-value="allChecked" @change="toggleBox">
-            {{ categoryFilter === 'all' ? '全选本盒' : '全选当前分类' }}
-          </el-checkbox>
+        <div class="list-toolbar">
+          <el-checkbox class="selall-cb" :model-value="allChecked" @change="toggleBox">全选本盒</el-checkbox>
           <el-button v-if="canGenerateTpl" size="small" type="primary" :loading="generating" @click="batchGenerate">
             <Icon name="fileText" :size="14" /> 批量生成勾选（{{ checked.size }}）
           </el-button>
         </div>
 
-        <!-- 盒十一：从业人员一人一档 + 一车一档（按人/按车浏览，点击文件名预览真实 PDF） -->
-        <div v-if="isCrewBox" v-loading="crewBusy" class="crew-panel">
-          <div class="crew-tabs">
-            <button :class="['crew-tab', crewTab === 'emp' && 'on']" @click="crewTab = 'emp'">
-              从业人员一人一档 <b>{{ crewData.employees.length }}</b>
-            </button>
-            <button :class="['crew-tab', crewTab === 'veh' && 'on']" @click="crewTab = 'veh'">
-              一车一档 <b>{{ crewData.vehicles.length }}</b>
-            </button>
-            <span class="crew-tip">点击文件名即可预览该归档项的真实 PDF / 扫描件</span>
-          </div>
-
-          <!-- 从业人员一人一档 -->
-          <div v-if="crewTab === 'emp'" class="crew-body">
-            <div v-if="!crewData.employees.length && !crewBusy" class="sd-empty">
-              人员基础信息里还没有从业人员（驾驶员 / 押运员等），请先录入后再查看一人一档。
-            </div>
-            <div v-for="p in crewData.employees" :key="p.personId" class="crew-card">
-              <div class="crew-card-h" @click="toggleCrew('e' + p.personId)">
-                <div class="ma-avatar">{{ (p.name || '—').slice(0, 1) }}</div>
-                <div class="ma-id">
-                  <div class="ma-nm">{{ p.name }} <span class="ma-post">{{ p.postName || '未分配岗位' }}</span></div>
-                  <div class="ma-sub">{{ p.telephone || '—' }} · 完整度 {{ p.done }}/{{ p.required }} 项（{{ p.percent }}%）</div>
-                </div>
-                <span :class="['ma-badge', p.done === p.required && 'on']">{{ p.done === p.required ? '齐全' : '待补齐' }}</span>
-                <span class="ma-exp">{{ expandedCrew.has('e' + p.personId) ? '收起' : '明细' }}</span>
-              </div>
-              <div v-if="expandedCrew.has('e' + p.personId)" class="crew-detail">
-                <div class="crew-detail-bar">
-                  <el-button size="small" :loading="albumLoading==='e'+p.personId"
-                             @click.stop="downloadCrewAlbum('emp', p.personId, p.name)">
-                    <Icon name="download" :size="13" /> 下载一人一档档案册（合并版 PDF）
-                  </el-button>
-                </div>
-                <div class="ma-sec-t">一人一档归档目录（{{ p.items?.length || 0 }} 项）</div>
-                <div v-for="it in p.items" :key="it.code" class="crew-item">
-                  <span class="ma-code">{{ it.code }}</span>
-                  <span class="ma-inm">{{ it.name }}</span>
-                  <span :class="['ma-st', it.status === 1 && 'ok']">{{ it.status === 1 ? '已归档' : it.status === 2 ? '已过期' : '缺失' }}</span>
-                  <span v-if="it.fileUrl" class="crew-file clickable" @click="previewCrewFile(it.fileUrl, it.name)">
-                    <Icon name="search" :size="13" /> {{ it.name }}.pdf
-                  </span>
-                  <span v-else class="crew-file off">（暂无文件）</span>
-                </div>
-                <div class="ma-sec-t">证照与资格证明（{{ p.docs?.length || 0 }} 项）</div>
-                <div v-if="!p.docs?.length" class="ma-empty">暂无证照记录</div>
-                <div v-for="d in p.docs" :key="d.name" class="crew-item">
-                  <span class="ma-inm">{{ d.name }}</span>
-                  <span class="ma-grp">有效期至 {{ d.expire || '—' }}</span>
-                  <span v-if="d.fileUrl" class="crew-file clickable" @click="previewCrewFile(d.fileUrl, d.name)">
-                    <Icon name="search" :size="13" /> 预览
-                  </span>
-                  <span v-else class="crew-file off">（暂无文件）</span>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <!-- 一车一档 -->
-          <div v-if="crewTab === 'veh'" class="crew-body">
-            <div v-if="!crewData.vehicles.length && !crewBusy" class="sd-empty">
-              车辆基础信息里还没有车辆，请先录入后再查看一车一档。
-            </div>
-            <div v-for="v in crewData.vehicles" :key="v.vehicleId" class="crew-card">
-              <div class="crew-card-h" @click="toggleCrew('v' + v.vehicleId)">
-                <div class="ma-avatar">{{ (v.plateNo || '—').slice(0, 1) }}</div>
-                <div class="ma-id">
-                  <div class="ma-nm">{{ v.plateNo }} <span class="ma-post">{{ v.vehicleType || '' }} · {{ v.owner || '' }}</span></div>
-                  <div class="ma-sub">{{ v.bizType || '' }} · 品牌型号 {{ v.brandModel || '—' }} · 一车一档 {{ v.items?.length || 0 }} 项</div>
-                </div>
-                <span class="ma-exp">{{ expandedCrew.has('v' + v.vehicleId) ? '收起' : '明细' }}</span>
-              </div>
-              <div v-if="expandedCrew.has('v' + v.vehicleId)" class="crew-detail">
-                <div class="crew-detail-bar">
-                  <el-button size="small" :loading="albumLoading==='v'+v.vehicleId"
-                             @click.stop="downloadCrewAlbum('veh', v.vehicleId, v.plateNo)">
-                    <Icon name="download" :size="13" /> 下载一车一档档案册（合并版 PDF）
-                  </el-button>
-                </div>
-                <div class="ma-sec-t">一车一档归档目录（{{ v.items?.length || 0 }} 项）</div>
-                <div v-for="it in v.items" :key="it.code" class="crew-item">
-                  <span class="ma-code">{{ it.code }}</span>
-                  <span class="ma-inm">{{ it.name }}</span>
-                  <span :class="['ma-st', it.status === 1 && 'ok']">{{ it.status === 1 ? '已归档' : it.status === 2 ? '已过期' : '缺失' }}</span>
-                  <span v-if="it.fileUrl" class="crew-file clickable" @click="previewCrewFile(it.fileUrl, it.name)">
-                    <Icon name="search" :size="13" /> {{ it.name }}.pdf
-                  </span>
-                  <span v-else class="crew-file off">（暂无文件）</span>
-                </div>
-                <div class="ma-sec-t">车辆证照（{{ v.docs?.length || 0 }} 项）</div>
-                <div v-if="!v.docs?.length" class="ma-empty">暂无证照记录</div>
-                <div v-for="d in v.docs" :key="d.name" class="crew-item">
-                  <span class="ma-inm">{{ d.name }}</span>
-                  <span class="ma-grp">有效期至 {{ d.expire || '—' }}</span>
-                  <span v-if="d.fileUrl" class="crew-file clickable" @click="previewCrewFile(d.fileUrl, d.name)">
-                    <Icon name="search" :size="13" /> 预览
-                  </span>
-                  <span v-else class="crew-file off">（暂无文件）</span>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div v-loading="loading" class="item-list" v-if="!isCrewBox">
-          <div v-for="r in visibleRows" :key="r.key" class="item-row" :class="{ located: r.located }">
-            <span class="item-idx">{{ r.seq }}</span>
+        <div v-loading="loading" class="item-list">
+          <div v-for="(r, idx) in rows" :key="r.key" class="item-row" :class="{ located: r.located }">
+            <span class="item-idx">{{ idx + 1 }}</span>
             <el-checkbox class="item-cb" :model-value="checked.has(r.key)" @change="(v) => toggleItem(r.key, v)" />
             <div class="nm">
               <span class="n clickable" @click="openPreview(r)">{{ r.name }}</span>
               <div class="d">
-                <span class="cat" :class="`cat-${r.categoryColor}`" :title="r.categoryDesc">{{ r.categoryShort }}</span>
-                <span v-if="r.postRelated" class="cat cat-post" title="该文件按岗位拆分，可在预览中切换岗位">按岗位</span>
                 <span v-if="r.tplOptions.length" class="src src-auto">按范本生成</span>
                 <span v-else class="src src-up">上传留存</span>
                 <span v-if="r.tplDriven" class="src src-tpl">范本目录项</span>
                 <span v-if="r.freq" class="freq" :class="`freq-${r.freq}`">{{ FREQ_LABEL[r.freq] }}</span>
-                <span v-if="r.name === '管理人员档案'" class="src src-tpl" title="按管理人员一人一档生成 PDF 集合，册内包含三书、岗前培训、考核记录、任命书等">按人分类</span>
                 <span v-if="r.tplOptions.length" class="tpl-name" :title="currentTpl(r)?.name">
                   当前范本：{{ currentTpl(r)?.name || '—' }}
                 </span>
@@ -1203,13 +770,7 @@ function locateItem(boxNo, name) {
               'st-done': r.status === STATUS.DONE,
               'st-print': r.status === STATUS.PRINT,
             }">{{ ['待上传/缺失', '待生成', '已生成/已上传', '已归档'][r.status] }}</span>
-            <span v-if="r.source" class="src-tag" :class="'src-' + r.source"
-              :title="['', '档案柜手动上传', 'B3 流程产出', '服务商强制生成'][r.source]">
-              {{ ['', '手动上传', 'B3流程', '服务商代生成'][r.source] }}</span>
             <div class="ops">
-              <el-button v-if="r.name === '管理人员档案'" size="small" type="warning" plain @click="openManagerPanel">
-                <Icon name="fileText" :size="13" /> 按人查看
-              </el-button>
               <el-button v-if="r.tplOptions.length && canGenerateTpl" size="small" @click="doGenerate(r)">
                 <Icon name="plus" :size="13" /> {{ r.pdfId ? '重新生成' : '生成' }}
               </el-button>
@@ -1261,14 +822,10 @@ function locateItem(boxNo, name) {
       <div class="pdf-wrap">
         <div class="pdf-toolbar">
           <span class="t">{{ preview?.name }} · {{ selYear }} 年度 · 成品预览</span>
-          <span v-if="preview" class="cat" :class="`cat-${preview.categoryColor}`" :title="preview.categoryDesc">
-            {{ preview.categoryLabel }}
-          </span>
           <span v-if="currentTpl(preview)?.name" class="tb-tpl">
             当前范本：{{ currentTpl(preview).name }}（{{ currentTpl(preview).versionLabel || '内置' }}）
           </span>
-          <!-- 只有按岗位拆分的文件才提供岗位切换；证件类/动态记录/上传留存一律不显示 -->
-          <select v-if="preview?.postRelated" v-model="previewPost" class="tb-sel" @change="openPreview(preview)">
+          <select v-model="previewPost" class="tb-sel" @change="openPreview(preview)">
             <option value="">默认岗位</option>
             <option v-for="p in previewPosts" :key="p" :value="p">{{ p }}</option>
           </select>
@@ -1280,7 +837,7 @@ function locateItem(boxNo, name) {
           </el-button>
           <button class="x" @click="closePreview">×</button>
         </div>
-        <div v-if="missingPersons.length && preview?.postRelated" class="person-warn">
+        <div v-if="missingPersons.length" class="person-warn">
           <Icon name="info" :size="16" />
           <span><b>未读取到岗位人名</b>：{{ missingLabels }}。生成后台账中这些姓名栏将留空，建议先补录人员。</span>
           <el-button size="small" type="warning" plain @click="openRoster">补录人名</el-button>
@@ -1291,22 +848,6 @@ function locateItem(boxNo, name) {
           <div v-else class="pdf-page-frame">
             <iframe :srcdoc="previewDoc" class="pdf-doc-frame" />
           </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- 盒十一：归档项文件预览（按 MinIO 对象名下载真实 PDF / 扫描件） -->
-    <div class="pdf-mask" :class="{ show: crewPreview }" @click.self="closeCrewPreview">
-      <div class="pdf-wrap">
-        <div class="pdf-toolbar">
-          <span class="t">{{ crewPreview?.name }} · 文件预览</span>
-          <button class="x" @click="closeCrewPreview">×</button>
-        </div>
-        <div class="pdf-body">
-          <div v-if="crewPreviewing" class="sd-empty">正在加载文件…</div>
-          <iframe v-else-if="crewPreview?.blobUrl && crewPreview?.kind === 'pdf'" :src="crewPreview.blobUrl" class="pdf-embed" />
-          <img v-else-if="crewPreview?.blobUrl && crewPreview?.kind === 'image'" :src="crewPreview.blobUrl" class="pdf-embed-img" alt="扫描件" />
-          <div v-else class="sd-empty">文件读取失败，请稍后重试。</div>
         </div>
       </div>
     </div>
@@ -1426,227 +967,6 @@ function locateItem(boxNo, name) {
         </div>
       </div>
     </div>
-
-    <!-- 盒一「管理人员档案」：按人分类的一人一档 PDF 集合 -->
-    <div class="sd-mask" :class="{ show: showManagerPanel }" @click.self="showManagerPanel = false">
-      <div class="sd-panel ma-panel">
-        <div class="sd-head">
-          <div>
-            <h2><Icon name="fileText" :size="18" /> 管理人员档案 · 一人一档</h2>
-            <p>三书（责任书/承诺书/告知书）、岗前三级培训、两类人员考核、年度责任制考核、人员任命书与证照，均并入管理人员一人一档</p>
-          </div>
-          <span class="sd-x" @click="showManagerPanel = false">×</span>
-        </div>
-        <div class="ma-stat">
-          <span>归档年度 <b>{{ selYear }}</b></span>
-          <span>管理人员 <b>{{ managerData.total }}</b></span>
-          <span>已生成档案册 <b class="green">{{ managerData.generated }}</b></span>
-          <span>企业 <b>{{ managerData.company || '—' }}</b></span>
-          <el-button size="small" type="primary" :loading="managerGenerating === -1" @click="generateManager(null)">
-            生成全部档案册
-          </el-button>
-          <el-button size="small" type="warning" plain @click="openRespPanelFromManager">
-            <Icon name="edit" :size="13" /> 责任书签订
-          </el-button>
-          <el-button size="small" type="warning" plain @click="openTriplePanel('PROMISE')">
-            <Icon name="edit" :size="13" /> 承诺书签订
-          </el-button>
-          <el-button size="small" type="warning" plain @click="openTriplePanel('NOTICE')">
-            <Icon name="edit" :size="13" /> 告知书签订
-          </el-button>
-        </div>
-        <div v-loading="managerBusy" class="sd-body ma-body">
-          <div v-if="!managerData.persons?.length && !managerBusy" class="sd-empty">
-            人员基础信息里还没有管理人员，请先在「人员基础信息」录入管理人员后再生成一人一档。
-          </div>
-          <div v-for="p in managerData.persons" :key="p.personId" class="ma-card">
-            <div class="ma-card-h" @click="expandedManager = expandedManager === p.personId ? 0 : p.personId">
-              <div class="ma-avatar">{{ (p.name || '—').slice(0, 1) }}</div>
-              <div class="ma-id">
-                <div class="ma-nm">{{ p.name }} <span class="ma-post">{{ p.postName || '未分配岗位' }}</span></div>
-                <div class="ma-sub">{{ p.telephone || '—' }} · 完整度 {{ p.done }}/{{ p.required }} 项（{{ p.percent }}%）</div>
-              </div>
-              <div class="ma-focus">
-                <span v-for="(v, k) in p.focus" :key="k"
-                      :class="['ma-chip', v.total > 0 && v.done === v.total && 'ok']">
-                  {{ k }} {{ v.done }}/{{ v.total }}
-                </span>
-              </div>
-              <span :class="['ma-badge', p.generated && 'on']">{{ p.generated ? '已生成' : '待生成' }}</span>
-              <span class="ma-exp">{{ expandedManager === p.personId ? '收起' : '明细' }}</span>
-            </div>
-            <div class="ma-card-ops">
-              <el-button size="small" :loading="managerGenerating === p.personId" @click="generateManager(p.personId)">
-                {{ p.generated ? '重新生成' : '生成档案册' }}
-              </el-button>
-              <el-button v-if="p.generated" size="small" type="primary"
-                         @click="downloadPdf(p.pdfId, `管理人员档案-${p.name}`)">下载 PDF</el-button>
-              <span v-if="p.genTime" class="ma-time">{{ String(p.genTime).replace('T', ' ').slice(0, 16) }}</span>
-            </div>
-            <div v-if="expandedManager === p.personId" class="ma-detail">
-              <div class="ma-sec-t">一人一档归档目录（{{ p.items?.length || 0 }} 项）</div>
-              <div v-for="it in p.items" :key="it.code" class="ma-item">
-                <span class="ma-code">{{ it.code }}</span>
-                <span class="ma-grp">{{ it.group }}</span>
-                <span :class="['ma-inm', it.fileUrl && 'clickable']"
-                      :title="it.fileUrl ? '点击预览该归档文件' : '暂无文件'"
-                      @click="it.fileUrl && previewCrewFile(it.fileUrl, it.name)">{{ it.name }}</span>
-                <span :class="['ma-st', it.status === 1 && 'ok']">
-                  {{ it.status === 1 ? '已归档' : it.status === 2 ? '已过期' : '缺失' }}
-                </span>
-              </div>
-              <div class="ma-sec-t">证照与资格证明（{{ p.docs?.length || 0 }} 项）</div>
-              <div v-if="!p.docs?.length" class="ma-empty">暂无证照记录</div>
-              <div v-for="(d, i) in p.docs" :key="i" class="ma-item">
-                <span class="ma-inm">{{ d.name }}</span>
-                <span class="ma-grp">{{ d.issue || '—' }}</span>
-                <span class="ma-grp">有效期至 {{ d.expire || '—' }}</span>
-              </div>
-            </div>
-          </div>
-        </div>
-        <div class="sd-foot">
-          <span>档案册按人落到 person_id、标题带姓名；重新生成刷新成品，旧版本 PDF 仍可留存对照</span>
-          <el-button size="small" @click="showManagerPanel = false">关闭</el-button>
-        </div>
-      </div>
-    </div>
-
-    <!-- 盒一「安全生产责任书」：组织架构上下级双签生效 -->
-    <div class="sd-mask" :class="{ show: showRespPanel }" @click.self="showRespPanel = false">
-      <div class="sd-panel rs-panel">
-        <div class="sd-head">
-          <div>
-            <h2><Icon name="edit" :size="18" /> 安全生产责任书 · 上下级签订</h2>
-            <p>签字双方取自安全管理架构的汇报关系，双方均签署后责任书才生效并生成 PDF</p>
-          </div>
-          <span class="sd-x" @click="showRespPanel = false">×</span>
-        </div>
-        <div class="rs-rule">
-          <Icon name="info" :size="15" />
-          <span>上下级关系取自<b>安全管理架构</b>（直接上级汇报线）；<b>上级与下级两个人都签署才生效</b>；
-            最顶层主要负责人无人员上级，<b>与公司签署</b>（公司盖章 + 本人签字）。架构变化后受影响的责任书自动作废重签。</span>
-        </div>
-        <div class="ma-stat rs-stat">
-          <span>本年度 <b>{{ selYear }}</b></span>
-          <span>待签 <b>{{ respData.pending }}</b></span>
-          <span>待生效 <b class="orange">{{ respData.partial }}</b></span>
-          <span>已生效 <b class="green">{{ respData.effective }}</b></span>
-          <el-button size="small" @click="loadRespOverview">刷新状态</el-button>
-        </div>
-        <div v-loading="respBusy" class="sd-body rs-body">
-          <div v-if="!respData.rows?.length && !respBusy" class="sd-empty">
-            本年度暂无签订记录，请在「安全管理架构」中启用岗位并分配人员后刷新。
-          </div>
-          <div v-for="r in respData.rows" :key="r.id" class="rs-card">
-            <div class="rs-rel">
-              <span class="rs-side sup">
-                <span class="rs-lbl">{{ r.supType === 'company' ? '公司（盖章）' : '上级 · 责任管理人' }}</span>
-                <b>{{ r.supType === 'company' ? r.supName : `${r.supPostName} ${r.supName}` }}</b>
-              </span>
-              <span class="rs-arrow">→ 签订 →</span>
-              <span class="rs-side sub">
-                <span class="rs-lbl">下级 · 责任人</span>
-                <b>{{ r.subPostName }} {{ r.subName }}</b>
-              </span>
-              <span :class="['rs-status', 'st-' + r.status]">{{ r.statusLabel }}</span>
-            </div>
-            <div class="rs-signs">
-              <span :class="['rs-sign', r.supSigned && 'ok']">
-                {{ r.supType === 'company' ? '公司签署' : '上级签署' }}：{{ r.supSigned ? '已签' : '未签' }}
-                <el-button v-if="!r.supSigned && r.status !== 'effective'" size="small" text type="primary"
-                           :loading="respSigning === r.id" @click="signResp(r, 'sup')">签署</el-button>
-              </span>
-              <span :class="['rs-sign', r.subSigned && 'ok']">
-                下级签署：{{ r.subSigned ? '已签' : '未签' }}
-                <el-button v-if="!r.subSigned && r.status !== 'effective'" size="small" text type="primary"
-                           :loading="respSigning === r.id" @click="signResp(r, 'sub')">签署</el-button>
-              </span>
-              <span class="rs-rev">第 {{ r.revision }} 版</span>
-            </div>
-            <div class="rs-ops">
-              <el-button v-if="r.pdfId" size="small" type="primary"
-                         @click="downloadPdf(r.pdfId, `安全生产责任书-${r.subName}`)">下载生效 PDF</el-button>
-              <el-button size="small" text @click="openRespHistory(r)">历史版本</el-button>
-              <span v-if="r.effectiveAt" class="ma-time">生效于 {{ String(r.effectiveAt).replace('T', ' ').slice(0, 16) }}</span>
-            </div>
-          </div>
-        </div>
-        <div class="sd-foot">
-          <span>单方签署仅记为「待生效」；双方签齐才写入生效时间并生成带双方签名与公司章的 PDF</span>
-          <el-button size="small" @click="showRespPanel = false">关闭</el-button>
-        </div>
-      </div>
-    </div>
-
-    <!-- 三书签订（承诺书 / 告知书）：动态记录，企业签订生成 / 服务商范本生成 -->
-    <div class="sd-mask" :class="{ show: showTriplePanel }" @click.self="showTriplePanel = false">
-      <div class="sd-panel rs-panel">
-        <div class="sd-head">
-          <div>
-            <h2><Icon name="edit" :size="18" /> {{ tripleBookMeta.title }} · 签订</h2>
-            <p>{{ tripleBookMeta.desc }}</p>
-          </div>
-          <span class="sd-x" @click="showTriplePanel = false">×</span>
-        </div>
-        <div class="ma-stat rs-stat">
-          <span>本年度 <b>{{ selYear }}</b></span>
-          <span>应签 <b>{{ tripleData.total }}</b></span>
-          <span>已签 <b class="green">{{ tripleData.effective }}</b></span>
-          <span>企业 <b>{{ tripleData.company || '—' }}</b></span>
-          <el-button size="small" @click="loadTripleOverview">刷新状态</el-button>
-        </div>
-        <div v-loading="tripleBusy" class="sd-body rs-body">
-          <div v-if="!tripleData.rows?.length && !tripleBusy" class="sd-empty">
-            本年度暂无应签人员，请在「安全管理架构」中启用岗位并分配人员后刷新。
-          </div>
-          <div v-for="r in tripleData.rows" :key="r.personId" class="rs-card">
-            <div class="rs-rel">
-              <span class="rs-side sub">
-                <span class="rs-lbl">{{ tripleBookType === 'PROMISE' ? '公司与本人签订' : '本人签订' }}</span>
-                <b>{{ r.postName }} {{ r.personName }}</b>
-              </span>
-              <span :class="['rs-status', 'st-' + r.status]">{{ r.statusLabel }}</span>
-            </div>
-            <div class="rs-ops">
-              <el-button v-if="r.status !== 'effective' && !canGenerateTpl" size="small" type="primary"
-                         :loading="tripleSigning === r.personId" @click="signTripleBook(r)">签署</el-button>
-              <el-button v-if="canGenerateTpl" size="small" type="primary"
-                         :loading="tripleGenerating === r.personId" @click="generateTripleBook(r)">从范本生成</el-button>
-              <el-button v-if="r.pdfId" size="small" type="primary" plain
-                         @click="downloadPdf(r.pdfId, `${tripleBookMeta.title}-${r.personName}`)">下载 PDF</el-button>
-              <span v-if="r.effectiveAt" class="ma-time">生效于 {{ String(r.effectiveAt).replace('T', ' ').slice(0, 16) }}</span>
-            </div>
-          </div>
-        </div>
-        <div class="sd-foot">
-          <span>{{ canGenerateTpl ? '服务商可从范本直接生成成品；企业账号通过签订动作生成动态记录并落到一人一档' : '一次签署即生效，生成带公司章与电子签名的 PDF 并落到一人一档' }}</span>
-          <el-button size="small" @click="showTriplePanel = false">关闭</el-button>
-        </div>
-      </div>
-    </div>
-
-    <!-- 责任书历史版本（架构变化作废的旧签署件仍可下载对照） -->
-    <div class="pdf-mask roster-mask" :class="{ show: respHistory.show }" @click.self="respHistory.show = false">
-      <div class="roster-wrap">
-        <div class="roster-head">
-          「{{ respHistory.name }}」责任书历史版本
-          <span class="rh-sub">组织架构变化会作废旧版本并生成新版本待签</span>
-          <span class="x" @click="respHistory.show = false">×</span>
-        </div>
-        <div class="roster-body rs-history">
-          <div v-for="h in respHistory.rows" :key="h.id" class="rs-hrow">
-            <span>第 {{ h.revision }} 版</span>
-            <span>{{ h.signRelation }}</span>
-            <span :class="['rs-status', 'st-' + h.status]">{{ h.statusLabel }}</span>
-            <span>{{ h.supSigned ? '上级已签' : '上级未签' }} / {{ h.subSigned ? '下级已签' : '下级未签' }}</span>
-            <el-button v-if="h.pdfId" size="small" text type="primary"
-                       @click="downloadPdf(h.pdfId, `安全生产责任书-${h.subName}-第${h.revision}版`)">下载</el-button>
-          </div>
-          <div v-if="!respHistory.rows?.length" class="sd-empty">暂无历史版本</div>
-        </div>
-      </div>
-    </div>
   </div>
 </template>
 
@@ -1657,7 +977,7 @@ function locateItem(boxNo, name) {
   font-size: 12.5px; line-height: 1.6; }
 .person-warn > svg { flex: none; }
 .person-warn > span { flex: 1; }
-.roster-mask { z-index: 12000; }
+.roster-mask { z-index: 210; }
 .roster-wrap { width: 560px; max-width: 94vw; max-height: 80vh; display: flex; flex-direction: column;
   background: #fff; border-radius: 10px; overflow: hidden; box-shadow: 0 8px 40px rgba(0,0,0,.3); }
 .roster-head { display: flex; align-items: center; gap: 10px; padding: 14px 18px;
@@ -1721,21 +1041,6 @@ function locateItem(boxNo, name) {
 .box-head .desc { font-size: 12px; color: var(--text-3); }
 .head-actions { display: flex; gap: 8px; flex-shrink: 0; }
 
-/* 文件分类筛选（08 三大类 + ②′ 上传留存） */
-.cat-filter { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; padding: 10px 4px 12px; border-bottom: 1px solid var(--border); margin-bottom: 4px; }
-.cat-filter-t { font-size: 12px; font-weight: 700; color: var(--text-2); margin-right: 2px; }
-.cat-filter-tip { font-size: 11px; color: var(--text-3); margin-left: auto; }
-.cat-pill { font-size: 12px; padding: 5px 11px; border-radius: 16px; border: 1px solid var(--border); background: #fff; color: var(--text-2); cursor: pointer; transition: .12s; }
-.cat-pill b { font-weight: 700; margin-left: 3px; opacity: .75; }
-.cat-pill:hover:not(.on) { border-color: var(--brand-500); color: var(--brand-600); }
-.cat-pill.on { background: var(--brand-500); border-color: var(--brand-500); color: #fff; }
-/* 行内/预览类别标签 */
-.cat { font-size: 11px; padding: 2px 8px; border-radius: 8px; white-space: nowrap; }
-.cat-blue { background: var(--brand-100); color: var(--brand-600); }
-.cat-green { background: #F0FDF4; color: #15803D; }
-.cat-amber { background: #FFFBEB; color: #B45309; }
-.cat-red { background: var(--danger-bg); color: #B91C1C; }
-.cat-post { background: #F3E8FF; color: #7C3AED; }
 .list-toolbar { display: flex; align-items: center; gap: 14px; padding: 10px 4px; border-bottom: 1px solid var(--border); margin-bottom: 8px; }
 .selall-cb { font-size: 13px; font-weight: 600; }
 
@@ -1763,10 +1068,6 @@ function locateItem(boxNo, name) {
 .st-wait { background: #fff4e0; color: #b26a00; }
 .st-done { background: #F0FDF4; color: #1a8a4a; }
 .st-print { background: var(--brand-100); color: var(--brand-600); }
-.src-tag { font-size: 11px; padding: 1px 8px; border-radius: 9px; font-weight: 600; white-space: nowrap; margin-left: 6px; }
-.src-1 { background: #fef3f2; color: #b42318; }
-.src-2 { background: #eff6ff; color: #1d4ed8; }
-.src-3 { background: #fdf4ff; color: #a21caf; }
 .ops { flex-shrink: 0; }
 .empty-state { text-align: center; padding: 50px; color: var(--text-3); }
 .empty-state .big { font-size: 40px; margin-bottom: 12px; }
@@ -1782,7 +1083,7 @@ function locateItem(boxNo, name) {
 .up-size { color: var(--text-3); }
 .up-foot { justify-content: flex-end; }
 
-.pdf-mask { position: fixed; inset: 0; background: rgba(20,28,43,.5); display: none; align-items: center; justify-content: center; z-index: 12000; }
+.pdf-mask { position: fixed; inset: 0; background: rgba(20,28,43,.5); display: none; align-items: center; justify-content: center; z-index: 200; }
 .pdf-mask.show { display: flex; }
 .pdf-wrap { background: #fff; width: 820px; max-width: 96vw; max-height: 92vh; display: flex; flex-direction: column; border-radius: 6px; overflow: hidden; box-shadow: 0 8px 40px rgba(0,0,0,.3); }
 .pdf-toolbar { display: flex; align-items: center; gap: 10px; padding: 12px 16px; background: #F1F5F9; border-bottom: 1px solid var(--border); }
@@ -1910,95 +1211,4 @@ function locateItem(boxNo, name) {
   border-top: 1px solid var(--border); background: #FAFBFC; }
 .sd-foot span { flex: 1; font-size: 11.5px; color: var(--text-3); line-height: 1.5; }
 .sd-foot a { color: var(--brand-600); font-weight: 600; }
-
-/* ===== 管理人员档案 · 按人分类的一人一档 PDF 集合 ===== */
-.ma-panel, .rs-panel { width: min(960px, 94vw); }
-.ma-stat { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; padding: 10px 20px;
-  background: #F8FAFC; border-bottom: 1px solid var(--border); }
-.ma-stat span { font-size: 12px; color: var(--text-2); background: #fff; border: 1px solid var(--border);
-  border-radius: 8px; padding: 5px 10px; }
-.ma-stat b { color: var(--brand-700); font-size: 14px; }
-.ma-stat b.green { color: #15803D; }
-.ma-stat b.orange { color: #C2410C; }
-.ma-stat .el-button { margin-left: auto; }
-.ma-body, .rs-body { padding: 16px 20px; }
-.ma-card { border: 1px solid var(--border); border-radius: 10px; margin-bottom: 12px; background: #fff; overflow: hidden; }
-.ma-card-h { display: flex; align-items: center; gap: 12px; padding: 12px 14px; cursor: pointer; }
-.ma-card-h:hover { background: #FAFCFF; }
-.ma-avatar { width: 36px; height: 36px; flex: 0 0 36px; border-radius: 50%; background: var(--brand-600, #2563EB);
-  color: #fff; display: flex; align-items: center; justify-content: center; font-size: 16px; font-weight: 700; }
-.ma-id { min-width: 180px; }
-.ma-nm { font-size: 14px; font-weight: 700; }
-.ma-post { font-size: 11px; color: var(--text-3); font-weight: 400; margin-left: 6px; }
-.ma-sub { font-size: 11px; color: var(--text-3); margin-top: 3px; }
-.ma-focus { flex: 1; display: flex; flex-wrap: wrap; gap: 6px; }
-.ma-chip { font-size: 11px; padding: 3px 8px; border-radius: 10px; background: #FEF3C7; color: #92400E; }
-.ma-chip.ok { background: #DCFCE7; color: #15803D; }
-.ma-badge { font-size: 11px; padding: 3px 9px; border-radius: 10px; background: #F1F5F9; color: #64748B; white-space: nowrap; }
-.ma-badge.on { background: #DCFCE7; color: #15803D; }
-.ma-exp { font-size: 11.5px; color: var(--brand-600); white-space: nowrap; }
-.ma-card-ops { display: flex; align-items: center; gap: 8px; padding: 0 14px 12px 62px; }
-.ma-time { font-size: 11px; color: var(--text-3); margin-left: auto; }
-.ma-detail { border-top: 1px dashed var(--border); padding: 10px 14px 14px; background: #FAFCFF; }
-.ma-sec-t { font-size: 12px; font-weight: 700; color: var(--brand-700); margin: 8px 0 6px; }
-.ma-item { display: flex; align-items: center; gap: 10px; padding: 5px 0; border-bottom: 1px dashed #E2E8F0; font-size: 11.5px; }
-.ma-code { width: 92px; color: var(--text-3); font-family: monospace; }
-.ma-grp { width: 80px; color: var(--text-2); }
-.ma-inm { flex: 1; }
-.ma-inm.clickable { color: var(--brand-700); cursor: pointer; }
-.ma-inm.clickable:hover { text-decoration: underline; }
-.ma-st { color: #B91C1C; font-weight: 600; }
-.ma-st.ok { color: #15803D; }
-.ma-empty { font-size: 11.5px; color: var(--text-3); padding: 6px 0; }
-
-/* ===== 盒十一：从业人员一人一档 + 一车一档 ===== */
-.crew-panel { padding: 4px 0 12px; }
-.crew-tabs { display: flex; align-items: center; gap: 8px; padding: 6px 2px 14px; flex-wrap: wrap; }
-.crew-tab { font-size: 13px; padding: 7px 16px; border: 1px solid var(--border); border-radius: 8px;
-  background: #fff; color: var(--text-2); cursor: pointer; }
-.crew-tab b { color: var(--brand-700); margin-left: 4px; }
-.crew-tab.on { background: var(--brand-600); border-color: var(--brand-600); color: #fff; }
-.crew-tab.on b { color: #fff; }
-.crew-tip { font-size: 11.5px; color: var(--text-3); margin-left: auto; }
-.crew-body { display: flex; flex-direction: column; gap: 12px; }
-.crew-card { border: 1px solid var(--border); border-radius: 10px; background: #fff; overflow: hidden; }
-.crew-card-h { display: flex; align-items: center; gap: 12px; padding: 12px 14px; cursor: pointer; }
-.crew-card-h:hover { background: #F8FAFC; }
-.crew-card-h .ma-post { font-size: 11px; color: var(--text-3); font-weight: 400; margin-left: 6px; }
-.crew-card-h .ma-exp { margin-left: auto; font-size: 11.5px; color: var(--brand-700); }
-.crew-detail { padding: 4px 16px 14px; border-top: 1px dashed var(--border); background: #FCFDFE; }
-.crew-detail-bar { padding: 10px 0 4px; }
-.crew-item { display: flex; align-items: center; gap: 10px; padding: 6px 0; border-bottom: 1px dashed #E2E8F0; font-size: 11.5px; }
-.crew-item .ma-code { width: 64px; color: var(--text-3); font-family: monospace; }
-.crew-item .ma-inm { flex: 1; }
-.crew-file { font-size: 11.5px; color: var(--brand-700); display: inline-flex; align-items: center; gap: 3px;
-  padding: 2px 9px; border: 1px solid var(--brand-200); border-radius: 7px; background: var(--brand-50); }
-.crew-file.off { color: var(--text-3); border-color: var(--border); background: #F8FAFC; }
-
-/* ===== 安全生产责任书 · 上下级双签 ===== */
-.rs-rule { display: flex; align-items: flex-start; gap: 8px; padding: 10px 20px;
-  background: #FFFBEB; border-bottom: 1px solid #FDE68A; font-size: 11.5px; color: #78350F; line-height: 1.7; }
-.rs-rule b { color: #92400E; }
-.rs-card { border: 1px solid var(--border); border-radius: 10px; margin-bottom: 12px; overflow: hidden; }
-.rs-rel { display: flex; align-items: center; gap: 10px; padding: 12px 14px; background: #F8FAFC; }
-.rs-side { display: flex; flex-direction: column; min-width: 160px; }
-.rs-lbl { font-size: 10.5px; color: var(--text-3); }
-.rs-side b { font-size: 13px; }
-.rs-side.sup b { color: var(--brand-700); }
-.rs-side.sub b { color: #0F172A; }
-.rs-arrow { font-size: 11.5px; color: var(--text-3); white-space: nowrap; }
-.rs-status { margin-left: auto; font-size: 11px; padding: 3px 9px; border-radius: 10px; white-space: nowrap;
-  background: #F1F5F9; color: #64748B; }
-.rs-status.st-partial { background: #FEF3C7; color: #92400E; }
-.rs-status.st-effective { background: #DCFCE7; color: #15803D; }
-.rs-status.st-void { background: #FEE2E2; color: #B91C1C; }
-.rs-signs { display: flex; align-items: center; gap: 14px; padding: 8px 14px; border-top: 1px dashed var(--border); }
-.rs-sign { font-size: 11.5px; color: #B91C1C; display: flex; align-items: center; gap: 2px; }
-.rs-sign.ok { color: #15803D; }
-.rs-rev { font-size: 11px; color: var(--text-3); margin-left: auto; }
-.rs-ops { display: flex; align-items: center; gap: 8px; padding: 0 14px 10px; }
-.rs-history { max-height: 420px; overflow: auto; }
-.rs-hrow { display: flex; align-items: center; gap: 10px; padding: 8px 4px; border-bottom: 1px dashed #E2E8F0; font-size: 11.5px; }
-.rs-hrow > span:nth-child(2) { flex: 1; }
-.rs-hrow .rs-status { margin-left: 0; }
 </style>
