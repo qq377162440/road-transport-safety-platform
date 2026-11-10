@@ -40,6 +40,7 @@ const CLOSED_LOOP_PAGES = {
   institution: () => import('@/views/biz/institution/InstitutionModule.vue'),
   check: () => import('@/views/biz/check/CheckModule.vue'),
   danger: () => import('@/views/biz/danger/DangerModule.vue'),
+  meeting: () => import('@/views/biz/meeting/MeetingModule.vue'),
 }
 const dynamicChildren = bizModules.map((m) => ({
   path: `biz/${m.code}`,

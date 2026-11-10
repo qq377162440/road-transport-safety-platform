@@ -1,0 +1,219 @@
+{
+  "module": "B6 安全会议",
+  "total": 42,
+  "passed": 42,
+  "failed": 0,
+  "results": [
+    {
+      "name": "V23 迁移后 overview 返回 code=0",
+      "ok": true,
+      "detail": "0"
+    },
+    {
+      "name": "公司名正确",
+      "ok": true,
+      "detail": "佛山市高明高洲燃气有限公司"
+    },
+    {
+      "name": "状态机含 5 节点（草稿/未开始/进行中/已结束/已归档）",
+      "ok": true,
+      "detail": "['草稿', '未开始', '进行中', '已结束', '已归档']"
+    },
+    {
+      "name": "两类会议字典（领导小组/月度）",
+      "ok": true,
+      "detail": "['安全生产领导小组会议', '安全生产月度会议']"
+    },
+    {
+      "name": "可选项含从业人员（用于主持人/记录人/参会人）",
+      "ok": true,
+      "detail": "persons=4"
+    },
+    {
+      "name": "创建会议成功（草稿）",
+      "ok": true,
+      "detail": "2120024439476793344"
+    },
+    {
+      "name": "参会人按多选写入（3 人）",
+      "ok": true,
+      "detail": "3"
+    },
+    {
+      "name": "创建即生成通知（通知标题含“通知”）",
+      "ok": true,
+      "detail": "关于召开2026年11月安全生产工作会议的通知"
+    },
+    {
+      "name": "详情状态=草稿",
+      "ok": true,
+      "detail": "draft"
+    },
+    {
+      "name": "参会人列表=3",
+      "ok": true,
+      "detail": "3"
+    },
+    {
+      "name": "空会议记录占位已生成",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "发布通知 → 未开始",
+      "ok": true,
+      "detail": "published"
+    },
+    {
+      "name": "发布后通知标题非空",
+      "ok": true,
+      "detail": "关于召开2026年11月安全生产工作会议的通知"
+    },
+    {
+      "name": "非草稿状态发布被拦截",
+      "ok": true,
+      "detail": "仅草稿可发布，当前 未开始"
+    },
+    {
+      "name": "司机签到成功（signed）",
+      "ok": true,
+      "detail": "signed"
+    },
+    {
+      "name": "补签成功并标记来源 replenish",
+      "ok": true,
+      "detail": "replenish"
+    },
+    {
+      "name": "标请假成功（leave）",
+      "ok": true,
+      "detail": "leave"
+    },
+    {
+      "name": "签到状态正确（signed/leave；补签含来源记录）",
+      "ok": true,
+      "detail": "{\"8808000000000003\": \"signed\", \"8808000000000004\": \"signed\", \"8808000000000002\": \"leave\"}"
+    },
+    {
+      "name": "签到表按岗位固定顺序排序（安全管理员→...→驾驶员）",
+      "ok": true,
+      "detail": "ok"
+    },
+    {
+      "name": "保存会议纪要成功",
+      "ok": true,
+      "detail": "True"
+    },
+    {
+      "name": "归档完整度四要素齐全（rate=100）",
+      "ok": true,
+      "detail": "{'record': True, 'sign': True, 'photo': True, 'ppt': True, 'rate': '100'}"
+    },
+    {
+      "name": "纪要内容/照片/PPT 已落库",
+      "ok": true,
+      "detail": "['http://x/p1.jpg', 'http://x/p2.jpg']"
+    },
+    {
+      "name": "过去会议按时间自动推进到 已结束",
+      "ok": true,
+      "detail": "finished"
+    },
+    {
+      "name": "已结束会议取消被拦截",
+      "ok": true,
+      "detail": "仅草稿/未开始状态可取消，当前 已结束"
+    },
+    {
+      "name": "草稿会议可取消",
+      "ok": true,
+      "detail": "cancelled"
+    },
+    {
+      "name": "归档成功 → archived",
+      "ok": true,
+      "detail": "S01"
+    },
+    {
+      "name": "归档落入盒三·安全生产会议（领导小组子项 S01）",
+      "ok": true,
+      "detail": "GENERAL_BOX3_S01\tGENERAL_BOX3"
+    },
+    {
+      "name": "归档 PDF 字节非空",
+      "ok": true,
+      "detail": "16705"
+    },
+    {
+      "name": "单场会议四段式 PDF 真实文件（%PDF 头）",
+      "ok": true,
+      "detail": "len=24548"
+    },
+    {
+      "name": "会议台账 PDF 真实文件",
+      "ok": true,
+      "detail": "len=22329"
+    },
+    {
+      "name": "企业账号纠错被 403 拦截",
+      "ok": true,
+      "detail": "403"
+    },
+    {
+      "name": "服务商/超管可纠错并落库",
+      "ok": true,
+      "detail": "archived"
+    },
+    {
+      "name": "纠错后状态已变更",
+      "ok": true,
+      "detail": "archived"
+    },
+    {
+      "name": "小程序预留 /expiring 返回列表",
+      "ok": true,
+      "detail": "total=3"
+    },
+    {
+      "name": "小程序预留 /mine 返回我的会议",
+      "ok": true,
+      "detail": "total=5"
+    },
+    {
+      "name": "既有 /mini/meeting/list 仍可访问（小程序不改动）",
+      "ok": true,
+      "detail": "code=0"
+    },
+    {
+      "name": "模块间联动引用计数正常",
+      "ok": true,
+      "detail": "['B1 人员基础信息', 'B7 电子档案柜']"
+    },
+    {
+      "name": "统计含完成率与签到数",
+      "ok": true,
+      "detail": "{'total': '6', 'draft': '0', 'published': '2', 'ongoing': '0', 'finished': '1', 'archived': '2', 'cancelled': '1', 'open': '4', 'completionRate': 33.3, 'signed': '2', 'attendees': '10'}"
+    },
+    {
+      "name": "B6 专用页含「安全会议管理」与状态机节点",
+      "ok": true,
+      "detail": "ok"
+    },
+    {
+      "name": "页面含「两类会议」「完成率」标签",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "详情抽屉展示会议通知（四段式第一段）",
+      "ok": true,
+      "detail": "ok"
+    },
+    {
+      "name": "UI 控制台无 JS 错误",
+      "ok": true,
+      "detail": "errs=none"
+    }
+  ],
+  "time": "2026-11-10 13:23:16"
+}
