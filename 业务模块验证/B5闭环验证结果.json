@@ -1,0 +1,367 @@
+{
+  "module": "B5 隐患排查治理",
+  "total": 72,
+  "passed": 72,
+  "results": [
+    {
+      "name": "三类账号登录成功（企业/服务商/超管）",
+      "ok": true,
+      "detail": "tokens=3"
+    },
+    {
+      "name": "V22 迁移成功（闭环字段 + 4 张新表）",
+      "ok": true,
+      "detail": "success=1"
+    },
+    {
+      "name": "新表 danger_check_plan 已建立",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "新表 danger_check_item 已建立",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "新表 danger_flow_log 已建立",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "新表 danger_remind 已建立",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "danger_record 闭环冗余字段已补齐（check_plan_id/deadline/remind_count/closed_time）",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "概览返回统计/状态机/排查类型/清单/批次/隐患/督办/归档/联动",
+      "ok": true,
+      "detail": "company=佛山市高明高洲燃气有限公司 records=4"
+    },
+    {
+      "name": "状态机为 待整改 → 整改中 → 待验收 → 已闭环",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "8 类排查类型字典齐全（含三检异常=日级别隐患排查）",
+      "ok": true,
+      "detail": "['check_daily', 'driver_report', 'monthly_full', 'monthly_major', 'holiday_pre', 'emergency_supply', 'season_risk', 'other_plan']"
+    },
+    {
+      "name": "/check-types 独立字典接口可读",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "系统级清单范本惰性初始化（tenant_id=0，按排查类型区分）",
+      "ok": true,
+      "detail": "system=8 total=8"
+    },
+    {
+      "name": "月度重大事故隐患清单含 6 项一票否决重大事故隐患项",
+      "ok": true,
+      "detail": "items=6"
+    },
+    {
+      "name": "月度全面清单 = 6 重大 + 基础管理项（分两类展示）",
+      "ok": true,
+      "detail": "items=16"
+    },
+    {
+      "name": "范本按排查类型筛选可用",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "系统级范本不可修改（复制为企业自定义后才可编辑）",
+      "ok": true,
+      "detail": "{'ok': False, 'msg': '系统级范本不可修改，请复制为企业自定义范本'}"
+    },
+    {
+      "name": "企业可复制系统范本为自定义范本",
+      "ok": true,
+      "detail": "{'ok': True, 'id': '2120011936730525696', 'items': 1, 'copiedFrom': '2120009392348278784'}"
+    },
+    {
+      "name": "企业自定义范本可编辑并落库",
+      "ok": true,
+      "detail": "{'id': '2120011936730525696', 'ok': True}"
+    },
+    {
+      "name": "范本详情解析出检查项（含 major 标记）",
+      "ok": true,
+      "detail": "[{'name': '自定义项2', 'category': '基础管理', 'standard': '标准2', 'major': True}]"
+    },
+    {
+      "name": "发起排查自动带出系统级清单范本并建立批次",
+      "ok": true,
+      "detail": "{'ok': True, 'planId': '2120011937032515584', 'planNo': 'PC-202611-5584', 'items': 6, 'templateName': '月度重大事故隐患排查清单（专项）'}"
+    },
+    {
+      "name": "排查批次详情含逐项判定清单（序号/类别/项目/标准/结果）",
+      "ok": true,
+      "detail": "items=6"
+    },
+    {
+      "name": "逐项判定不合格自动联动生成隐患单 + 整改单（H6，无需二次录入）",
+      "ok": true,
+      "detail": "{'dangerTotal': 1, 'ok': True, 'problemTotal': 1, 'judged': 1, 'created': 1}"
+    },
+    {
+      "name": "不合格项回写隐患单 ID 且自动标记重大隐患",
+      "ok": true,
+      "detail": "[{'id': '2120011937166733312', 'tenant_id': '5001', 'plan_id': '2120011937032515584', 'category': '重大事故隐患排查项', 'item_name': '特殊天气', 'standard': '经营地或运营线路途经地已发布台风橙色及以上预警，暴雨、暴雪、冰雹、大雾、沙尘暴、大风、道路结冰红色预警，或地质灾害气象风险红色预警等不具备安全通行条件时，是否执行停运指令或应急预案要求仍擅自安排运输作业', 'is_major': 1, 'result': 'fail', 'remark': '特殊天气仍安排运输', 'danger_id': '2120011937787490304', 'sort_no': 1, 'created_at': '2026-11-10T12:33:28', 'updated_at': '2026-11-10T12:33:29', 'deleted': 0, 'dangerId': '2120011937787490304'}]"
+    },
+    {
+      "name": "一键全部合格批量判定生效",
+      "ok": true,
+      "detail": "{'dangerTotal': 1, 'ok': True, 'problemTotal': 1, 'judged': 5, 'created': 0}"
+    },
+    {
+      "name": "排查批次可完成（done）",
+      "ok": true,
+      "detail": "{'status': 'done', 'ok': True}"
+    },
+    {
+      "name": "统一登记入口创建隐患并自动联动生成整改单（H6）",
+      "ok": true,
+      "detail": "{'ok': True, 'dangerId': '2120011938911563776', 'rectifyNo': 'ZG-20261110-3776', 'status': 'pending', 'note': '已自动联动生成整改单（H6）'}"
+    },
+    {
+      "name": "整改单编号格式 ZG-YYYYMMDD-xxxx",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "隐患详情返回闭环五要素 + 整改单 + 验收 + 时间线 + 督办",
+      "ok": true,
+      "detail": "{'dangerInfo': 'B5验证-左后轮胎纹磨损接近限值（较大）', 'finder': '', 'rectifyInfo': '', 'responsible': '', 'acceptor': ''}"
+    },
+    {
+      "name": "登记即自动生成整改单（H6 五要素整改情况载体存在）",
+      "ok": true,
+      "detail": "rectifies=1"
+    },
+    {
+      "name": "流转日志记录 create 动作",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "未下发整改直接提交整改反馈被拦截",
+      "ok": true,
+      "detail": "{'ok': False, 'msg': '仅整改中/超期状态可提交整改反馈，当前 待整改'}"
+    },
+    {
+      "name": "未提交整改反馈直接验收被拦截",
+      "ok": true,
+      "detail": "{'ok': False, 'msg': '仅待验收状态可验收，当前 待整改'}"
+    },
+    {
+      "name": "非法流转不改变隐患状态（仍为 pending）",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "下发整改 → 整改中，整改单更新同一张不重复插入",
+      "ok": true,
+      "detail": "{'deadline': '2099-02-01T00:00', 'status': 'rectifying', 'ok': True}"
+    },
+    {
+      "name": "下发整改后仍只有 1 张整改单（复用 H6 联动单）",
+      "ok": true,
+      "detail": "rectifies=1"
+    },
+    {
+      "name": "整改反馈提交凭证 → 待验收",
+      "ok": true,
+      "detail": "{'status': 'verify', 'ok': True}"
+    },
+    {
+      "name": "验收不通过 → 退回整改中（可再次整改）",
+      "ok": true,
+      "detail": "{'ok': True, 'status': 'rectifying', 'closed': False}"
+    },
+    {
+      "name": "验收通过 → 已闭环销号，累计 2 条验收记录（退回+通过）",
+      "ok": true,
+      "detail": "{'ok': True, 'status': 'closed', 'closed': True}"
+    },
+    {
+      "name": "闭环写入 closed_time 且流转日志含 create/rectify/feedback/reject/accept",
+      "ok": true,
+      "detail": "['create', 'rectify', 'feedback', 'reject', 'feedback', 'accept']"
+    },
+    {
+      "name": "超过整改期限未闭环自动标记 overdue",
+      "ok": true,
+      "detail": "overdue"
+    },
+    {
+      "name": "超期自动生成督办记录并累计督办次数",
+      "ok": true,
+      "detail": "remindCount=1"
+    },
+    {
+      "name": "人工督办可累加次数并留痕",
+      "ok": true,
+      "detail": "{'remindCount': 2, 'ok': True}"
+    },
+    {
+      "name": "督办看板返回未闭环/超期统计",
+      "ok": true,
+      "detail": "{'total': '6', 'overdue': '1'}"
+    },
+    {
+      "name": "三检异常显式入口按 refId 幂等（重复调用不产生重复隐患单）",
+      "ok": true,
+      "detail": "{'dangerId': '2120011942216675328', 'duplicated': False, 'ok': True} / {'dangerId': '2120011942216675328', 'duplicated': True, 'ok': True}"
+    },
+    {
+      "name": "三检异常隐患 check_type=check_daily 且自动带整改单",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "闭环率实时统计（closed/total，0~100）",
+      "ok": true,
+      "detail": "12.5"
+    },
+    {
+      "name": "隐患列表按状态筛选可用",
+      "ok": true,
+      "detail": "count=1"
+    },
+    {
+      "name": "隐患列表按排查类型筛选可用",
+      "ok": true,
+      "detail": "count=2"
+    },
+    {
+      "name": "隐患列表按名称/车牌模糊搜索可用",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "企业账号不可纠错隐患数据（H4，403）",
+      "ok": true,
+      "detail": "403"
+    },
+    {
+      "name": "服务商+目标企业可纠错并写流转日志",
+      "ok": true,
+      "detail": "{'code': 0, 'msg': 'ok', 'data': {'status': 'closed', 'ok': True}}"
+    },
+    {
+      "name": "隐患闭环单 PDF 为真实 %PDF- 文件",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "排查记录表 PDF 为真实 %PDF- 文件",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "隐患排查治理台账 PDF 为真实 %PDF- 文件",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "一键归档生成排查记录 + 治理台账两份 PDF 成品",
+      "ok": true,
+      "detail": "box=GENERAL_BOX8 items=2"
+    },
+    {
+      "name": "归档盒按普货/危货自动选择 GENERAL_BOX8 / DANGER_BOX9",
+      "ok": true,
+      "detail": "GENERAL_BOX8"
+    },
+    {
+      "name": "归档写入 archive_item + archive_pdf 且落到盒八子目录",
+      "ok": true,
+      "detail": "pdf=2 item=2"
+    },
+    {
+      "name": "重复归档幂等（覆盖同版本 PDF，不新增归档项）",
+      "ok": true,
+      "detail": "pdf=2 item=2"
+    },
+    {
+      "name": "归档项在概览 archives 可见",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "options 提供 B1 人员 / B2 车辆 / B3 已发布制度 / 排查类型 / 隐患等级",
+      "ok": true,
+      "detail": "persons=4 vehicles=2"
+    },
+    {
+      "name": "references 汇总 B4 三检 / B2 车辆 / B1 人员 / B3 制度 / B7 归档 联动引用",
+      "ok": true,
+      "detail": "['check', 'vehicle', 'person', 'institution', 'archive']"
+    },
+    {
+      "name": "小程序仅预留 expiring / mine 两个聚合 GET 接口",
+      "ok": true,
+      "detail": "expiring=7 mine=6"
+    },
+    {
+      "name": "未新增/改动小程序端页面（仅后端聚合接口）",
+      "ok": true,
+      "detail": "mobile改动=[]"
+    },
+    {
+      "name": "B5 专用页可打开且标题/统计卡/状态机渲染",
+      "ok": true,
+      "detail": "cards=4"
+    },
+    {
+      "name": "排查清单范本预览列结构与 8 类排查类型渲染",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "排查批次 Tab 渲染出测试批次",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "清单范本 Tab 渲染系统级范本（含重大项统计）",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "隐患详情抽屉与 6 个 Tab 可打开（隐患情况/整改单/验收/时间线/督办/PDF归档）",
+      "ok": true,
+      "detail": "tabs=10"
+    },
+    {
+      "name": "详情展示闭环五要素",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "抽屉内逐条操作条按钮齐全（整改/反馈/验收/督办/纠错/PDF）",
+      "ok": true,
+      "detail": "buttons=9"
+    },
+    {
+      "name": "发起检查弹窗可选排查类型并自动带出清单范本",
+      "ok": true,
+      "detail": "selects=3"
+    },
+    {
+      "name": "前端无控制台错误",
+      "ok": true,
+      "detail": "[]"
+    }
+  ]
+}

@@ -1,10 +1,11 @@
-PASS 外链首页可打开（跨境隧道） | 9.7s / 道路运输安全生产管理平台
-PASS 自动登录进入企业工作台（无登录页拦截） | https://nsw-improvement-heating-template.trycloudflare.com/d
+PASS 平台域名外链首页可打开 | 3.9s / 道路运输安全生产管理平台
+PASS sharecode 作为顶层参数保留（第二个 ? 会被吞进 redirect 导致 403） | https://a5a81b24edcfb4533.app.workbuddy.host/dashboard?sharecode=7OIKNKB6FA
+PASS 自动登录进入企业工作台（无登录页拦截） | https://a5a81b24edcfb4533.app.workbuddy.host/dashboard?share
 PASS 左侧菜单与业务模块渲染 | 菜单关键字命中
-PASS 电子档案柜页在外链下正常渲染 | https://nsw-improvement-heating-template.trycloudflare.com/a
+PASS 电子档案柜页在外链下正常渲染 | https://a5a81b24edcfb4533.app.workbuddy.host/archive?shareco
 PASS 当前应用范本套联动条可见 | 
 PASS 安全管理架构页显示「安全员」与真实人名 | 
-PASS 小程序端首页在外链下正常渲染 | https://nsw-improvement-heating-template.trycloudflare.com/m
+PASS 小程序端首页在外链下正常渲染 | https://a5a81b24edcfb4533.app.workbuddy.host/m/home?sharecod
 PASS 无控制台错误 | 
 
-8/8 passed
+9/9 passed
