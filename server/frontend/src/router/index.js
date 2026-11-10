@@ -41,6 +41,7 @@ const CLOSED_LOOP_PAGES = {
   check: () => import('@/views/biz/check/CheckModule.vue'),
   danger: () => import('@/views/biz/danger/DangerModule.vue'),
   meeting: () => import('@/views/biz/meeting/MeetingModule.vue'),
+  emergency: () => import('@/views/biz/meeting/EmergencyModule.vue'),
 }
 const dynamicChildren = bizModules.map((m) => ({
   path: `biz/${m.code}`,
@@ -61,6 +62,7 @@ const routes = [
   { path: '/m/list', name: 'MobileList', component: () => import('@/views/mobile/MobileList.vue'), meta: { title: '台账记录', public: true } },
   { path: '/m/report', name: 'MobileReport', component: () => import('@/views/mobile/MobileReport.vue'), meta: { title: '上报', public: true } },
   { path: '/m/meeting', name: 'MobileMeeting', component: () => import('@/views/mobile/MobileMeeting.vue'), meta: { title: '会议签到', public: true } },
+  { path: '/m/checkin', name: 'MobileCheckin', component: () => import('@/views/mobile/MobileCheckin.vue'), meta: { title: '统一签到', public: true } },
   { path: '/m/sign', name: 'MobileSign', component: () => import('@/views/mobile/MobileSign.vue'), meta: { title: '文件签署', public: true } },
   { path: '/m/notice', name: 'MobileNotice', component: () => import('@/views/mobile/MobileNotice.vue'), meta: { title: '消息通知', public: true } },
   { path: '/m/profile', name: 'MobileProfile', component: () => import('@/views/mobile/MobileProfile.vue'), meta: { title: '个人档案', public: true } },

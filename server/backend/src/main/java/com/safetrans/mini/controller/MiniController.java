@@ -131,6 +131,24 @@ public class MiniController {
                 b.get("personName") == null ? "从业人员" : String.valueOf(b.get("personName"))));
     }
 
+    // ---- 统一签到入口（会议签到 + 演练签到，司机只看到一个"签到"）----
+    @GetMapping("/checkin/tasks")
+    public Result<List<Map<String, Object>>> checkinTasks(
+            @RequestParam(defaultValue = "0") long personId) {
+        return Result.ok(service.checkinTasks(pid(personId)));
+    }
+
+    @PostMapping("/checkin/sign")
+    public Result<Map<String, Object>> checkinSign(@RequestBody(required = false) Map<String, Object> body) {
+        Map<String, Object> b = body == null ? Map.of() : body;
+        long personId = pid(num(b.get("personId")));
+        String bizModule = b.get("bizModule") == null ? "" : String.valueOf(b.get("bizModule"));
+        long bizId = num(b.get("bizId"));
+        if (bizModule.isEmpty() || bizId == 0L) return Result.ok(Map.of("ok", false, "msg", "缺少签到对象"));
+        return Result.ok(service.unifiedCheckin(bizModule, bizId, personId,
+                b.get("signImage") == null ? "data:image/png;base64,MINI_SIGN" : String.valueOf(b.get("signImage"))));
+    }
+
     // ---- 公告 / 通知 ----
     @GetMapping("/notice/list")
     public Result<List<Map<String, Object>>> notices(

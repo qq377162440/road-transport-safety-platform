@@ -168,6 +168,7 @@ public class MiniService {
         badges.put("sign", count("SELECT COUNT(*) FROM `sign_task` WHERE `tenant_id`=? AND `deleted`=0 " +
                 "AND (`status` IS NULL OR `status`<>'signed')", t));
         badges.put("meeting", unsigned);
+        badges.put("checkin", checkinTasks(personId).size());
         badges.put("risk", count("SELECT COUNT(*) FROM `risk_card` WHERE `tenant_id`=? AND `deleted`=0", t));
         badges.put("budget", count("SELECT COUNT(*) FROM `budget_expense` WHERE `tenant_id`=? AND `deleted`=0", t));
         badges.put("credit", count("SELECT COUNT(*) FROM `credit_assess` WHERE `tenant_id`=? AND `deleted`=0", t));
@@ -343,6 +344,68 @@ public class MiniService {
                     IdWorker.getId(), t, meetingId, personId, signImage, uid());
         }
         return Map.of("meetingId", meetingId, "signed", true, "title", s(m.get("title")));
+    }
+
+    // ==================================================================
+    // 三·五、统一签到入口（会议签到 + 演练签到，司机只看到一个"签到"）
+    // ==================================================================
+
+    /** 演练签到写库：写 emergency_drill_sign（统一签到来源） */
+    @Transactional
+    public Map<String, Object> signDrill(long drillId, long personId, String signImage) {
+        long t = entId();
+        Map<String, Object> d = row("SELECT `id`,`drill_name` FROM `emergency_drill` WHERE `id`=? AND `tenant_id`=? AND `deleted`=0", drillId, t);
+        if (d == null) throw new BizException("演练不存在");
+        long n = jdbc.update("UPDATE `emergency_drill_sign` SET `sign_status`='signed',`sign_time`=NOW(),`sign_source`='mini'," +
+                        "`sign_image`=?,`updated_at`=NOW() WHERE `drill_id`=? AND `user_id`=? AND `tenant_id`=? AND `deleted`=0",
+                signImage, drillId, personId, t);
+        if (n == 0) {
+            jdbc.update("INSERT INTO `emergency_drill_sign` " +
+                            "(`id`,`tenant_id`,`drill_id`,`user_id`,`sign_status`,`sign_time`,`sign_source`,`sign_image`,`created_at`,`deleted`) " +
+                            "VALUES (?,?,?,?,'signed',NOW(),'mini',?,NOW(),0)",
+                    IdWorker.getId(), t, drillId, personId, signImage);
+        }
+        return Map.of("drillId", drillId, "signed", true, "title", s(d.get("drill_name")));
+    }
+
+    /** 统一签到：按 bizModule 路由到会议/演练签到 */
+    @Transactional
+    public Map<String, Object> unifiedCheckin(String bizModule, long bizId, long personId, String signImage) {
+        if ("meeting".equals(bizModule)) return signMeeting(bizId, personId, signImage);
+        if ("drill".equals(bizModule)) return signDrill(bizId, personId, signImage);
+        throw new BizException("未知签到类型：" + bizModule);
+    }
+
+    /** 聚合当前用户待签任务（会议 + 演练），供小程序统一签到页展示 */
+    public List<Map<String, Object>> checkinTasks(long personId) {
+        List<Map<String, Object>> out = new ArrayList<>();
+        // 会议签到（已发布、未签）
+        for (Map<String, Object> m : meetings(personId)) {
+            if ("signed".equals(s(m.get("sign_status")))) continue;
+            Map<String, Object> t = new LinkedHashMap<>();
+            t.put("bizModule", "meeting");
+            t.put("bizId", String.valueOf(m.get("id")));
+            t.put("title", s(m.get("title")));
+            t.put("subTitle", "会议签到 · " + s(m.get("location")));
+            t.put("deadline", s(m.get("start_time")));
+            t.put("status", "pending");
+            out.add(t);
+        }
+        // 演练签到（进行中、未签）
+        for (Map<String, Object> d : list("SELECT d.`id`,d.`drill_name`,d.`drill_date` FROM `emergency_drill` d " +
+                "WHERE d.`tenant_id`=? AND d.`status`='executing' AND d.`deleted`=0 " +
+                "AND NOT EXISTS(SELECT 1 FROM `emergency_drill_sign` s WHERE s.`drill_id`=d.`id` AND s.`user_id`=? AND s.`tenant_id`=? AND s.`deleted`=0 AND s.`sign_status`='signed') " +
+                "ORDER BY d.`id` DESC LIMIT 20", entId(), personId, entId())) {
+            Map<String, Object> t = new LinkedHashMap<>();
+            t.put("bizModule", "drill");
+            t.put("bizId", String.valueOf(d.get("id")));
+            t.put("title", s(d.get("drill_name")));
+            t.put("subTitle", "演练签到");
+            t.put("deadline", s(d.get("drill_date")));
+            t.put("status", "pending");
+            out.add(t);
+        }
+        return out;
     }
 
     // ==================================================================

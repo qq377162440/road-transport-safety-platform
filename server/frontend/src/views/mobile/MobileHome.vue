@@ -51,7 +51,7 @@ const workerGrid = [
   { ico: '▤', name: '三检记录', desc: '我的填报', path: '/m/list', q: { type: 'checks' }, badge: 'checks' },
   { ico: '修', name: '报修车', desc: '车辆故障', path: '/m/report', q: { type: 'repair' }, badge: 'repair' },
   { ico: '!', name: '报隐患', desc: '拍照上报', path: '/m/report', q: { type: 'danger' }, badge: 'danger' },
-  { ico: '✓', name: '会议签到', desc: '一键签到', path: '/m/meeting', badge: 'meeting' },
+  { ico: '✓', name: '统一签到', desc: '会议/演练一键签', path: '/m/checkin', badge: 'checkin' },
   { ico: '✎', name: '文件签署', desc: '待签制度', path: '/m/sign', badge: 'sign' },
   { ico: '★', name: '查考核', desc: '奖惩记录', path: '/m/list', q: { type: 'credit' } },
   { ico: '◇', name: '风险辨识', desc: '岗位风险', path: '/m/list', q: { type: 'risk' }, badge: 'risk' },
