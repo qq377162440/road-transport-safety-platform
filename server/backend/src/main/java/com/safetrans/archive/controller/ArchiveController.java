@@ -3,8 +3,11 @@ package com.safetrans.archive.controller;
 import com.safetrans.archive.entity.ArchiveItem;
 import com.safetrans.archive.entity.ArchivePdf;
 import com.safetrans.archive.service.ArchiveService;
+import com.safetrans.archive.service.CrewArchiveService;
 import com.safetrans.archive.service.ManagerArchiveService;
+import com.safetrans.archive.service.MockArchiveService;
 import com.safetrans.common.auth.RequireRole;
+import com.safetrans.common.storage.StorageService;
 import com.safetrans.common.web.Result;
 import com.safetrans.tpl.service.TplLibraryService;
 import com.safetrans.tpl.service.TplPersonResolver;
@@ -30,12 +33,38 @@ public class ArchiveController {
     private final ArchiveService archiveService;
     private final TplLibraryService tplLibraryService;
     private final ManagerArchiveService managerArchiveService;
+    private final MockArchiveService mockArchiveService;
+    private final CrewArchiveService crewArchiveService;
+    private final StorageService storage;
 
     public ArchiveController(ArchiveService archiveService, TplLibraryService tplLibraryService,
-                             ManagerArchiveService managerArchiveService) {
+                             ManagerArchiveService managerArchiveService,
+                             MockArchiveService mockArchiveService,
+                             CrewArchiveService crewArchiveService,
+                             StorageService storage) {
         this.archiveService = archiveService;
         this.tplLibraryService = tplLibraryService;
         this.managerArchiveService = managerArchiveService;
+        this.mockArchiveService = mockArchiveService;
+        this.crewArchiveService = crewArchiveService;
+        this.storage = storage;
+    }
+
+    /**
+     * 一键生成演示模拟数据（异步）：补齐人员 / 车辆，并让所有人档（14 项）与车档（C01~C13 + 证照）
+     * 都有数据；每个归档项生成一张真实样例 PDF（「身份证样例」等）上传 MinIO，file_url 可下载可预览。
+     * 立即返回 taskId，客户端用 /mock/status?taskId= 轮询进度。幂等且支持增量补齐。
+     */
+    @PostMapping("/mock/seed")
+    public Result<Map<String, Object>> mockSeed() {
+        return Result.ok(mockArchiveService.seed());
+    }
+
+    /** 查询模拟数据生成进度（不传 taskId 取最近一次） */
+    @GetMapping("/mock/status")
+    public Result<Map<String, Object>> mockStatus(
+            @RequestParam(value = "taskId", required = false) String taskId) {
+        return Result.ok(mockArchiveService.seedStatus(taskId));
     }
 
     /**
@@ -65,6 +94,24 @@ public class ArchiveController {
             personId = Long.parseLong(String.valueOf(b.get("personId")));
         }
         return Result.ok(managerArchiveService.generate(year, personId));
+    }
+
+    /**
+     * 盒十一「从业人员一人一档」总览：驾驶员 / 押运员等一线从业人员逐人列出其一人一档 14 项
+     * （person_archive_item，带 person_archive_dict 名称）与证照（person_doc），每项含 file_url。
+     */
+    @GetMapping("/employee-archive/overview")
+    public Result<Map<String, Object>> employeeArchiveOverview() {
+        return Result.ok(crewArchiveService.employeeOverview());
+    }
+
+    /**
+     * 盒十一「一车一档」总览：车辆逐辆列出其一车一档 13 项（vehicle_archive_item）与车辆证照
+     * （vehicle_doc），每项含 file_url。
+     */
+    @GetMapping("/vehicle-archive/overview")
+    public Result<Map<String, Object>> vehicleArchiveOverview() {
+        return Result.ok(crewArchiveService.vehicleOverview());
     }
 
     /** 责任制归档项列表 */
@@ -148,6 +195,26 @@ public class ArchiveController {
         if (lower.endsWith(".bmp")) return MediaType.valueOf("image/bmp");
         if (lower.endsWith(".txt")) return MediaType.TEXT_PLAIN;
         return MediaType.APPLICATION_OCTET_STREAM;
+    }
+
+    /**
+     * 按 MinIO 对象路径直接下载文件（用于盒十一「从业人员一人一档 / 一车一档」归档项预览）。
+     * file_url 即 MinIO 对象名（如 5001/mock/xxx.pdf），前端点击文件名即拉取该对象并内嵌预览。
+     */
+    @GetMapping("/file")
+    public ResponseEntity<byte[]> fileByPath(@RequestParam("path") String path) {
+        if (path == null || path.isBlank() || path.contains("..") || path.startsWith("/")) {
+            return ResponseEntity.badRequest().body(new byte[0]);
+        }
+        byte[] bytes = storage.download(path);
+        String fileName = path.contains("/") ? path.substring(path.lastIndexOf('/') + 1) : path;
+        String encoded = URLEncoder.encode(fileName, StandardCharsets.UTF_8).replace("+", "%20");
+        String ascii = fileName.replaceAll("[^\\x20-\\x7E]", "_");
+        return ResponseEntity.ok()
+                .header(HttpHeaders.CONTENT_DISPOSITION,
+                        "inline; filename=\"" + ascii + "\"; filename*=UTF-8''" + encoded)
+                .contentType(resolveMediaType(fileName))
+                .body(bytes);
     }
 
     /** 上传留存：把证照/保单/台账扫描件等上传至档案盒（boxNo 为数字盒号，itemTitle 为归档项标题，year 为归档年度） */
