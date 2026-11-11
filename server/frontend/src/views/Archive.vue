@@ -541,6 +541,60 @@ async function openRespHistory(row) {
   } catch (e) { ElMessage.error('读取历史版本失败') }
 }
 
+// ---- 三书签订（承诺书 / 告知书）：动态记录 ----
+// 企业视角：承诺书=公司与本人签、告知书=本人签，一次签署即生效；
+// 服务商/超管视角：从范本直接生成成品（不走签订）。
+const showTriplePanel = ref(false)
+const tripleBookType = ref('PROMISE') // PROMISE 承诺书 / NOTICE 告知书
+const tripleData = ref({ rows: [], total: 0, effective: 0, title: '', company: '' })
+const tripleBusy = ref(false)
+const tripleSigning = ref(0)
+const tripleGenerating = ref(0)
+
+const tripleBookMeta = computed(() => tripleBookType.value === 'PROMISE'
+  ? { title: '安全生产承诺书', itemCode: 'P06', desc: '与公司签订：公司盖章 + 本人签字，一次签署即生效' }
+  : { title: '岗位危害告知书', itemCode: 'P07', desc: '本人签订：本人签字即生效' })
+
+async function loadTripleOverview() {
+  const res = await request.get('/archive/triple-book/overview', {
+    params: { bookType: tripleBookType.value, year: selYear.value },
+  })
+  tripleData.value = res.data || { rows: [], total: 0, effective: 0, title: '', company: '' }
+}
+async function openTriplePanel(bookType) {
+  showManagerPanel.value = false
+  tripleBookType.value = bookType
+  showTriplePanel.value = true
+  tripleBusy.value = true
+  try { await loadTripleOverview() }
+  catch (e) { ElMessage.error('读取签订状态失败') }
+  finally { tripleBusy.value = false }
+}
+async function signTripleBook(row) {
+  tripleSigning.value = row.personId
+  try {
+    await request.post('/archive/triple-book/sign', {
+      bookType: tripleBookType.value, personId: row.personId, year: selYear.value,
+      signName: row.personName,
+    })
+    ElMessage.success(`${row.personName} 已签订并归档`)
+    await loadTripleOverview()
+    if (showManagerPanel.value || !showTriplePanel.value) { /* 保持面板 */ }
+  } catch (e) { ElMessage.error('签署失败：' + (e?.message || '请重试')) }
+  finally { tripleSigning.value = 0 }
+}
+async function generateTripleBook(row) {
+  tripleGenerating.value = row.personId
+  try {
+    await request.post('/archive/triple-book/generate', {
+      bookType: tripleBookType.value, personId: row.personId, year: selYear.value,
+    })
+    ElMessage.success(`已从范本生成 ${row.personName} 的成品并归档`)
+    await loadTripleOverview()
+  } catch (e) { ElMessage.error('生成失败：' + (e?.message || '请重试')) }
+  finally { tripleGenerating.value = 0 }
+}
+
 // ---- 上传留存 ----
 const showUpload = ref(false)
 const uploadTarget = ref(null)
@@ -1360,7 +1414,13 @@ function locateItem(boxNo, name) {
             生成全部档案册
           </el-button>
           <el-button size="small" type="warning" plain @click="openRespPanelFromManager">
-            <Icon name="edit" :size="13" /> 责任书签订管理
+            <Icon name="edit" :size="13" /> 责任书签订
+          </el-button>
+          <el-button size="small" type="warning" plain @click="openTriplePanel('PROMISE')">
+            <Icon name="edit" :size="13" /> 承诺书签订
+          </el-button>
+          <el-button size="small" type="warning" plain @click="openTriplePanel('NOTICE')">
+            <Icon name="edit" :size="13" /> 告知书签订
           </el-button>
         </div>
         <div v-loading="managerBusy" class="sd-body ma-body">
@@ -1396,7 +1456,9 @@ function locateItem(boxNo, name) {
               <div v-for="it in p.items" :key="it.code" class="ma-item">
                 <span class="ma-code">{{ it.code }}</span>
                 <span class="ma-grp">{{ it.group }}</span>
-                <span class="ma-inm">{{ it.name }}</span>
+                <span :class="['ma-inm', it.fileUrl && 'clickable']"
+                      :title="it.fileUrl ? '点击预览该归档文件' : '暂无文件'"
+                      @click="it.fileUrl && previewCrewFile(it.fileUrl, it.name)">{{ it.name }}</span>
                 <span :class="['ma-st', it.status === 1 && 'ok']">
                   {{ it.status === 1 ? '已归档' : it.status === 2 ? '已过期' : '缺失' }}
                 </span>
@@ -1481,6 +1543,53 @@ function locateItem(boxNo, name) {
         <div class="sd-foot">
           <span>单方签署仅记为「待生效」；双方签齐才写入生效时间并生成带双方签名与公司章的 PDF</span>
           <el-button size="small" @click="showRespPanel = false">关闭</el-button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 三书签订（承诺书 / 告知书）：动态记录，企业签订生成 / 服务商范本生成 -->
+    <div class="sd-mask" :class="{ show: showTriplePanel }" @click.self="showTriplePanel = false">
+      <div class="sd-panel rs-panel">
+        <div class="sd-head">
+          <div>
+            <h2><Icon name="edit" :size="18" /> {{ tripleBookMeta.title }} · 签订</h2>
+            <p>{{ tripleBookMeta.desc }}</p>
+          </div>
+          <span class="sd-x" @click="showTriplePanel = false">×</span>
+        </div>
+        <div class="ma-stat rs-stat">
+          <span>本年度 <b>{{ selYear }}</b></span>
+          <span>应签 <b>{{ tripleData.total }}</b></span>
+          <span>已签 <b class="green">{{ tripleData.effective }}</b></span>
+          <span>企业 <b>{{ tripleData.company || '—' }}</b></span>
+          <el-button size="small" @click="loadTripleOverview">刷新状态</el-button>
+        </div>
+        <div v-loading="tripleBusy" class="sd-body rs-body">
+          <div v-if="!tripleData.rows?.length && !tripleBusy" class="sd-empty">
+            本年度暂无应签人员，请在「安全管理架构」中启用岗位并分配人员后刷新。
+          </div>
+          <div v-for="r in tripleData.rows" :key="r.personId" class="rs-card">
+            <div class="rs-rel">
+              <span class="rs-side sub">
+                <span class="rs-lbl">{{ tripleBookType === 'PROMISE' ? '公司与本人签订' : '本人签订' }}</span>
+                <b>{{ r.postName }} {{ r.personName }}</b>
+              </span>
+              <span :class="['rs-status', 'st-' + r.status]">{{ r.statusLabel }}</span>
+            </div>
+            <div class="rs-ops">
+              <el-button v-if="r.status !== 'effective' && !canGenerateTpl" size="small" type="primary"
+                         :loading="tripleSigning === r.personId" @click="signTripleBook(r)">签署</el-button>
+              <el-button v-if="canGenerateTpl" size="small" type="primary"
+                         :loading="tripleGenerating === r.personId" @click="generateTripleBook(r)">从范本生成</el-button>
+              <el-button v-if="r.pdfId" size="small" type="primary" plain
+                         @click="downloadPdf(r.pdfId, `${tripleBookMeta.title}-${r.personName}`)">下载 PDF</el-button>
+              <span v-if="r.effectiveAt" class="ma-time">生效于 {{ String(r.effectiveAt).replace('T', ' ').slice(0, 16) }}</span>
+            </div>
+          </div>
+        </div>
+        <div class="sd-foot">
+          <span>{{ canGenerateTpl ? '服务商可从范本直接生成成品；企业账号通过签订动作生成动态记录并落到一人一档' : '一次签署即生效，生成带公司章与电子签名的 PDF 并落到一人一档' }}</span>
+          <el-button size="small" @click="showTriplePanel = false">关闭</el-button>
         </div>
       </div>
     </div>
@@ -1800,6 +1909,8 @@ function locateItem(boxNo, name) {
 .ma-code { width: 92px; color: var(--text-3); font-family: monospace; }
 .ma-grp { width: 80px; color: var(--text-2); }
 .ma-inm { flex: 1; }
+.ma-inm.clickable { color: var(--brand-700); cursor: pointer; }
+.ma-inm.clickable:hover { text-decoration: underline; }
 .ma-st { color: #B91C1C; font-weight: 600; }
 .ma-st.ok { color: #15803D; }
 .ma-empty { font-size: 11.5px; color: var(--text-3); padding: 6px 0; }
