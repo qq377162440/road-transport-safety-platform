@@ -383,6 +383,8 @@ const crewTab = ref('emp')           // emp=从业人员一人一档 | veh=一�
 const expandedCrew = ref(new Set())  // 展开的人员/车辆 id 集合
 const crewPreview = ref(null)        // { name, blobUrl, kind }
 const crewPreviewing = ref(false)
+const crewDownloading = ref(false)    // 盒十一一键下载整盒（ZIP）
+const albumLoading = ref('')         // 合并版档案册下载中的人员/车辆 key：'e'+id / 'v'+id
 
 function toggleCrew(id) {
   const s = new Set(expandedCrew.value)
@@ -432,6 +434,59 @@ function clearCrewPreviewBlob() {
 
 function closeCrewPreview() {
   clearCrewPreviewBlob()
+}
+
+// 通用：带鉴权拉取二进制并触发浏览器下载（整盒 ZIP / 合并版档案册 PDF 共用）
+async function downloadBlob(urlPath, fname, mime) {
+  const token = localStorage.getItem('token')
+  const res = await fetch(urlPath, {
+    headers: { Authorization: `Bearer ${token}`, 'X-Token': `Bearer ${token}` },
+  })
+  if (!res.ok) {
+    let msg = '下载失败'
+    try { const j = await res.json(); if (j && j.message) msg = j.message } catch (_) { /* ignore */ }
+    throw new Error(msg)
+  }
+  const blob = await res.blob()
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = fname
+  document.body.appendChild(a)
+  a.click()
+  a.remove()
+  setTimeout(() => URL.revokeObjectURL(url), 3000)
+}
+
+// 盒十一「一键下载整盒」：全部从业人员 + 车辆归档 PDF 打包成 ZIP
+async function downloadCrewAll() {
+  crewDownloading.value = true
+  try {
+    await downloadBlob('/api/archive/crew/download-all',
+      `盒十一_从业人员一人一档及一车一档.zip`, 'application/zip')
+    ElMessage.success('整盒打包下载已开始')
+  } catch (e) {
+    ElMessage.error('整盒下载失败：' + (e?.message || '请重试'))
+  } finally {
+    crewDownloading.value = false
+  }
+}
+
+// 盒十一「合并版档案册」：把某人/某车的分散归档项合并成一本 PDF 下载
+async function downloadCrewAlbum(kind, id, name) {
+  const key = (kind === 'emp' ? 'e' : 'v') + id
+  albumLoading.value = key
+  try {
+    const qs = kind === 'emp' ? `personId=${id}` : `vehicleId=${id}`
+    const path = kind === 'emp' ? `/api/archive/crew/employee-album?${qs}` : `/api/archive/crew/vehicle-album?${qs}`
+    const fname = kind === 'emp' ? `${name}_一人一档档案册.pdf` : `${name}_一车一档档案册.pdf`
+    await downloadBlob(path, fname, 'application/pdf')
+    ElMessage.success('档案册已开始下载')
+  } catch (e) {
+    ElMessage.error('档案册下载失败：' + (e?.message || '请重试'))
+  } finally {
+    albumLoading.value = ''
+  }
 }
 
 // ---- 盒一「安全生产责任书」：组织架构上下级双签生效 ----
@@ -891,8 +946,11 @@ function locateItem(boxNo, name) {
             <h2>盒{{ selectedBox.no }} · {{ selectedBox.name }}</h2>
             <div class="desc">归档项按自然年度隔离；生成后存 MinIO，可下载 PDF 打印装盒。</div>
           </div>
-          <div class="head-actions" v-if="!isCrewBox">
-            <el-button @click="downloadBox"><Icon name="download" :size="15" /> 一键下载整盒</el-button>
+          <div class="head-actions">
+            <el-button v-if="!isCrewBox" @click="downloadBox"><Icon name="download" :size="15" /> 一键下载整盒</el-button>
+            <el-button v-else :loading="crewDownloading" @click="downloadCrewAll">
+              <Icon name="download" :size="15" /> 一键下载整盒
+            </el-button>
           </div>
         </div>
 
@@ -947,6 +1005,12 @@ function locateItem(boxNo, name) {
                 <span class="ma-exp">{{ expandedCrew.has('e' + p.personId) ? '收起' : '明细' }}</span>
               </div>
               <div v-if="expandedCrew.has('e' + p.personId)" class="crew-detail">
+                <div class="crew-detail-bar">
+                  <el-button size="small" :loading="albumLoading==='e'+p.personId"
+                             @click.stop="downloadCrewAlbum('emp', p.personId, p.name)">
+                    <Icon name="download" :size="13" /> 下载一人一档档案册（合并版 PDF）
+                  </el-button>
+                </div>
                 <div class="ma-sec-t">一人一档归档目录（{{ p.items?.length || 0 }} 项）</div>
                 <div v-for="it in p.items" :key="it.code" class="crew-item">
                   <span class="ma-code">{{ it.code }}</span>
@@ -986,6 +1050,12 @@ function locateItem(boxNo, name) {
                 <span class="ma-exp">{{ expandedCrew.has('v' + v.vehicleId) ? '收起' : '明细' }}</span>
               </div>
               <div v-if="expandedCrew.has('v' + v.vehicleId)" class="crew-detail">
+                <div class="crew-detail-bar">
+                  <el-button size="small" :loading="albumLoading==='v'+v.vehicleId"
+                             @click.stop="downloadCrewAlbum('veh', v.vehicleId, v.plateNo)">
+                    <Icon name="download" :size="13" /> 下载一车一档档案册（合并版 PDF）
+                  </el-button>
+                </div>
                 <div class="ma-sec-t">一车一档归档目录（{{ v.items?.length || 0 }} 项）</div>
                 <div v-for="it in v.items" :key="it.code" class="crew-item">
                   <span class="ma-code">{{ it.code }}</span>
@@ -1746,6 +1816,7 @@ function locateItem(boxNo, name) {
 .crew-card-h .ma-post { font-size: 11px; color: var(--text-3); font-weight: 400; margin-left: 6px; }
 .crew-card-h .ma-exp { margin-left: auto; font-size: 11.5px; color: var(--brand-700); }
 .crew-detail { padding: 4px 16px 14px; border-top: 1px dashed var(--border); background: #FCFDFE; }
+.crew-detail-bar { padding: 10px 0 4px; }
 .crew-item { display: flex; align-items: center; gap: 10px; padding: 6px 0; border-bottom: 1px dashed #E2E8F0; font-size: 11.5px; }
 .crew-item .ma-code { width: 64px; color: var(--text-3); font-family: monospace; }
 .crew-item .ma-inm { flex: 1; }

@@ -3,6 +3,7 @@ package com.safetrans.archive.controller;
 import com.safetrans.archive.entity.ArchiveItem;
 import com.safetrans.archive.entity.ArchivePdf;
 import com.safetrans.archive.service.ArchiveService;
+import com.safetrans.archive.service.CrewAlbumService;
 import com.safetrans.archive.service.CrewArchiveService;
 import com.safetrans.archive.service.ManagerArchiveService;
 import com.safetrans.archive.service.MockArchiveService;
@@ -35,18 +36,21 @@ public class ArchiveController {
     private final ManagerArchiveService managerArchiveService;
     private final MockArchiveService mockArchiveService;
     private final CrewArchiveService crewArchiveService;
+    private final CrewAlbumService crewAlbumService;
     private final StorageService storage;
 
     public ArchiveController(ArchiveService archiveService, TplLibraryService tplLibraryService,
                              ManagerArchiveService managerArchiveService,
                              MockArchiveService mockArchiveService,
                              CrewArchiveService crewArchiveService,
+                             CrewAlbumService crewAlbumService,
                              StorageService storage) {
         this.archiveService = archiveService;
         this.tplLibraryService = tplLibraryService;
         this.managerArchiveService = managerArchiveService;
         this.mockArchiveService = mockArchiveService;
         this.crewArchiveService = crewArchiveService;
+        this.crewAlbumService = crewAlbumService;
         this.storage = storage;
     }
 
@@ -112,6 +116,48 @@ public class ArchiveController {
     @GetMapping("/vehicle-archive/overview")
     public Result<Map<String, Object>> vehicleArchiveOverview() {
         return Result.ok(crewArchiveService.vehicleOverview());
+    }
+
+    /**
+     * 盒十一「一键下载整盒」：把全部从业人员一人一档与一车一档的归档 PDF，
+     * 按「从业人员一人一档/姓名」「一车一档/车牌」目录结构打包成 ZIP 一次下载。
+     */
+    @GetMapping("/crew/download-all")
+    public ResponseEntity<byte[]> crewDownloadAll() {
+        byte[] zip = crewAlbumService.downloadAllZip();
+        return downloadBytes(zip, "盒十一_从业人员一人一档及一车一档.zip", "application/zip");
+    }
+
+    /**
+     * 盒十一「合并版档案册」：把某从业人员一人一档（14 项 + 证照）合并成一本 PDF 下载。
+     */
+    @GetMapping("/crew/employee-album")
+    public ResponseEntity<byte[]> crewEmployeeAlbum(@RequestParam("personId") Long personId) {
+        byte[] pdf = crewAlbumService.personAlbum(personId);
+        String name = crewArchiveService.personName(personId);
+        return downloadBytes(pdf, name + "_一人一档档案册.pdf", "application/pdf");
+    }
+
+    /**
+     * 盒十一「合并版档案册」：把某车辆一车一档（13 项 + 车辆证照）合并成一本 PDF 下载。
+     */
+    @GetMapping("/crew/vehicle-album")
+    public ResponseEntity<byte[]> crewVehicleAlbum(@RequestParam("vehicleId") Long vehicleId) {
+        byte[] pdf = crewAlbumService.vehicleAlbum(vehicleId);
+        String plate = crewArchiveService.vehiclePlate(vehicleId);
+        return downloadBytes(pdf, plate + "_一车一档档案册.pdf", "application/pdf");
+    }
+
+    /** 统一按附件方式返回字节（文件名用 RFC 5987 filename* 传 UTF-8，兼容中文） */
+    private ResponseEntity<byte[]> downloadBytes(byte[] data, String fileName, String contentType) {
+        String encoded = URLEncoder.encode(fileName, StandardCharsets.UTF_8).replace("+", "%20");
+        String ascii = fileName.replaceAll("[^\\x20-\\x7E]", "_");
+        return ResponseEntity.ok()
+                .header(HttpHeaders.CONTENT_DISPOSITION,
+                        "attachment; filename=\"" + ascii + "\"; filename*=UTF-8''" + encoded)
+                .contentType(MediaType.parseMediaType(contentType))
+                .contentLength(data.length)
+                .body(data);
     }
 
     /** 责任制归档项列表 */
