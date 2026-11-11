@@ -491,6 +491,27 @@ public class TplLibraryService {
         return pdfService.render(renderDocument(code, itemName, year, post));
     }
 
+    /**
+     * 带变量覆盖的成品 PDF（责任书上下级双签专用）。
+     *
+     * <p>在默认变量表 + 真实人名解析之后，用 overrides 覆盖指定变量，主要用于把范本的
+     * 签字栏从「空白手写线」换成双方电子签名、把「责任主体/责任管理人」换成组织架构里
+     * 解析出的真实上级（或公司），从而在生成 PDF 时体现"上级与下级都签署才生效"。
+     * 条件段仍按 post 正常解析，覆盖值只影响变量填充，不改变范本版式。
+     */
+    public byte[] renderPdf(String code, String itemName, int year, String post,
+                            Map<String, String> overrides) {
+        TplTemplate tpl = mustGet(code);
+        Map<String, String> vars = renderEngine.defaultVars(
+                tenantService.currentTenantName(), year, post, itemName);
+        String resolved = renderEngine.resolveConditions(tpl.getContent(), vars);
+        personResolver.apply(vars, resolved, post);
+        if (overrides != null) vars.putAll(overrides);
+        // resolved 已不含条件标签，renderDocument 内部的二次解析是空操作；
+        // 这样能复用统一 A4 版式包裹 + 公司章注入，且覆盖值只影响变量填充。
+        return pdfService.render(renderEngine.renderDocument(resolved, vars, sealFor(tpl)));
+    }
+
     /** 生成前检查：该范本在当前岗位下读不到人名的字段清单 */
     public List<TplPersonResolver.Missing> checkMissing(String code, String post) {
         TplTemplate tpl = mustGet(code);

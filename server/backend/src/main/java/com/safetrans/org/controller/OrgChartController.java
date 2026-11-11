@@ -1,5 +1,6 @@
 package com.safetrans.org.controller;
 
+import com.safetrans.archive.service.ResponsibilitySignService;
 import com.safetrans.common.web.Result;
 import com.safetrans.org.service.OrgChartService;
 import org.springframework.http.ContentDisposition;
@@ -29,11 +30,14 @@ public class OrgChartController {
 
     private final OrgChartService service;
     private final com.safetrans.org.service.OrgArchiveLinkService linkService;
+    private final ResponsibilitySignService respSignService;
 
     public OrgChartController(OrgChartService service,
-                              com.safetrans.org.service.OrgArchiveLinkService linkService) {
+                              com.safetrans.org.service.OrgArchiveLinkService linkService,
+                              ResponsibilitySignService respSignService) {
         this.service = service;
         this.linkService = linkService;
+        this.respSignService = respSignService;
     }
 
     /** 架构图聚合数据：公司名、树、统计、人员名册、制度池 */
@@ -117,5 +121,17 @@ public class OrgChartController {
         boolean keep = body == null || body.get("keepHistory") == null
                 || Boolean.parseBoolean(String.valueOf(body.get("keepHistory")));
         return Result.ok(linkService.regenerate(keep));
+    }
+
+    /**
+     * 架构变化 → 责任书签订关系联动：上下级汇报线变了，受影响的责任书自动作废并生成
+     * 新版本待签；已生效的旧 PDF 仍保留在 archive_pdf，可作历史版本下载对照。
+     * 幂等：关系未变化时 voided/created 均为 0。
+     */
+    @PostMapping("/sync-resp-sign")
+    public Result<Map<String, Object>> syncRespSign(@RequestBody(required = false) Map<String, Object> body) {
+        Integer y = body == null || body.get("year") == null ? null
+                : Integer.parseInt(String.valueOf(body.get("year")));
+        return Result.ok(respSignService.onOrgChanged(y));
     }
 }

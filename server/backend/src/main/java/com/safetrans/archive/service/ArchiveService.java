@@ -215,8 +215,17 @@ public class ArchiveService {
      * <p>与 {@link #generateByTemplate} 同一套登记规则：同盒同年度同标题只保留一条
      * archive_item，重新生成即刷新 pdfId；旧 archive_pdf 记录默认保留（历史版本可下载）。
      */
-    @Transactional
     public ArchivePdf generateByBytes(String title, int boxNo, int year, byte[] pdfBytes, String tplCode) {
+        return generateByBytes(title, boxNo, year, pdfBytes, tplCode, null, "tpl");
+    }
+
+    /**
+     * 按人归档（管理人员档案 / 责任书签订生效件）：
+     * 标题里带姓名，因此每人一条 archive_item，person_id 落到实体字段，按人分类可查。
+     */
+    @Transactional
+    public ArchivePdf generateByBytes(String title, int boxNo, int year, byte[] pdfBytes, String tplCode,
+                                      Long personId, String bizModule) {
         if (pdfBytes == null || pdfBytes.length == 0) {
             throw new BizException("PDF 内容为空，归档失败");
         }
@@ -251,7 +260,8 @@ public class ArchiveService {
             item.setCatalogId(catalogId);
             item.setDataType(1);
             item.setGenMode(2);
-            item.setBizModule("tpl");
+            item.setBizModule(bizModule == null || bizModule.isBlank() ? "tpl" : bizModule);
+            item.setPersonId(personId);
             item.setTitle(title);
             item.setArchiveYear(year);
             item.setSignedYear(year);
@@ -261,6 +271,7 @@ public class ArchiveService {
         } else {
             item.setStatus(1);
             item.setPdfId(pdf.getId());
+            if (personId != null) item.setPersonId(personId);
             itemMapper.updateById(item);
         }
         pdf.setItemId(item.getId());
