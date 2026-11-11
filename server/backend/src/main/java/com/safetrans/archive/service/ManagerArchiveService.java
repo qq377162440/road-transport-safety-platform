@@ -6,14 +6,19 @@ import com.safetrans.archive.entity.ArchivePdf;
 import com.safetrans.archive.mapper.ArchiveItemMapper;
 import com.safetrans.archive.mapper.ArchivePdfMapper;
 import com.safetrans.common.pdf.PdfService;
+import com.safetrans.common.storage.StorageService;
 import com.safetrans.common.tenant.TenantContextHolder;
 import com.safetrans.common.web.BizException;
 import com.safetrans.tenant.service.TenantService;
 import com.safetrans.tpl.service.SealService;
+import org.apache.pdfbox.multipdf.PDFMergerUtility;
+import org.apache.pdfbox.io.MemoryUsageSetting;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -60,10 +65,11 @@ public class ManagerArchiveService {
     private final PdfService pdfService;
     private final TenantService tenantService;
     private final SealService sealService;
+    private final StorageService storage;
 
     public ManagerArchiveService(JdbcTemplate jdbc, ArchiveItemMapper itemMapper, ArchivePdfMapper pdfMapper,
                                  ArchiveService archiveService, PdfService pdfService,
-                                 TenantService tenantService, SealService sealService) {
+                                 TenantService tenantService, SealService sealService, StorageService storage) {
         this.jdbc = jdbc;
         this.itemMapper = itemMapper;
         this.pdfMapper = pdfMapper;
@@ -71,6 +77,7 @@ public class ManagerArchiveService {
         this.pdfService = pdfService;
         this.tenantService = tenantService;
         this.sealService = sealService;
+        this.storage = storage;
     }
 
     private long tid() {
@@ -219,7 +226,7 @@ public class ManagerArchiveService {
         return out;
     }
 
-    /** 为一人（或全部管理人员）生成档案册 PDF 并按人归档 */
+    /** 为一人（或全部管理人员）生成档案册 PDF 并按人归档；册内合并各项真实归档件（扫描件/签订件） */
     @Transactional
     public List<Map<String, Object>> generate(int year, Long personId) {
         List<Map<String, Object>> out = new ArrayList<>();
@@ -227,7 +234,9 @@ public class ManagerArchiveService {
             long pid = ((Number) p.get("id")).longValue();
             if (personId != null && personId != 0 && pid != personId) continue;
             String name = s(p.get("name"));
-            byte[] bytes = pdfService.render(buildHtml(p, itemsOf(pid), docsOf(pid), year));
+            Map<String, Object> c = itemsOf(pid);
+            byte[] cover = pdfService.render(buildHtml(p, c, docsOf(pid), year));
+            byte[] bytes = mergeWithRealDocs(cover, c);
             ArchivePdf pdf = archiveService.generateByBytes(
                     titleOf(name), 1, year, bytes, "MANAGER_ARCHIVE", pid, "manager_archive");
             Map<String, Object> row = new LinkedHashMap<>();
@@ -239,6 +248,33 @@ public class ManagerArchiveService {
         }
         if (out.isEmpty() && personId != null) throw new BizException("该人员不是管理人员或未录入人员基础信息");
         return out;
+    }
+
+    /** 封面汇总册 + 各归档项的真实 PDF（上传扫描件/签订件）合并成一本，保证下载的档案册与逐项预览一致 */
+    @SuppressWarnings("unchecked")
+    private byte[] mergeWithRealDocs(byte[] cover, Map<String, Object> c) {
+        List<byte[]> parts = new ArrayList<>();
+        parts.add(cover);
+        int merged = 0;
+        for (Map<String, Object> it : (List<Map<String, Object>>) c.get("items")) {
+            String url = s(it.get("fileUrl"));
+            if (url.isBlank() || !url.toLowerCase().endsWith(".pdf")) continue;  // 图片件已在封面列明细
+            try {
+                byte[] d = storage.download(url);
+                if (d != null && d.length > 0) { parts.add(d); merged++; }
+            } catch (Exception ignore) { /* 对象缺失跳过，不影响档案册生成 */ }
+        }
+        if (merged == 0) return cover;
+        try {
+            PDFMergerUtility merger = new PDFMergerUtility();
+            ByteArrayOutputStream bos = new ByteArrayOutputStream();
+            merger.setDestinationStream(bos);
+            for (byte[] p : parts) merger.addSource(new ByteArrayInputStream(p));
+            merger.mergeDocuments(MemoryUsageSetting.setupMainMemoryOnly());
+            return bos.toByteArray();
+        } catch (Exception e) {
+            return cover;  // 合并失败退化为纯汇总册
+        }
     }
 
     /** 档案册 HTML：封面 + 基本信息 + 归档目录 + 重点材料分章 + 证照明细 + 落款盖章 */
