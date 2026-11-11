@@ -339,6 +339,86 @@ async function downloadBox() {
 
 function selectBox(no) { selectedNo.value = no }
 
+// ---- 盒一「管理人员档案」：按人分类的一人一档 PDF 集合 ----
+// 数据来源是人员基础信息里 person_type=manager 的管理人员，每人一份档案册 PDF，
+// 册内含岗前培训、考核记录、三书、任命书、证照等，归档时 person_id 落到本人。
+const showManagerPanel = ref(false)
+const managerData = ref({ persons: [], total: 0, generated: 0 })
+const managerBusy = ref(false)
+const managerGenerating = ref(0)
+const expandedManager = ref(0)
+
+async function loadManagerOverview() {
+  const res = await request.get('/archive/manager/overview', { params: { year: selYear.value } })
+  managerData.value = res.data || { persons: [], total: 0, generated: 0 }
+}
+async function openManagerPanel() {
+  showRespPanel.value = false
+  showManagerPanel.value = true
+  managerBusy.value = true
+  try { await loadManagerOverview() }
+  catch (e) { ElMessage.error('读取管理人员档案失败') }
+  finally { managerBusy.value = false }
+}
+async function generateManager(personId = null) {
+  managerGenerating.value = personId || -1
+  try {
+    const res = await request.post('/archive/manager/generate', { year: selYear.value, personId })
+    ElMessage.success(`已生成 ${res.data?.length || 0} 份管理人员档案册并按人归档`)
+    await loadManagerOverview()
+    await loadArchiveItems()
+  } catch (e) { ElMessage.error('生成失败：' + (e?.message || '请重试')) }
+  finally { managerGenerating.value = 0 }
+}
+function downloadPdf(pdfId, name) { return download({ pdfId, name }) }
+
+// ---- 盒一「安全生产责任书」：组织架构上下级双签生效 ----
+// 上级来自 org_post.parent_id 汇报线（跳过禁用岗位后上提），最顶层主要负责人与公司签；
+// 只有 sup/sub 双方都签署才 effective，此时才生成带双方签名与公司章的 PDF。
+const showRespPanel = ref(false)
+const respData = ref({ rows: [], total: 0, effective: 0, partial: 0, pending: 0 })
+const respBusy = ref(false)
+const respSigning = ref(0)
+const respHistory = ref({ show: false, rows: [], name: '' })
+
+async function loadRespOverview() {
+  const res = await request.get('/archive/resp-sign/overview', { params: { year: selYear.value } })
+  respData.value = res.data || { rows: [], total: 0, effective: 0, partial: 0, pending: 0 }
+}
+async function openRespPanel() {
+  showManagerPanel.value = false
+  showRespPanel.value = true
+  respBusy.value = true
+  try { await loadRespOverview() }
+  catch (e) { ElMessage.error('读取责任书签订状态失败') }
+  finally { respBusy.value = false }
+}
+async function signResp(row, side) {
+  respSigning.value = row.id
+  try {
+    const res = await request.post('/archive/resp-sign/sign', {
+      id: row.id,
+      side,
+      signName: side === 'sup' ? row.supName : row.subName,
+    })
+    if (res.data?.status === 'effective') {
+      ElMessage.success('上下级双方均已签署，责任书生效并已归档 PDF')
+    } else {
+      ElMessage.success('已记录签署，等待另一方签署后生效')
+    }
+    await loadRespOverview()
+  } catch (e) { ElMessage.error('签署失败：' + (e?.message || '请重试')) }
+  finally { respSigning.value = 0 }
+}
+async function openRespHistory(row) {
+  try {
+    const res = await request.get('/archive/resp-sign/history', {
+      params: { subPersonId: row.subPersonId, year: selYear.value },
+    })
+    respHistory.value = { show: true, rows: res.data || [], name: row.subName }
+  } catch (e) { ElMessage.error('读取历史版本失败') }
+}
+
 // ---- 上传留存 ----
 const showUpload = ref(false)
 const uploadTarget = ref(null)
@@ -790,6 +870,8 @@ function locateItem(boxNo, name) {
                 <span v-else class="src src-up">上传留存</span>
                 <span v-if="r.tplDriven" class="src src-tpl">范本目录项</span>
                 <span v-if="r.freq" class="freq" :class="`freq-${r.freq}`">{{ FREQ_LABEL[r.freq] }}</span>
+                <span v-if="r.name === '管理人员档案'" class="src src-tpl" title="按管理人员一人一档生成 PDF 集合，册内包含岗前培训、考核记录、三书等">按人分类</span>
+                <span v-if="r.name === '安全生产责任书'" class="src src-tpl" title="上下级双方都签署后才生效；上下级关系取自安全管理架构">双签生效</span>
                 <span v-if="r.tplOptions.length" class="tpl-name" :title="currentTpl(r)?.name">
                   当前范本：{{ currentTpl(r)?.name || '—' }}
                 </span>
@@ -811,6 +893,12 @@ function locateItem(boxNo, name) {
               'st-print': r.status === STATUS.PRINT,
             }">{{ ['待上传/缺失', '待生成', '已生成/已上传', '已归档'][r.status] }}</span>
             <div class="ops">
+              <el-button v-if="r.name === '管理人员档案'" size="small" type="warning" plain @click="openManagerPanel">
+                <Icon name="fileText" :size="13" /> 按人查看
+              </el-button>
+              <el-button v-if="r.name === '安全生产责任书'" size="small" type="warning" plain @click="openRespPanel">
+                <Icon name="edit" :size="13" /> 签订管理
+              </el-button>
               <el-button v-if="r.tplOptions.length && canGenerateTpl" size="small" @click="doGenerate(r)">
                 <Icon name="plus" :size="13" /> {{ r.pdfId ? '重新生成' : '生成' }}
               </el-button>
@@ -1008,6 +1096,169 @@ function locateItem(boxNo, name) {
         <div class="sd-foot">
           <span>需要在线修改范本正文、印章设置或责任制联动，请前往 <a href="javascript:;" @click="goTplManager">台账范本管理</a></span>
           <el-button size="small" @click="closeSetPanel">关闭</el-button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 盒一「管理人员档案」：按人分类的一人一档 PDF 集合 -->
+    <div class="sd-mask" :class="{ show: showManagerPanel }" @click.self="showManagerPanel = false">
+      <div class="sd-panel ma-panel">
+        <div class="sd-head">
+          <div>
+            <h2><Icon name="fileText" :size="18" /> 管理人员档案 · 一人一档</h2>
+            <p>按人员基础信息中录入的管理人员逐人生成档案册 PDF，册内含岗前培训、考核记录、三书、任命书与证照</p>
+          </div>
+          <span class="sd-x" @click="showManagerPanel = false">×</span>
+        </div>
+        <div class="ma-stat">
+          <span>归档年度 <b>{{ selYear }}</b></span>
+          <span>管理人员 <b>{{ managerData.total }}</b></span>
+          <span>已生成档案册 <b class="green">{{ managerData.generated }}</b></span>
+          <span>企业 <b>{{ managerData.company || '—' }}</b></span>
+          <el-button size="small" type="primary" :loading="managerGenerating === -1" @click="generateManager(null)">
+            生成全部档案册
+          </el-button>
+        </div>
+        <div v-loading="managerBusy" class="sd-body ma-body">
+          <div v-if="!managerData.persons?.length && !managerBusy" class="sd-empty">
+            人员基础信息里还没有管理人员，请先在「人员基础信息」录入管理人员后再生成一人一档。
+          </div>
+          <div v-for="p in managerData.persons" :key="p.personId" class="ma-card">
+            <div class="ma-card-h" @click="expandedManager = expandedManager === p.personId ? 0 : p.personId">
+              <div class="ma-avatar">{{ (p.name || '—').slice(0, 1) }}</div>
+              <div class="ma-id">
+                <div class="ma-nm">{{ p.name }} <span class="ma-post">{{ p.postName || '未分配岗位' }}</span></div>
+                <div class="ma-sub">{{ p.telephone || '—' }} · 完整度 {{ p.done }}/{{ p.required }} 项（{{ p.percent }}%）</div>
+              </div>
+              <div class="ma-focus">
+                <span v-for="(v, k) in p.focus" :key="k"
+                      :class="['ma-chip', v.total > 0 && v.done === v.total && 'ok']">
+                  {{ k }} {{ v.done }}/{{ v.total }}
+                </span>
+              </div>
+              <span :class="['ma-badge', p.generated && 'on']">{{ p.generated ? '已生成' : '待生成' }}</span>
+              <span class="ma-exp">{{ expandedManager === p.personId ? '收起' : '明细' }}</span>
+            </div>
+            <div class="ma-card-ops">
+              <el-button size="small" :loading="managerGenerating === p.personId" @click="generateManager(p.personId)">
+                {{ p.generated ? '重新生成' : '生成档案册' }}
+              </el-button>
+              <el-button v-if="p.generated" size="small" type="primary"
+                         @click="downloadPdf(p.pdfId, `管理人员档案-${p.name}`)">下载 PDF</el-button>
+              <span v-if="p.genTime" class="ma-time">{{ String(p.genTime).replace('T', ' ').slice(0, 16) }}</span>
+            </div>
+            <div v-if="expandedManager === p.personId" class="ma-detail">
+              <div class="ma-sec-t">一人一档归档目录（{{ p.items?.length || 0 }} 项）</div>
+              <div v-for="it in p.items" :key="it.code" class="ma-item">
+                <span class="ma-code">{{ it.code }}</span>
+                <span class="ma-grp">{{ it.group }}</span>
+                <span class="ma-inm">{{ it.name }}</span>
+                <span :class="['ma-st', it.status === 1 && 'ok']">
+                  {{ it.status === 1 ? '已归档' : it.status === 2 ? '已过期' : '缺失' }}
+                </span>
+              </div>
+              <div class="ma-sec-t">证照与资格证明（{{ p.docs?.length || 0 }} 项）</div>
+              <div v-if="!p.docs?.length" class="ma-empty">暂无证照记录</div>
+              <div v-for="(d, i) in p.docs" :key="i" class="ma-item">
+                <span class="ma-inm">{{ d.name }}</span>
+                <span class="ma-grp">{{ d.issue || '—' }}</span>
+                <span class="ma-grp">有效期至 {{ d.expire || '—' }}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="sd-foot">
+          <span>档案册按人落到 person_id、标题带姓名；重新生成刷新成品，旧版本 PDF 仍可留存对照</span>
+          <el-button size="small" @click="showManagerPanel = false">关闭</el-button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 盒一「安全生产责任书」：组织架构上下级双签生效 -->
+    <div class="sd-mask" :class="{ show: showRespPanel }" @click.self="showRespPanel = false">
+      <div class="sd-panel rs-panel">
+        <div class="sd-head">
+          <div>
+            <h2><Icon name="edit" :size="18" /> 安全生产责任书 · 上下级签订</h2>
+            <p>签字双方取自安全管理架构的汇报关系，双方均签署后责任书才生效并生成 PDF</p>
+          </div>
+          <span class="sd-x" @click="showRespPanel = false">×</span>
+        </div>
+        <div class="rs-rule">
+          <Icon name="info" :size="15" />
+          <span>上下级关系取自<b>安全管理架构</b>（直接上级汇报线）；<b>上级与下级两个人都签署才生效</b>；
+            最顶层主要负责人无人员上级，<b>与公司签署</b>（公司盖章 + 本人签字）。架构变化后受影响的责任书自动作废重签。</span>
+        </div>
+        <div class="ma-stat rs-stat">
+          <span>本年度 <b>{{ selYear }}</b></span>
+          <span>待签 <b>{{ respData.pending }}</b></span>
+          <span>待生效 <b class="orange">{{ respData.partial }}</b></span>
+          <span>已生效 <b class="green">{{ respData.effective }}</b></span>
+          <el-button size="small" @click="loadRespOverview">刷新状态</el-button>
+        </div>
+        <div v-loading="respBusy" class="sd-body rs-body">
+          <div v-if="!respData.rows?.length && !respBusy" class="sd-empty">
+            本年度暂无签订记录，请在「安全管理架构」中启用岗位并分配人员后刷新。
+          </div>
+          <div v-for="r in respData.rows" :key="r.id" class="rs-card">
+            <div class="rs-rel">
+              <span class="rs-side sup">
+                <span class="rs-lbl">{{ r.supType === 'company' ? '公司（盖章）' : '上级 · 责任管理人' }}</span>
+                <b>{{ r.supType === 'company' ? r.supName : `${r.supPostName} ${r.supName}` }}</b>
+              </span>
+              <span class="rs-arrow">→ 签订 →</span>
+              <span class="rs-side sub">
+                <span class="rs-lbl">下级 · 责任人</span>
+                <b>{{ r.subPostName }} {{ r.subName }}</b>
+              </span>
+              <span :class="['rs-status', 'st-' + r.status]">{{ r.statusLabel }}</span>
+            </div>
+            <div class="rs-signs">
+              <span :class="['rs-sign', r.supSigned && 'ok']">
+                {{ r.supType === 'company' ? '公司签署' : '上级签署' }}：{{ r.supSigned ? '已签' : '未签' }}
+                <el-button v-if="!r.supSigned && r.status !== 'effective'" size="small" text type="primary"
+                           :loading="respSigning === r.id" @click="signResp(r, 'sup')">签署</el-button>
+              </span>
+              <span :class="['rs-sign', r.subSigned && 'ok']">
+                下级签署：{{ r.subSigned ? '已签' : '未签' }}
+                <el-button v-if="!r.subSigned && r.status !== 'effective'" size="small" text type="primary"
+                           :loading="respSigning === r.id" @click="signResp(r, 'sub')">签署</el-button>
+              </span>
+              <span class="rs-rev">第 {{ r.revision }} 版</span>
+            </div>
+            <div class="rs-ops">
+              <el-button v-if="r.pdfId" size="small" type="primary"
+                         @click="downloadPdf(r.pdfId, `安全生产责任书-${r.subName}`)">下载生效 PDF</el-button>
+              <el-button size="small" text @click="openRespHistory(r)">历史版本</el-button>
+              <span v-if="r.effectiveAt" class="ma-time">生效于 {{ String(r.effectiveAt).replace('T', ' ').slice(0, 16) }}</span>
+            </div>
+          </div>
+        </div>
+        <div class="sd-foot">
+          <span>单方签署仅记为「待生效」；双方签齐才写入生效时间并生成带双方签名与公司章的 PDF</span>
+          <el-button size="small" @click="showRespPanel = false">关闭</el-button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 责任书历史版本（架构变化作废的旧签署件仍可下载对照） -->
+    <div class="pdf-mask roster-mask" :class="{ show: respHistory.show }" @click.self="respHistory.show = false">
+      <div class="roster-wrap">
+        <div class="roster-head">
+          「{{ respHistory.name }}」责任书历史版本
+          <span class="rh-sub">组织架构变化会作废旧版本并生成新版本待签</span>
+          <span class="x" @click="respHistory.show = false">×</span>
+        </div>
+        <div class="roster-body rs-history">
+          <div v-for="h in respHistory.rows" :key="h.id" class="rs-hrow">
+            <span>第 {{ h.revision }} 版</span>
+            <span>{{ h.signRelation }}</span>
+            <span :class="['rs-status', 'st-' + h.status]">{{ h.statusLabel }}</span>
+            <span>{{ h.supSigned ? '上级已签' : '上级未签' }} / {{ h.subSigned ? '下级已签' : '下级未签' }}</span>
+            <el-button v-if="h.pdfId" size="small" text type="primary"
+                       @click="downloadPdf(h.pdfId, `安全生产责任书-${h.subName}-第${h.revision}版`)">下载</el-button>
+          </div>
+          <div v-if="!respHistory.rows?.length" class="sd-empty">暂无历史版本</div>
         </div>
       </div>
     </div>
@@ -1270,4 +1521,69 @@ function locateItem(boxNo, name) {
   border-top: 1px solid var(--border); background: #FAFBFC; }
 .sd-foot span { flex: 1; font-size: 11.5px; color: var(--text-3); line-height: 1.5; }
 .sd-foot a { color: var(--brand-600); font-weight: 600; }
+
+/* ===== 管理人员档案 · 按人分类的一人一档 PDF 集合 ===== */
+.ma-panel, .rs-panel { width: min(960px, 94vw); }
+.ma-stat { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; padding: 10px 20px;
+  background: #F8FAFC; border-bottom: 1px solid var(--border); }
+.ma-stat span { font-size: 12px; color: var(--text-2); background: #fff; border: 1px solid var(--border);
+  border-radius: 8px; padding: 5px 10px; }
+.ma-stat b { color: var(--brand-700); font-size: 14px; }
+.ma-stat b.green { color: #15803D; }
+.ma-stat b.orange { color: #C2410C; }
+.ma-stat .el-button { margin-left: auto; }
+.ma-body, .rs-body { padding: 16px 20px; }
+.ma-card { border: 1px solid var(--border); border-radius: 10px; margin-bottom: 12px; background: #fff; overflow: hidden; }
+.ma-card-h { display: flex; align-items: center; gap: 12px; padding: 12px 14px; cursor: pointer; }
+.ma-card-h:hover { background: #FAFCFF; }
+.ma-avatar { width: 36px; height: 36px; flex: 0 0 36px; border-radius: 50%; background: var(--brand-600, #2563EB);
+  color: #fff; display: flex; align-items: center; justify-content: center; font-size: 16px; font-weight: 700; }
+.ma-id { min-width: 180px; }
+.ma-nm { font-size: 14px; font-weight: 700; }
+.ma-post { font-size: 11px; color: var(--text-3); font-weight: 400; margin-left: 6px; }
+.ma-sub { font-size: 11px; color: var(--text-3); margin-top: 3px; }
+.ma-focus { flex: 1; display: flex; flex-wrap: wrap; gap: 6px; }
+.ma-chip { font-size: 11px; padding: 3px 8px; border-radius: 10px; background: #FEF3C7; color: #92400E; }
+.ma-chip.ok { background: #DCFCE7; color: #15803D; }
+.ma-badge { font-size: 11px; padding: 3px 9px; border-radius: 10px; background: #F1F5F9; color: #64748B; white-space: nowrap; }
+.ma-badge.on { background: #DCFCE7; color: #15803D; }
+.ma-exp { font-size: 11.5px; color: var(--brand-600); white-space: nowrap; }
+.ma-card-ops { display: flex; align-items: center; gap: 8px; padding: 0 14px 12px 62px; }
+.ma-time { font-size: 11px; color: var(--text-3); margin-left: auto; }
+.ma-detail { border-top: 1px dashed var(--border); padding: 10px 14px 14px; background: #FAFCFF; }
+.ma-sec-t { font-size: 12px; font-weight: 700; color: var(--brand-700); margin: 8px 0 6px; }
+.ma-item { display: flex; align-items: center; gap: 10px; padding: 5px 0; border-bottom: 1px dashed #E2E8F0; font-size: 11.5px; }
+.ma-code { width: 92px; color: var(--text-3); font-family: monospace; }
+.ma-grp { width: 80px; color: var(--text-2); }
+.ma-inm { flex: 1; }
+.ma-st { color: #B91C1C; font-weight: 600; }
+.ma-st.ok { color: #15803D; }
+.ma-empty { font-size: 11.5px; color: var(--text-3); padding: 6px 0; }
+
+/* ===== 安全生产责任书 · 上下级双签 ===== */
+.rs-rule { display: flex; align-items: flex-start; gap: 8px; padding: 10px 20px;
+  background: #FFFBEB; border-bottom: 1px solid #FDE68A; font-size: 11.5px; color: #78350F; line-height: 1.7; }
+.rs-rule b { color: #92400E; }
+.rs-card { border: 1px solid var(--border); border-radius: 10px; margin-bottom: 12px; overflow: hidden; }
+.rs-rel { display: flex; align-items: center; gap: 10px; padding: 12px 14px; background: #F8FAFC; }
+.rs-side { display: flex; flex-direction: column; min-width: 160px; }
+.rs-lbl { font-size: 10.5px; color: var(--text-3); }
+.rs-side b { font-size: 13px; }
+.rs-side.sup b { color: var(--brand-700); }
+.rs-side.sub b { color: #0F172A; }
+.rs-arrow { font-size: 11.5px; color: var(--text-3); white-space: nowrap; }
+.rs-status { margin-left: auto; font-size: 11px; padding: 3px 9px; border-radius: 10px; white-space: nowrap;
+  background: #F1F5F9; color: #64748B; }
+.rs-status.st-partial { background: #FEF3C7; color: #92400E; }
+.rs-status.st-effective { background: #DCFCE7; color: #15803D; }
+.rs-status.st-void { background: #FEE2E2; color: #B91C1C; }
+.rs-signs { display: flex; align-items: center; gap: 14px; padding: 8px 14px; border-top: 1px dashed var(--border); }
+.rs-sign { font-size: 11.5px; color: #B91C1C; display: flex; align-items: center; gap: 2px; }
+.rs-sign.ok { color: #15803D; }
+.rs-rev { font-size: 11px; color: var(--text-3); margin-left: auto; }
+.rs-ops { display: flex; align-items: center; gap: 8px; padding: 0 14px 10px; }
+.rs-history { max-height: 420px; overflow: auto; }
+.rs-hrow { display: flex; align-items: center; gap: 10px; padding: 8px 4px; border-bottom: 1px dashed #E2E8F0; font-size: 11.5px; }
+.rs-hrow > span:nth-child(2) { flex: 1; }
+.rs-hrow .rs-status { margin-left: 0; }
 </style>

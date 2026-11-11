@@ -201,6 +201,17 @@ function goPost() { router.push('/post') }
 // 《安全组织架构》《关于成立安全生产领导小组的通知》《人员任命书》三份文件的内容
 // 直接由岗位树 / 岗位人员渲染，架构一变即应重新生成；历史版本可选择是否留存。
 async function syncOrgArchive() {
+  // 责任书签订关系始终随架构同步（不依赖档案柜三件套是否已生成）：
+  // 上级汇报线变化 → 受影响的已签/待签责任书自动作废并生成新版本待签，历史 PDF 留存。
+  try {
+    const rs = (await request.post('/org/chart/sync-resp-sign', {})).data || {}
+    if (rs.voided || rs.created) {
+      ElMessage.warning(
+        `组织架构变化：${rs.voided || 0} 份责任书已作废需重新签订，新增 ${rs.created || 0} 条待签记录（旧签署件仍可下载对照）`,
+      )
+    }
+  } catch { /* 拦截器已统一提示 */ }
+
   let st = null
   try { st = (await request.get('/org/chart/archive-status')).data || {} } catch { return }
   if (!st.hasAny) return // 档案柜还没有这三份文件，首次由企业在档案柜自行生成，不打扰

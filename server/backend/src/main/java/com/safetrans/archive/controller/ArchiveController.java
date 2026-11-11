@@ -3,6 +3,7 @@ package com.safetrans.archive.controller;
 import com.safetrans.archive.entity.ArchiveItem;
 import com.safetrans.archive.entity.ArchivePdf;
 import com.safetrans.archive.service.ArchiveService;
+import com.safetrans.archive.service.ManagerArchiveService;
 import com.safetrans.common.auth.RequireRole;
 import com.safetrans.common.web.Result;
 import com.safetrans.tpl.service.TplLibraryService;
@@ -28,10 +29,42 @@ public class ArchiveController {
 
     private final ArchiveService archiveService;
     private final TplLibraryService tplLibraryService;
+    private final ManagerArchiveService managerArchiveService;
 
-    public ArchiveController(ArchiveService archiveService, TplLibraryService tplLibraryService) {
+    public ArchiveController(ArchiveService archiveService, TplLibraryService tplLibraryService,
+                             ManagerArchiveService managerArchiveService) {
         this.archiveService = archiveService;
         this.tplLibraryService = tplLibraryService;
+        this.managerArchiveService = managerArchiveService;
+    }
+
+    /**
+     * 盒一「管理人员档案」总览：按人分类的一人一档 PDF 集合。
+     * 人员来源是人员基础信息里 person_type=manager 的管理人员，每人带 13 项归档目录、
+     * 岗前培训 / 考核记录 / 三书 / 任命书分组统计，以及本年度档案册 PDF 状态。
+     */
+    @GetMapping("/manager/overview")
+    public Result<Map<String, Object>> managerOverview(
+            @RequestParam(value = "year", required = false) Integer year) {
+        return Result.ok(managerArchiveService.overview(
+                year == null ? java.time.Year.now().getValue() : year));
+    }
+
+    /**
+     * 生成管理人员档案册 PDF：body.personId 为空则全员生成，否则只生成该人。
+     * 归档标题带姓名、archive_item.person_id 落到本人，档案柜按人分类可查。
+     */
+    @PostMapping("/manager/generate")
+    public Result<List<Map<String, Object>>> managerGenerate(@RequestBody(required = false) Map<String, Object> body) {
+        Map<String, Object> b = body == null ? Map.of() : body;
+        int year = b.get("year") == null ? java.time.Year.now().getValue()
+                : Integer.parseInt(String.valueOf(b.get("year")));
+        Long personId = null;
+        if (b.get("personId") != null && !String.valueOf(b.get("personId")).isBlank()
+                && !"0".equals(String.valueOf(b.get("personId")))) {
+            personId = Long.parseLong(String.valueOf(b.get("personId")));
+        }
+        return Result.ok(managerArchiveService.generate(year, personId));
     }
 
     /** 责任制归档项列表 */
