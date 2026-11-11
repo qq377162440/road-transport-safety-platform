@@ -114,6 +114,72 @@ public class CrewArchiveService {
         return out;
     }
 
+    /** 取从业人员姓名（合并档案册封面用） */
+    public String personName(long personId) {
+        try {
+            return s(jdbc.queryForObject(
+                    "SELECT `name` FROM `person` WHERE `id`=? AND `tenant_id`=? AND `deleted`=0",
+                    String.class, personId, tid()));
+        } catch (Exception e) {
+            return "从业人员" + personId;
+        }
+    }
+
+    /** 取车辆号牌（合并档案册封面用） */
+    public String vehiclePlate(long vehicleId) {
+        try {
+            return s(jdbc.queryForObject(
+                    "SELECT `plate_no` FROM `vehicle` WHERE `id`=? AND `tenant_id`=? AND `deleted`=0",
+                    String.class, vehicleId, tid()));
+        } catch (Exception e) {
+            return "车辆" + vehicleId;
+        }
+    }
+
+    /**
+     * 某从业人员一人一档的文件清单（归档项 + 证照，仅含已有 file_url 的），
+     * 用于合并档案册 / 整盒打包下载。返回 [{name: 序号_名称.pdf, url: MinIO 对象名}, ...]。
+     */
+    public List<Map<String, String>> personFileList(long personId) {
+        long t = tid();
+        List<Map<String, Object>> items = (List<Map<String, Object>>) personItemsOf(personId, t).get("items");
+        List<Map<String, Object>> docs = personDocsOf(personId, t);
+        return fileList(items, docs);
+    }
+
+    /** 某车辆一车一档的文件清单（归档项 + 证照），同上 */
+    public List<Map<String, String>> vehicleFileList(long vehicleId) {
+        long t = tid();
+        Map<String, String> vName = new LinkedHashMap<>();
+        for (String[] it : VEHICLE_ITEMS) vName.put(it[0], it[1]);
+        List<Map<String, Object>> items = vehicleItemsOf(vehicleId, t, vName);
+        List<Map<String, Object>> docs = vehicleDocsOf(vehicleId, t);
+        return fileList(items, docs);
+    }
+
+    /** 把「带 fileUrl 的归档项 / 证照」整理成有序文件名清单 */
+    private List<Map<String, String>> fileList(List<Map<String, Object>> items, List<Map<String, Object>> docs) {
+        List<Map<String, String>> out = new ArrayList<>();
+        int idx = 1;
+        for (Map<String, Object> it : items) {
+            String url = s(it.get("fileUrl"));
+            if (url.isEmpty()) continue;
+            Map<String, String> m = new LinkedHashMap<>();
+            m.put("name", String.format("%02d_%s.pdf", idx++, s(it.get("name")).replaceAll("[\\\\/:*?\"<>|]", "_")));
+            m.put("url", url);
+            out.add(m);
+        }
+        for (Map<String, Object> d : docs) {
+            String url = s(d.get("fileUrl"));
+            if (url.isEmpty()) continue;
+            Map<String, String> m = new LinkedHashMap<>();
+            m.put("name", String.format("%02d_%s.pdf", idx++, s(d.get("name")).replaceAll("[\\\\/:*?\"<>|]", "_")));
+            m.put("url", url);
+            out.add(m);
+        }
+        return out;
+    }
+
     private List<Map<String, Object>> personDocsOf(long personId, long t) {
         List<Map<String, Object>> out = new ArrayList<>();
         for (Map<String, Object> row : jdbc.queryForList(
