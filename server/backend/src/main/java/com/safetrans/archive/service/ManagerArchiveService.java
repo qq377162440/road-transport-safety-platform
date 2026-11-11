@@ -366,6 +366,8 @@ public class ManagerArchiveService {
             case "upload" -> "证件上传";
             case "credit" -> "考核汇总";
             case "print" -> "打印手写";
+            case "sign" -> "签订生成";
+            case "tpl" -> "范本生成";
             default -> "系统生成";
         };
     }

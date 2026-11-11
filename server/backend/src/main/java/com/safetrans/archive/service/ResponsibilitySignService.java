@@ -377,6 +377,8 @@ public class ResponsibilitySignService {
                     "RESP_LETTER_SIGN", subPersonId, "responsibility_sign");
             jdbc.update("UPDATE `responsibility_sign` SET `status`='effective',`effective_at`=NOW()," +
                     "`pdf_id`=?,`updated_at`=NOW() WHERE `id`=?", pdf.getId(), id);
+            // 联动：生效的责任书 PDF 落到一人一档 P05，供管理人员/从业人员档案点击预览
+            upsertPersonItem(subPersonId, "P05", pdf.getFilePath(), "sign");
         } else {
             jdbc.update("UPDATE `responsibility_sign` SET `status`='partial',`updated_at`=NOW() " +
                     "WHERE `id`=?", id);
@@ -388,6 +390,24 @@ public class ResponsibilitySignService {
         List<Map<String, Object>> list = jdbc.queryForList(SELECT_ONE, id, t);
         if (list.isEmpty()) throw new BizException("责任书签订记录不存在：" + id);
         return list.get(0);
+    }
+
+    /** 生效的责任书 PDF 落到一人一档 P05（file_url = MinIO 对象名），供点击预览。 */
+    private void upsertPersonItem(long personId, String itemCode, String fileUrl, String sourceType) {
+        long t = tid();
+        List<Long> ids = jdbc.queryForList(
+                "SELECT `id` FROM `person_archive_item` WHERE `person_id`=? AND `item_code`=? " +
+                "AND `tenant_id`=? AND `deleted`=0", Long.class, personId, itemCode, t);
+        if (ids.isEmpty()) {
+            jdbc.update("INSERT INTO `person_archive_item` " +
+                    "(`id`,`tenant_id`,`person_id`,`item_code`,`source_type`,`ref_id`,`file_url`,`expire_date`," +
+                    " `status`,`created_at`,`created_by`,`deleted`) " +
+                    "VALUES (?,?,?,?,?,NULL,?,NULL,1,NOW(),0,0)",
+                    IdUtil.getSnowflakeNextId(), t, personId, itemCode, sourceType, fileUrl);
+        } else {
+            jdbc.update("UPDATE `person_archive_item` SET `file_url`=?, `source_type`=?, `status`=1, " +
+                    "`updated_at`=NOW() WHERE `id`=?", fileUrl, sourceType, ids.get(0));
+        }
     }
 
     /**

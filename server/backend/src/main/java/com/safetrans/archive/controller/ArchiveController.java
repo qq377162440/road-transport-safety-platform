@@ -7,6 +7,7 @@ import com.safetrans.archive.service.CrewAlbumService;
 import com.safetrans.archive.service.CrewArchiveService;
 import com.safetrans.archive.service.ManagerArchiveService;
 import com.safetrans.archive.service.MockArchiveService;
+import com.safetrans.archive.service.TripleBookService;
 import com.safetrans.common.auth.RequireRole;
 import com.safetrans.common.storage.StorageService;
 import com.safetrans.common.web.Result;
@@ -20,6 +21,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
+import java.time.Year;
 import java.util.List;
 import java.util.Map;
 
@@ -37,6 +39,7 @@ public class ArchiveController {
     private final MockArchiveService mockArchiveService;
     private final CrewArchiveService crewArchiveService;
     private final CrewAlbumService crewAlbumService;
+    private final TripleBookService tripleBookService;
     private final StorageService storage;
 
     public ArchiveController(ArchiveService archiveService, TplLibraryService tplLibraryService,
@@ -44,6 +47,7 @@ public class ArchiveController {
                              MockArchiveService mockArchiveService,
                              CrewArchiveService crewArchiveService,
                              CrewAlbumService crewAlbumService,
+                             TripleBookService tripleBookService,
                              StorageService storage) {
         this.archiveService = archiveService;
         this.tplLibraryService = tplLibraryService;
@@ -51,6 +55,7 @@ public class ArchiveController {
         this.mockArchiveService = mockArchiveService;
         this.crewArchiveService = crewArchiveService;
         this.crewAlbumService = crewAlbumService;
+        this.tripleBookService = tripleBookService;
         this.storage = storage;
     }
 
@@ -277,5 +282,39 @@ public class ArchiveController {
     public Result<List<ArchiveItem>> items(@RequestParam("boxNo") Integer boxNo,
                                           @RequestParam("year") Integer year) {
         return Result.ok(archiveService.listUploadItems(boxNo, year));
+    }
+
+    // ==================================================================
+    // 三书签订（承诺书 / 告知书）——动态记录：企业视角签订生成，服务商视角范本生成
+    // ==================================================================
+
+    /** 某类型书（PROMISE 承诺书 / NOTICE 告知书）本年度签订总览 */
+    @GetMapping("/triple-book/overview")
+    public Result<Map<String, Object>> tripleBookOverview(
+            @RequestParam("bookType") String bookType,
+            @RequestParam(value = "year", required = false) Integer year) {
+        return Result.ok(tripleBookService.overview(bookType,
+                year == null ? Year.now().getValue() : year));
+    }
+
+    /** 企业视角：签署承诺书（公司与本人签）或告知书（本人签），一次签署即生效并归档 */
+    @PostMapping("/triple-book/sign")
+    public Result<Map<String, Object>> tripleBookSign(@RequestBody Map<String, Object> body) {
+        String bookType = String.valueOf(body.get("bookType"));
+        long personId = Long.parseLong(String.valueOf(body.get("personId")));
+        int year = body.get("year") == null ? Year.now().getValue()
+                : Integer.parseInt(String.valueOf(body.get("year")));
+        String signName = body.get("signName") == null ? "" : String.valueOf(body.get("signName"));
+        return Result.ok(tripleBookService.sign(bookType, personId, year, signName));
+    }
+
+    /** 服务商 / 超管视角：从范本直接生成三书成品（不走签订流程） */
+    @PostMapping("/triple-book/generate")
+    public Result<Map<String, Object>> tripleBookGenerate(@RequestBody Map<String, Object> body) {
+        String bookType = String.valueOf(body.get("bookType"));
+        long personId = Long.parseLong(String.valueOf(body.get("personId")));
+        int year = body.get("year") == null ? Year.now().getValue()
+                : Integer.parseInt(String.valueOf(body.get("year")));
+        return Result.ok(tripleBookService.generate(bookType, personId, year));
     }
 }
