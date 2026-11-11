@@ -9,10 +9,12 @@
   ③ 18 个动态模块前端路由 /biz/<code> 全部可达
   ④ 10 个专用闭环页已真实编译进前端容器（不是只有 SPA 回退）
   ⑤ B15 应急管理预案正文 mojibake 残留检测 = 0
+  ⑥ 档案柜文件分类规则断言 + 分类 UI 已编译进前端容器
 
 运行：python3 verify_biz_all.py
 """
 import json
+import os
 import sys
 import subprocess
 import urllib.request
@@ -194,6 +196,27 @@ else:
             bad(f"最新整盒归档 PDF 正文异常：命中={garbled} 命中总则={'一、总则' in text}")
     except Exception as e:
         bad(f"整盒归档 PDF 下载/解析失败：{e}")
+
+# ---------- ⑥ 档案柜文件分类 / 岗位规则（用户反馈：证件类不该有岗位切换） ----------
+# 规则字典是前端唯一源，用 Node 直接跑断言；再确认分类 UI 已真实编译进容器。
+cat_script = os.path.join(os.path.dirname(os.path.abspath(__file__)), "verify_archive_category.mjs")
+try:
+    r = subprocess.run(["node", cat_script], capture_output=True, text=True, timeout=60)
+    tail_line = [x for x in r.stdout.splitlines() if x.startswith("结果：")]
+    if r.returncode == 0 and tail_line and "0 失败" in tail_line[-1]:
+        ok(f"档案柜分类规则断言通过（{tail_line[-1]}）")
+    else:
+        bad(f"档案柜分类规则断言失败 -> {r.returncode} {r.stdout[-300:]} {r.stderr[-200:]}")
+except Exception as e:
+    bad(f"分类规则断言无法执行：{e}")
+
+arch_chunk = subprocess.run(
+    ["docker", "exec", "safetrans-frontend", "sh", "-c",
+     "cat /usr/share/nginx/html/assets/Archive-*.js"],
+    capture_output=True, text=True).stdout
+for token, label in [("cat-filter", "分类筛选栏"), ("证件证照", "证件类标签"),
+                     ("默认岗位", "岗位下拉（仅按岗位拆分文件）")]:
+    ok(f"Archive 产物包含「{label}」") if token in arch_chunk else bad(f"Archive 产物缺少「{label}」")
 
 print("=" * 68)
 print(f"结果：通过 {PASS} · 失败 {FAIL} · 提示 {WARN}")
