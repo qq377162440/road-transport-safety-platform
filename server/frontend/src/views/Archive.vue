@@ -106,6 +106,9 @@ const selectedBox = computed(() => boxes.value.find((b) => b.no === selectedNo.v
 const boxNoNum = (no) => boxes.value.findIndex((b) => b.no === no) + 1
 const selBoxNo = computed(() => boxNoNum(selectedNo.value))
 
+// 盒十一「从业人员一人一档 + 一车一档」走专属浏览面板
+const isCrewBox = computed(() => selectedBox.value?.special === 'crew')
+
 const currentYear = new Date().getFullYear()
 const years = [currentYear, currentYear - 1, currentYear - 2]
 const selYear = ref(currentYear)
@@ -205,6 +208,7 @@ async function loadTplLibrary() {
 
 watch([selectedNo, cargoType, selYear], () => {
   checked.value = new Set(); boxChecked.value = new Set(); tplChoice.value = {}; loadArchiveItems()
+  if (isCrewBox.value) loadCrew()
 })
 onMounted(() => {
   // 台账范本管理「定位档案柜」跳转：按盒号定位，并提示对应归档项
@@ -371,6 +375,64 @@ async function generateManager(personId = null) {
   finally { managerGenerating.value = 0 }
 }
 function downloadPdf(pdfId, name) { return download({ pdfId, name }) }
+
+// ---- 盒十一「从业人员一人一档 + 一车一档」：按人/按车浏览，点击文件名预览真实 PDF ----
+const crewData = ref({ employees: [], vehicles: [] })
+const crewBusy = ref(false)
+const crewTab = ref('emp')           // emp=从业人员一人一档 | veh=一车一档
+const expandedCrew = ref(new Set())  // 展开的人员/车辆 id 集合
+const crewPreview = ref(null)        // { name, blobUrl, kind }
+const crewPreviewing = ref(false)
+
+function toggleCrew(id) {
+  const s = new Set(expandedCrew.value)
+  s.has(id) ? s.delete(id) : s.add(id)
+  expandedCrew.value = s
+}
+
+async function loadCrew() {
+  crewBusy.value = true
+  try {
+    const [e, v] = await Promise.all([
+      request.get('/archive/employee-archive/overview'),
+      request.get('/archive/vehicle-archive/overview'),
+    ])
+    crewData.value = { employees: e.data?.employees || [], vehicles: v.data?.vehicles || [] }
+  } catch (err) {
+    ElMessage.error('读取盒十一档案失败')
+  } finally {
+    crewBusy.value = false
+  }
+}
+
+// 点击文件名：按 MinIO 对象名下载真实 PDF 并内嵌预览
+async function previewCrewFile(fileUrl, name) {
+  if (!fileUrl) { ElMessage.warning('该归档项暂无文件'); return }
+  crewPreviewing.value = true
+  clearCrewPreviewBlob()
+  crewPreview.value = { name, blobUrl: '', kind: '' }
+  try {
+    const token = localStorage.getItem('token')
+    const res = await fetch(`/api/archive/file?path=${encodeURIComponent(fileUrl)}`, {
+      headers: { Authorization: `Bearer ${token}`, 'X-Token': `Bearer ${token}` },
+    })
+    if (!res.ok) throw new Error('fetch failed')
+    const blob = await res.blob()
+    crewPreview.value = { name, blobUrl: URL.createObjectURL(blob), kind: blob.type.startsWith('image/') ? 'image' : 'pdf' }
+  } catch (e) {
+    crewPreview.value = { name, blobUrl: '', kind: 'error' }
+  } finally {
+    crewPreviewing.value = false
+  }
+}
+
+function clearCrewPreviewBlob() {
+  if (crewPreview.value?.blobUrl) { URL.revokeObjectURL(crewPreview.value.blobUrl); crewPreview.value = null }
+}
+
+function closeCrewPreview() {
+  clearCrewPreviewBlob()
+}
 
 // ---- 盒一「安全生产责任书」：组织架构上下级双签生效 ----
 // 上级来自 org_post.parent_id 汇报线（跳过禁用岗位后上提），最顶层主要负责人与公司签；
@@ -829,13 +891,13 @@ function locateItem(boxNo, name) {
             <h2>盒{{ selectedBox.no }} · {{ selectedBox.name }}</h2>
             <div class="desc">归档项按自然年度隔离；生成后存 MinIO，可下载 PDF 打印装盒。</div>
           </div>
-          <div class="head-actions">
+          <div class="head-actions" v-if="!isCrewBox">
             <el-button @click="downloadBox"><Icon name="download" :size="15" /> 一键下载整盒</el-button>
           </div>
         </div>
 
         <!-- 文件分类：依据《08》三大类资料 + ②′ 上传留存；类别决定生产方式，与岗位无关 -->
-        <div class="cat-filter">
+        <div class="cat-filter" v-if="!isCrewBox">
           <span class="cat-filter-t">文件分类</span>
           <button :class="['cat-pill', categoryFilter === 'all' && 'on']" @click="categoryFilter = 'all'">
             全部 <b>{{ categoryCounts.all }}</b>
@@ -848,7 +910,7 @@ function locateItem(boxNo, name) {
           <span class="cat-filter-tip">依据《08》三大类 + ②′ 上传留存划分；证件 / 动态记录 / 上传留存与岗位无关，不提供岗位切换</span>
         </div>
 
-        <div class="list-toolbar">
+        <div class="list-toolbar" v-if="!isCrewBox">
           <el-checkbox class="selall-cb" :model-value="allChecked" @change="toggleBox">
             {{ categoryFilter === 'all' ? '全选本盒' : '全选当前分类' }}
           </el-checkbox>
@@ -857,7 +919,99 @@ function locateItem(boxNo, name) {
           </el-button>
         </div>
 
-        <div v-loading="loading" class="item-list">
+        <!-- 盒十一：从业人员一人一档 + 一车一档（按人/按车浏览，点击文件名预览真实 PDF） -->
+        <div v-if="isCrewBox" v-loading="crewBusy" class="crew-panel">
+          <div class="crew-tabs">
+            <button :class="['crew-tab', crewTab === 'emp' && 'on']" @click="crewTab = 'emp'">
+              从业人员一人一档 <b>{{ crewData.employees.length }}</b>
+            </button>
+            <button :class="['crew-tab', crewTab === 'veh' && 'on']" @click="crewTab = 'veh'">
+              一车一档 <b>{{ crewData.vehicles.length }}</b>
+            </button>
+            <span class="crew-tip">点击文件名即可预览该归档项的真实 PDF / 扫描件</span>
+          </div>
+
+          <!-- 从业人员一人一档 -->
+          <div v-if="crewTab === 'emp'" class="crew-body">
+            <div v-if="!crewData.employees.length && !crewBusy" class="sd-empty">
+              人员基础信息里还没有从业人员（驾驶员 / 押运员等），请先录入后再查看一人一档。
+            </div>
+            <div v-for="p in crewData.employees" :key="p.personId" class="crew-card">
+              <div class="crew-card-h" @click="toggleCrew('e' + p.personId)">
+                <div class="ma-avatar">{{ (p.name || '—').slice(0, 1) }}</div>
+                <div class="ma-id">
+                  <div class="ma-nm">{{ p.name }} <span class="ma-post">{{ p.postName || '未分配岗位' }}</span></div>
+                  <div class="ma-sub">{{ p.telephone || '—' }} · 完整度 {{ p.done }}/{{ p.required }} 项（{{ p.percent }}%）</div>
+                </div>
+                <span :class="['ma-badge', p.done === p.required && 'on']">{{ p.done === p.required ? '齐全' : '待补齐' }}</span>
+                <span class="ma-exp">{{ expandedCrew.has('e' + p.personId) ? '收起' : '明细' }}</span>
+              </div>
+              <div v-if="expandedCrew.has('e' + p.personId)" class="crew-detail">
+                <div class="ma-sec-t">一人一档归档目录（{{ p.items?.length || 0 }} 项）</div>
+                <div v-for="it in p.items" :key="it.code" class="crew-item">
+                  <span class="ma-code">{{ it.code }}</span>
+                  <span class="ma-inm">{{ it.name }}</span>
+                  <span :class="['ma-st', it.status === 1 && 'ok']">{{ it.status === 1 ? '已归档' : it.status === 2 ? '已过期' : '缺失' }}</span>
+                  <span v-if="it.fileUrl" class="crew-file clickable" @click="previewCrewFile(it.fileUrl, it.name)">
+                    <Icon name="search" :size="13" /> {{ it.name }}.pdf
+                  </span>
+                  <span v-else class="crew-file off">（暂无文件）</span>
+                </div>
+                <div class="ma-sec-t">证照与资格证明（{{ p.docs?.length || 0 }} 项）</div>
+                <div v-if="!p.docs?.length" class="ma-empty">暂无证照记录</div>
+                <div v-for="d in p.docs" :key="d.name" class="crew-item">
+                  <span class="ma-inm">{{ d.name }}</span>
+                  <span class="ma-grp">有效期至 {{ d.expire || '—' }}</span>
+                  <span v-if="d.fileUrl" class="crew-file clickable" @click="previewCrewFile(d.fileUrl, d.name)">
+                    <Icon name="search" :size="13" /> 预览
+                  </span>
+                  <span v-else class="crew-file off">（暂无文件）</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- 一车一档 -->
+          <div v-if="crewTab === 'veh'" class="crew-body">
+            <div v-if="!crewData.vehicles.length && !crewBusy" class="sd-empty">
+              车辆基础信息里还没有车辆，请先录入后再查看一车一档。
+            </div>
+            <div v-for="v in crewData.vehicles" :key="v.vehicleId" class="crew-card">
+              <div class="crew-card-h" @click="toggleCrew('v' + v.vehicleId)">
+                <div class="ma-avatar">{{ (v.plateNo || '—').slice(0, 1) }}</div>
+                <div class="ma-id">
+                  <div class="ma-nm">{{ v.plateNo }} <span class="ma-post">{{ v.vehicleType || '' }} · {{ v.owner || '' }}</span></div>
+                  <div class="ma-sub">{{ v.bizType || '' }} · 品牌型号 {{ v.brandModel || '—' }} · 一车一档 {{ v.items?.length || 0 }} 项</div>
+                </div>
+                <span class="ma-exp">{{ expandedCrew.has('v' + v.vehicleId) ? '收起' : '明细' }}</span>
+              </div>
+              <div v-if="expandedCrew.has('v' + v.vehicleId)" class="crew-detail">
+                <div class="ma-sec-t">一车一档归档目录（{{ v.items?.length || 0 }} 项）</div>
+                <div v-for="it in v.items" :key="it.code" class="crew-item">
+                  <span class="ma-code">{{ it.code }}</span>
+                  <span class="ma-inm">{{ it.name }}</span>
+                  <span :class="['ma-st', it.status === 1 && 'ok']">{{ it.status === 1 ? '已归档' : it.status === 2 ? '已过期' : '缺失' }}</span>
+                  <span v-if="it.fileUrl" class="crew-file clickable" @click="previewCrewFile(it.fileUrl, it.name)">
+                    <Icon name="search" :size="13" /> {{ it.name }}.pdf
+                  </span>
+                  <span v-else class="crew-file off">（暂无文件）</span>
+                </div>
+                <div class="ma-sec-t">车辆证照（{{ v.docs?.length || 0 }} 项）</div>
+                <div v-if="!v.docs?.length" class="ma-empty">暂无证照记录</div>
+                <div v-for="d in v.docs" :key="d.name" class="crew-item">
+                  <span class="ma-inm">{{ d.name }}</span>
+                  <span class="ma-grp">有效期至 {{ d.expire || '—' }}</span>
+                  <span v-if="d.fileUrl" class="crew-file clickable" @click="previewCrewFile(d.fileUrl, d.name)">
+                    <Icon name="search" :size="13" /> 预览
+                  </span>
+                  <span v-else class="crew-file off">（暂无文件）</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div v-loading="loading" class="item-list" v-if="!isCrewBox">
           <div v-for="r in visibleRows" :key="r.key" class="item-row" :class="{ located: r.located }">
             <span class="item-idx">{{ r.seq }}</span>
             <el-checkbox class="item-cb" :model-value="checked.has(r.key)" @change="(v) => toggleItem(r.key, v)" />
@@ -980,6 +1134,22 @@ function locateItem(boxNo, name) {
           <div v-else class="pdf-page-frame">
             <iframe :srcdoc="previewDoc" class="pdf-doc-frame" />
           </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 盒十一：归档项文件预览（按 MinIO 对象名下载真实 PDF / 扫描件） -->
+    <div class="pdf-mask" :class="{ show: crewPreview }" @click.self="closeCrewPreview">
+      <div class="pdf-wrap">
+        <div class="pdf-toolbar">
+          <span class="t">{{ crewPreview?.name }} · 文件预览</span>
+          <button class="x" @click="closeCrewPreview">×</button>
+        </div>
+        <div class="pdf-body">
+          <div v-if="crewPreviewing" class="sd-empty">正在加载文件…</div>
+          <iframe v-else-if="crewPreview?.blobUrl && crewPreview?.kind === 'pdf'" :src="crewPreview.blobUrl" class="pdf-embed" />
+          <img v-else-if="crewPreview?.blobUrl && crewPreview?.kind === 'image'" :src="crewPreview.blobUrl" class="pdf-embed-img" alt="扫描件" />
+          <div v-else class="sd-empty">文件读取失败，请稍后重试。</div>
         </div>
       </div>
     </div>
@@ -1559,6 +1729,29 @@ function locateItem(boxNo, name) {
 .ma-st { color: #B91C1C; font-weight: 600; }
 .ma-st.ok { color: #15803D; }
 .ma-empty { font-size: 11.5px; color: var(--text-3); padding: 6px 0; }
+
+/* ===== 盒十一：从业人员一人一档 + 一车一档 ===== */
+.crew-panel { padding: 4px 0 12px; }
+.crew-tabs { display: flex; align-items: center; gap: 8px; padding: 6px 2px 14px; flex-wrap: wrap; }
+.crew-tab { font-size: 13px; padding: 7px 16px; border: 1px solid var(--border); border-radius: 8px;
+  background: #fff; color: var(--text-2); cursor: pointer; }
+.crew-tab b { color: var(--brand-700); margin-left: 4px; }
+.crew-tab.on { background: var(--brand-600); border-color: var(--brand-600); color: #fff; }
+.crew-tab.on b { color: #fff; }
+.crew-tip { font-size: 11.5px; color: var(--text-3); margin-left: auto; }
+.crew-body { display: flex; flex-direction: column; gap: 12px; }
+.crew-card { border: 1px solid var(--border); border-radius: 10px; background: #fff; overflow: hidden; }
+.crew-card-h { display: flex; align-items: center; gap: 12px; padding: 12px 14px; cursor: pointer; }
+.crew-card-h:hover { background: #F8FAFC; }
+.crew-card-h .ma-post { font-size: 11px; color: var(--text-3); font-weight: 400; margin-left: 6px; }
+.crew-card-h .ma-exp { margin-left: auto; font-size: 11.5px; color: var(--brand-700); }
+.crew-detail { padding: 4px 16px 14px; border-top: 1px dashed var(--border); background: #FCFDFE; }
+.crew-item { display: flex; align-items: center; gap: 10px; padding: 6px 0; border-bottom: 1px dashed #E2E8F0; font-size: 11.5px; }
+.crew-item .ma-code { width: 64px; color: var(--text-3); font-family: monospace; }
+.crew-item .ma-inm { flex: 1; }
+.crew-file { font-size: 11.5px; color: var(--brand-700); display: inline-flex; align-items: center; gap: 3px;
+  padding: 2px 9px; border: 1px solid var(--brand-200); border-radius: 7px; background: var(--brand-50); }
+.crew-file.off { color: var(--text-3); border-color: var(--border); background: #F8FAFC; }
 
 /* ===== 安全生产责任书 · 上下级双签 ===== */
 .rs-rule { display: flex; align-items: flex-start; gap: 8px; padding: 10px 20px;

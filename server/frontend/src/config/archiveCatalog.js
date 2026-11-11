@@ -130,6 +130,18 @@ const BOX_TEN = {
   ],
 }
 
+// 盒十一：从业人员一人一档（驾驶员 / 押运员等） + 一车一档。点击文件名预览真实 PDF。
+// special:'crew' 告知前端走专属浏览面板，而非普通归档行。
+const BOX_ELEVEN_CREW = {
+  no: '十一',
+  name: '从业人员一人一档及一车一档',
+  special: 'crew',
+  items: [
+    { name: '从业人员一人一档（驾驶员、押运员等）' },
+    { name: '一车一档' },
+  ],
+}
+
 // 危货专属：盒七 停车场管理 / 盒八 应急管理（带备案回执等）/ 盒九 风险（带安全评估等）/ 盒十一 事故档案
 const BOX_SEVEN_DANGER = {
   no: '七',
@@ -188,11 +200,11 @@ const BOX_ELEVEN = {
 export const ARCHIVE_CATALOG = {
   普货: [
     BOX_ONE, BOX_TWO, BOX_THREE, BOX_FOUR, BOX_FIVE, BOX_SIX,
-    BOX_SEVEN_GENERAL, BOX_EIGHT_GENERAL, BOX_NINE_GENERAL, BOX_TEN,
+    BOX_SEVEN_GENERAL, BOX_EIGHT_GENERAL, BOX_NINE_GENERAL, BOX_TEN, BOX_ELEVEN_CREW,
   ],
   危货: [
     BOX_ONE, BOX_TWO, BOX_THREE, BOX_FOUR, BOX_FIVE, BOX_SIX,
-    BOX_SEVEN_DANGER, BOX_EIGHT_DANGER, BOX_NINE_DANGER, BOX_NINE_GENERAL, BOX_ELEVEN,
+    BOX_SEVEN_DANGER, BOX_EIGHT_DANGER, BOX_NINE_DANGER, BOX_NINE_GENERAL, BOX_ELEVEN, BOX_ELEVEN_CREW,
   ],
 }
 
