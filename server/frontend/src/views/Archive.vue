@@ -4,6 +4,7 @@ import request from '@/api/request'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import Icon from '@/components/Icon.vue'
 import { ARCHIVE_CATALOG, FREQ_LABEL, STATUS } from '@/config/archiveCatalog'
+import { classifyItem, CATEGORY_LIST } from '@/config/archiveCategory'
 import { useRouter, useRoute } from 'vue-router'
 import { useAuthStore } from '@/store/auth'
 
@@ -134,11 +135,26 @@ const rows = computed(() => {
     const q = locatedItem.value
     const located = !!q && (it.name === q || it.name.includes(q) || q.includes(it.name))
     return {
-      key, name: it.name, freq: it.freq || '', tplDriven: !!it.tplDriven,
+      key, seq: idx + 1, name: it.name, freq: it.freq || '', tplDriven: !!it.tplDriven,
       isUploaded, tplOptions, tplCode, status, pdfId, located,
+      ...classifyItem(it.name),
     }
   })
 })
+
+// ---- 文件分类（08 三大类 + ②′ 上传留存）----
+// 类别只决定「怎么生产」；是否按岗位是独立维度，只有责任书/承诺书/告知书/任命书/
+// 风险告知卡等按岗位拆分的文件才允许切换岗位，证件类与动态记录一律不带岗位参数。
+const categoryFilter = ref('all')
+const categoryCounts = computed(() => {
+  const c = { all: rows.value.length }
+  CATEGORY_LIST.forEach((x) => { c[x.key] = rows.value.filter((r) => r.categoryKey === x.key).length })
+  return c
+})
+const visibleRows = computed(() => categoryFilter.value === 'all'
+  ? rows.value
+  : rows.value.filter((r) => r.categoryKey === categoryFilter.value))
+const postFor = (item) => (item?.postRelated ? previewPost.value : '')
 
 // 四色统计
 const summary = computed(() => {
@@ -206,10 +222,9 @@ function toggleItem(key, val) {
   checked.value = new Set(checked.value)
 }
 function toggleBox(val) {
-  const bno = selBoxNo.value
-  selectedBox.value.items.forEach((_, idx) => {
-    const k = `${bno}-${idx}`
-    if (val) checked.value.add(k); else checked.value.delete(k)
+  // 分类筛选后只操作当前可见项，避免「全选」把被筛掉的项一起勾上
+  visibleRows.value.forEach((r) => {
+    if (val) checked.value.add(r.key); else checked.value.delete(r.key)
   })
   checked.value = new Set(checked.value)
 }
@@ -224,11 +239,8 @@ function toggleBoxCheck(no, val) {
   boxChecked.value = new Set(boxChecked.value)
   checked.value = new Set(checked.value)
 }
-const allChecked = computed(() => {
-  const bno = selBoxNo.value
-  return selectedBox.value.items.length > 0 &&
-    selectedBox.value.items.every((_, idx) => checked.value.has(`${bno}-${idx}`))
-})
+const allChecked = computed(() =>
+  visibleRows.value.length > 0 && visibleRows.value.every((r) => checked.value.has(r.key)))
 
 // ---- 生成：一律按「台账范本管理」当前应用范本渲染 PDF ----
 function currentTpl(item) {
@@ -240,14 +252,14 @@ function currentTpl(item) {
 async function generateOne(item, silent = false) {
   const tpl = currentTpl(item)
   if (!tpl) return false
-  // 单行生成：先检查岗位人名，读不到则提醒（批量生成由 batchGenerate 统一提醒一次）
-  if (!silent && !await confirmMissing(await checkMissing(tpl))) return false
+  // 单行生成：仅「按岗位拆分」的文件需要检查岗位人名（批量生成由 batchGenerate 统一提醒一次）
+  if (!silent && item.postRelated && !await confirmMissing(await checkMissing(tpl, item))) return false
   await request.post('/archive/template/generate', {
     code: tpl.code,
     itemName: item.name,
     boxNo: selBoxNo.value,
     year: selYear.value,
-    post: previewPost.value,
+    post: postFor(item),
   })
   if (!silent) ElMessage.success(`已按「${tpl.name}」生成并归档`)
   return true
@@ -272,16 +284,19 @@ async function batchGenerate() {
     ElMessage.info('请先勾选要生成的归档项（可点「全选本盒」快速选择）')
     return
   }
-  const targets = rows.value.filter((r) => checked.value.has(r.key) && r.tplOptions.length)
+  const targets = visibleRows.value.filter((r) => checked.value.has(r.key) && r.tplOptions.length)
   if (!targets.length) {
     ElMessage.info('勾选项中没有可按范本生成的归档项（其余请使用「上传」按钮留存）')
     return
   }
   generating.value = true
   try {
-    // 批量只提醒一次：先汇总所有归档项缺失的人名字段
+    // 批量只提醒一次：先汇总【按岗位拆分】的归档项缺失的人名字段；
+    // 证件 / 动态记录 / 上传留存不参与岗位人名检查，避免误弹补录提示。
     const allMissing = []
-    for (const r of targets) allMissing.push(...await checkMissing(currentTpl(r)))
+    for (const r of targets) {
+      if (r.postRelated) allMissing.push(...await checkMissing(currentTpl(r), r))
+    }
     if (!await confirmMissing(allMissing)) return
     let n = 0
     for (const r of targets) if (await generateOne(r, true)) n++
@@ -389,11 +404,12 @@ const assigning = ref(false)
 const missingLabels = computed(() =>
   [...new Set(missingPersons.value.map((m) => m.label))].join('、'))
 
-async function checkMissing(tpl) {
+async function checkMissing(tpl, item) {
   if (!tpl) return []
   try {
     const res = await request.get('/archive/template/check', {
-      params: { code: tpl.code, post: previewPost.value },
+      // 非岗位相关文件一律不传 post，避免把上一份责任书的岗位串到证件/记录类
+      params: { code: tpl.code, post: postFor(item) },
     })
     return res.data || []
   } catch (e) { return [] }
@@ -460,6 +476,9 @@ function clearPreviewBlob() {
 
 async function openPreview(item) {
   if (!item) return
+  // 切到另一份文件时清空岗位选择，避免把上一份责任书的岗位串到证件/记录类文件；
+  // 同一份文件内由岗位下拉触发的刷新不重置。
+  if (preview.value && preview.value.key !== item.key) previewPost.value = ''
   preview.value = item
   clearPreviewBlob()
   previewDoc.value = ''
@@ -494,10 +513,13 @@ async function openPreview(item) {
   previewDoc.value = srcdoc('<div class="doc-p">正在按当前应用范本生成成品预览…</div>')
   // rows 是 computed，对象引用会被重算替换，用稳定的 key 判断是否为当前预览项
   const key = item.key
-  checkMissing(tpl).then((list) => { if (preview.value?.key === key) missingPersons.value = list })
+  // 只有按岗位拆分的文件才需要「未读取到岗位人名」提醒；证件/记录类不弹这个提示
+  if (item.postRelated) {
+    checkMissing(tpl, item).then((list) => { if (preview.value?.key === key) missingPersons.value = list })
+  }
   try {
     const res = await request.get(`/tpl/library/render/${encodeURIComponent(tpl.code)}`, {
-      params: { mode: 'final', itemName: item.name, year: selYear.value, post: previewPost.value },
+      params: { mode: 'final', itemName: item.name, year: selYear.value, post: postFor(item) },
     })
     if (preview.value?.key !== key) return  // 快速切换时丢弃过期响应
     previewDoc.value = srcdoc(res.data || '')
@@ -732,20 +754,38 @@ function locateItem(boxNo, name) {
           </div>
         </div>
 
+        <!-- 文件分类：依据《08》三大类资料 + ②′ 上传留存；类别决定生产方式，与岗位无关 -->
+        <div class="cat-filter">
+          <span class="cat-filter-t">文件分类</span>
+          <button :class="['cat-pill', categoryFilter === 'all' && 'on']" @click="categoryFilter = 'all'">
+            全部 <b>{{ categoryCounts.all }}</b>
+          </button>
+          <button v-for="c in CATEGORY_LIST" :key="c.key"
+                  :class="['cat-pill', categoryFilter === c.key && 'on']"
+                  :title="c.desc" @click="categoryFilter = c.key">
+            {{ c.label }} <b>{{ categoryCounts[c.key] || 0 }}</b>
+          </button>
+          <span class="cat-filter-tip">依据《08》三大类 + ②′ 上传留存划分；证件 / 动态记录 / 上传留存与岗位无关，不提供岗位切换</span>
+        </div>
+
         <div class="list-toolbar">
-          <el-checkbox class="selall-cb" :model-value="allChecked" @change="toggleBox">全选本盒</el-checkbox>
+          <el-checkbox class="selall-cb" :model-value="allChecked" @change="toggleBox">
+            {{ categoryFilter === 'all' ? '全选本盒' : '全选当前分类' }}
+          </el-checkbox>
           <el-button v-if="canGenerateTpl" size="small" type="primary" :loading="generating" @click="batchGenerate">
             <Icon name="fileText" :size="14" /> 批量生成勾选（{{ checked.size }}）
           </el-button>
         </div>
 
         <div v-loading="loading" class="item-list">
-          <div v-for="(r, idx) in rows" :key="r.key" class="item-row" :class="{ located: r.located }">
-            <span class="item-idx">{{ idx + 1 }}</span>
+          <div v-for="r in visibleRows" :key="r.key" class="item-row" :class="{ located: r.located }">
+            <span class="item-idx">{{ r.seq }}</span>
             <el-checkbox class="item-cb" :model-value="checked.has(r.key)" @change="(v) => toggleItem(r.key, v)" />
             <div class="nm">
               <span class="n clickable" @click="openPreview(r)">{{ r.name }}</span>
               <div class="d">
+                <span class="cat" :class="`cat-${r.categoryColor}`" :title="r.categoryDesc">{{ r.categoryShort }}</span>
+                <span v-if="r.postRelated" class="cat cat-post" title="该文件按岗位拆分，可在预览中切换岗位">按岗位</span>
                 <span v-if="r.tplOptions.length" class="src src-auto">按范本生成</span>
                 <span v-else class="src src-up">上传留存</span>
                 <span v-if="r.tplDriven" class="src src-tpl">范本目录项</span>
@@ -822,10 +862,14 @@ function locateItem(boxNo, name) {
       <div class="pdf-wrap">
         <div class="pdf-toolbar">
           <span class="t">{{ preview?.name }} · {{ selYear }} 年度 · 成品预览</span>
+          <span v-if="preview" class="cat" :class="`cat-${preview.categoryColor}`" :title="preview.categoryDesc">
+            {{ preview.categoryLabel }}
+          </span>
           <span v-if="currentTpl(preview)?.name" class="tb-tpl">
             当前范本：{{ currentTpl(preview).name }}（{{ currentTpl(preview).versionLabel || '内置' }}）
           </span>
-          <select v-model="previewPost" class="tb-sel" @change="openPreview(preview)">
+          <!-- 只有按岗位拆分的文件才提供岗位切换；证件类/动态记录/上传留存一律不显示 -->
+          <select v-if="preview?.postRelated" v-model="previewPost" class="tb-sel" @change="openPreview(preview)">
             <option value="">默认岗位</option>
             <option v-for="p in previewPosts" :key="p" :value="p">{{ p }}</option>
           </select>
@@ -837,7 +881,7 @@ function locateItem(boxNo, name) {
           </el-button>
           <button class="x" @click="closePreview">×</button>
         </div>
-        <div v-if="missingPersons.length" class="person-warn">
+        <div v-if="missingPersons.length && preview?.postRelated" class="person-warn">
           <Icon name="info" :size="16" />
           <span><b>未读取到岗位人名</b>：{{ missingLabels }}。生成后台账中这些姓名栏将留空，建议先补录人员。</span>
           <el-button size="small" type="warning" plain @click="openRoster">补录人名</el-button>
@@ -1041,6 +1085,21 @@ function locateItem(boxNo, name) {
 .box-head .desc { font-size: 12px; color: var(--text-3); }
 .head-actions { display: flex; gap: 8px; flex-shrink: 0; }
 
+/* 文件分类筛选（08 三大类 + ②′ 上传留存） */
+.cat-filter { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; padding: 10px 4px 12px; border-bottom: 1px solid var(--border); margin-bottom: 4px; }
+.cat-filter-t { font-size: 12px; font-weight: 700; color: var(--text-2); margin-right: 2px; }
+.cat-filter-tip { font-size: 11px; color: var(--text-3); margin-left: auto; }
+.cat-pill { font-size: 12px; padding: 5px 11px; border-radius: 16px; border: 1px solid var(--border); background: #fff; color: var(--text-2); cursor: pointer; transition: .12s; }
+.cat-pill b { font-weight: 700; margin-left: 3px; opacity: .75; }
+.cat-pill:hover:not(.on) { border-color: var(--brand-500); color: var(--brand-600); }
+.cat-pill.on { background: var(--brand-500); border-color: var(--brand-500); color: #fff; }
+/* 行内/预览类别标签 */
+.cat { font-size: 11px; padding: 2px 8px; border-radius: 8px; white-space: nowrap; }
+.cat-blue { background: var(--brand-100); color: var(--brand-600); }
+.cat-green { background: #F0FDF4; color: #15803D; }
+.cat-amber { background: #FFFBEB; color: #B45309; }
+.cat-red { background: var(--danger-bg); color: #B91C1C; }
+.cat-post { background: #F3E8FF; color: #7C3AED; }
 .list-toolbar { display: flex; align-items: center; gap: 14px; padding: 10px 4px; border-bottom: 1px solid var(--border); margin-bottom: 8px; }
 .selall-cb { font-size: 13px; font-weight: 600; }
 
