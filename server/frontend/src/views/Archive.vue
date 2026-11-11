@@ -510,6 +510,11 @@ async function openRespPanel() {
   catch (e) { ElMessage.error('读取责任书签订状态失败') }
   finally { respBusy.value = false }
 }
+// 从「管理人员档案」面板进入责任书上下级双签（三书已并入一人一档，双签为组织级流程保留入口）
+async function openRespPanelFromManager() {
+  showManagerPanel.value = false
+  await openRespPanel()
+}
 async function signResp(row, side) {
   respSigning.value = row.id
   try {
@@ -1094,8 +1099,7 @@ function locateItem(boxNo, name) {
                 <span v-else class="src src-up">上传留存</span>
                 <span v-if="r.tplDriven" class="src src-tpl">范本目录项</span>
                 <span v-if="r.freq" class="freq" :class="`freq-${r.freq}`">{{ FREQ_LABEL[r.freq] }}</span>
-                <span v-if="r.name === '管理人员档案'" class="src src-tpl" title="按管理人员一人一档生成 PDF 集合，册内包含岗前培训、考核记录、三书等">按人分类</span>
-                <span v-if="r.name === '安全生产责任书'" class="src src-tpl" title="上下级双方都签署后才生效；上下级关系取自安全管理架构">双签生效</span>
+                <span v-if="r.name === '管理人员档案'" class="src src-tpl" title="按管理人员一人一档生成 PDF 集合，册内包含三书、岗前培训、考核记录、任命书等">按人分类</span>
                 <span v-if="r.tplOptions.length" class="tpl-name" :title="currentTpl(r)?.name">
                   当前范本：{{ currentTpl(r)?.name || '—' }}
                 </span>
@@ -1119,9 +1123,6 @@ function locateItem(boxNo, name) {
             <div class="ops">
               <el-button v-if="r.name === '管理人员档案'" size="small" type="warning" plain @click="openManagerPanel">
                 <Icon name="fileText" :size="13" /> 按人查看
-              </el-button>
-              <el-button v-if="r.name === '安全生产责任书'" size="small" type="warning" plain @click="openRespPanel">
-                <Icon name="edit" :size="13" /> 签订管理
               </el-button>
               <el-button v-if="r.tplOptions.length && canGenerateTpl" size="small" @click="doGenerate(r)">
                 <Icon name="plus" :size="13" /> {{ r.pdfId ? '重新生成' : '生成' }}
@@ -1346,7 +1347,7 @@ function locateItem(boxNo, name) {
         <div class="sd-head">
           <div>
             <h2><Icon name="fileText" :size="18" /> 管理人员档案 · 一人一档</h2>
-            <p>按人员基础信息中录入的管理人员逐人生成档案册 PDF，册内含岗前培训、考核记录、三书、任命书与证照</p>
+            <p>三书（责任书/承诺书/告知书）、岗前三级培训、两类人员考核、年度责任制考核、人员任命书与证照，均并入管理人员一人一档</p>
           </div>
           <span class="sd-x" @click="showManagerPanel = false">×</span>
         </div>
@@ -1357,6 +1358,9 @@ function locateItem(boxNo, name) {
           <span>企业 <b>{{ managerData.company || '—' }}</b></span>
           <el-button size="small" type="primary" :loading="managerGenerating === -1" @click="generateManager(null)">
             生成全部档案册
+          </el-button>
+          <el-button size="small" type="warning" plain @click="openRespPanelFromManager">
+            <Icon name="edit" :size="13" /> 责任书签订管理
           </el-button>
         </div>
         <div v-loading="managerBusy" class="sd-body ma-body">
