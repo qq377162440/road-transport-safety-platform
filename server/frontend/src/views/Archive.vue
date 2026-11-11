@@ -336,8 +336,9 @@ async function download(item) {
   URL.revokeObjectURL(url)
 }
 async function downloadBox() {
-  const done = rows.value.filter((r) => r.pdfId)
-  if (!done.length) { ElMessage.warning('本盒暂无已生成/已上传文件'); return }
+  if (!checked.value.size) { ElMessage.info('请先勾选要下载的归档项（可点「全选本盒」快速选择）'); return }
+  const done = rows.value.filter((r) => checked.value.has(r.key) && r.pdfId)
+  if (!done.length) { ElMessage.warning('勾选项中没有已生成/已上传的文件'); return }
   for (const r of done) await download(r)
 }
 
@@ -1006,7 +1007,7 @@ function locateItem(boxNo, name) {
             <div class="desc">归档项按自然年度隔离；生成后存 MinIO，可下载 PDF 打印装盒。</div>
           </div>
           <div class="head-actions">
-            <el-button v-if="!isCrewBox" @click="downloadBox"><Icon name="download" :size="15" /> 一键下载整盒</el-button>
+            <el-button v-if="!isCrewBox" @click="downloadBox"><Icon name="download" :size="15" /> 一键下载已选中</el-button>
             <el-button v-else :loading="crewDownloading" @click="downloadCrewAll">
               <Icon name="download" :size="15" /> 一键下载整盒
             </el-button>
@@ -1625,7 +1626,7 @@ function locateItem(boxNo, name) {
   font-size: 12.5px; line-height: 1.6; }
 .person-warn > svg { flex: none; }
 .person-warn > span { flex: 1; }
-.roster-mask { z-index: 210; }
+.roster-mask { z-index: 12000; }
 .roster-wrap { width: 560px; max-width: 94vw; max-height: 80vh; display: flex; flex-direction: column;
   background: #fff; border-radius: 10px; overflow: hidden; box-shadow: 0 8px 40px rgba(0,0,0,.3); }
 .roster-head { display: flex; align-items: center; gap: 10px; padding: 14px 18px;
@@ -1746,7 +1747,7 @@ function locateItem(boxNo, name) {
 .up-size { color: var(--text-3); }
 .up-foot { justify-content: flex-end; }
 
-.pdf-mask { position: fixed; inset: 0; background: rgba(20,28,43,.5); display: none; align-items: center; justify-content: center; z-index: 200; }
+.pdf-mask { position: fixed; inset: 0; background: rgba(20,28,43,.5); display: none; align-items: center; justify-content: center; z-index: 12000; }
 .pdf-mask.show { display: flex; }
 .pdf-wrap { background: #fff; width: 820px; max-width: 96vw; max-height: 92vh; display: flex; flex-direction: column; border-radius: 6px; overflow: hidden; box-shadow: 0 8px 40px rgba(0,0,0,.3); }
 .pdf-toolbar { display: flex; align-items: center; gap: 10px; padding: 12px 16px; background: #F1F5F9; border-bottom: 1px solid var(--border); }
