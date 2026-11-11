@@ -75,19 +75,31 @@ public class PersonFlowController {
                 .replace("\"", "&quot;").replace("'", "&#39;");
     }
 
-    private static String groupOf(String source, String name) {
-        if ("upload".equalsIgnoreCase(source) || "print".equalsIgnoreCase(source)) return "证件上传区";
-        if (name.contains("培训") || name.contains("考核") || name.contains("教育")) return "动态台账区";
-        return "范本生成区";
+    /** 与电子档案柜 ManagerArchiveService.GROUP 保持一致的语义分组，保证 B1 一人一档与档案柜对得上 */
+    private static final Map<String, String> GROUP = new LinkedHashMap<>() {{
+        put("P05", "三书");       put("P06", "三书");       put("P07", "三书");
+        put("P08", "岗前培训");
+        put("P10", "考核记录");   put("CREDIT_ASSESS", "考核记录");
+        put("P12", "任命书");
+        put("P01", "证照");       put("P02", "证照");       put("P03", "证照");
+        put("P04", "证照");       put("P09", "证照");       put("P11", "证照");
+        put("P13", "证照");
+    }};
+
+    private static String groupOf(String code) {
+        return GROUP.getOrDefault(code, "其他");
     }
 
     /** 13 项归档目录 + 完整度实时计算（分母只算必备项；危货强制体检计入分母） */
     private Map<String, Object> compute(long personId, String bizType) {
         List<Map<String, Object>> raw = jdbc.queryForList(DETAIL_SQL, personId, tid());
         Map<String, List<Map<String, Object>>> groups = new LinkedHashMap<>();
-        groups.put("证件上传区", new ArrayList<>());
-        groups.put("范本生成区", new ArrayList<>());
-        groups.put("动态台账区", new ArrayList<>());
+        groups.put("证照", new ArrayList<>());
+        groups.put("三书", new ArrayList<>());
+        groups.put("岗前培训", new ArrayList<>());
+        groups.put("考核记录", new ArrayList<>());
+        groups.put("任命书", new ArrayList<>());
+        groups.put("其他", new ArrayList<>());
 
         int required = 0, done = 0, expiredCount = 0;
         List<Map<String, Object>> items = new ArrayList<>();
@@ -141,9 +153,9 @@ public class PersonFlowController {
             item.put("fileUrl", s(r.get("file_url")));
             item.put("expireDate", exp);
             item.put("daysLeft", daysLeft);
-            item.put("group", groupOf(dictSource, name));
+            item.put("group", groupOf(code));
             items.add(item);
-            groups.get(groupOf(dictSource, name)).add(item);
+            groups.get(groupOf(code)).add(item);
         }
 
         int percent = required == 0 ? 0 : (int) Math.round(done * 100.0 / required);
@@ -207,8 +219,14 @@ public class PersonFlowController {
     @GetMapping("/overview")
     public Result<Map<String, Object>> overview(@RequestParam(defaultValue = "GENERAL") String bizType) {
         List<Map<String, Object>> persons = jdbc.queryForList(
-                "SELECT `id`,`name`,`telephone`,`person_type`,`post_ids`,`id_card`,`politic`,`gender` " +
-                        "FROM `person` WHERE `tenant_id`=? AND `deleted`=0 ORDER BY `id`", tid());
+                "SELECT p.`id`, p.`name`, p.`telephone`, p.`person_type`, p.`post_ids`, p.`id_card`, p.`politic`, p.`gender`, " +
+                "GROUP_CONCAT(DISTINCT o.`post_name` ORDER BY o.`id` SEPARATOR '、') AS `post_name` " +
+                "FROM `person` p LEFT JOIN `org_member` m " +
+                "  ON m.`user_id`=p.`id` AND m.`tenant_id`=p.`tenant_id` AND m.`deleted`=0 " +
+                "LEFT JOIN `org_post` o ON o.`id`=m.`post_id` AND o.`deleted`=0 AND o.`enabled`=1 " +
+                "WHERE p.`tenant_id`=? AND p.`deleted`=0 " +
+                "GROUP BY p.`id`, p.`name`, p.`telephone`, p.`person_type`, p.`post_ids`, p.`id_card`, p.`politic`, p.`gender` " +
+                "ORDER BY p.`id`", tid());
         List<Map<String, Object>> list = new ArrayList<>();
         int complete = 0, expiringTotal = 0;
         for (Map<String, Object> p : persons) {
