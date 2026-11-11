@@ -15,14 +15,10 @@ const BOX_ONE = {
     { name: '关于成立安全生产领导小组的通知' },
     { name: '二级维护计划' },
     { name: '安全生产责任险' },
-    { name: '管理人员档案' },
-    { name: '安全生产责任书', freq: F.yearly, real: 'responsibility' },
-    { name: '安全生产承诺书', freq: F.yearly, real: 'responsibility' },
-    { name: '岗位危害告知书' },
-    { name: '岗前三级培训', freq: F.once },
-    { name: '两类人员考核合格证明' },
-    { name: '年度责任制考核记录' },
-    { name: '人员任命书' },
+    // 三书（责任书/承诺书/告知书）、岗前三级培训、两类人员考核、年度责任制考核、
+    // 人员任命书 均并入「管理人员档案」按人一人一档（ManagerArchiveService 分章纳入），
+    // 不再作为盒一的独立并列项。责任书上下级双签入口迁入管理人员档案面板。
+    { name: '管理人员档案', real: 'manager' },
     { name: '复工复产方案' },
   ],
 }
