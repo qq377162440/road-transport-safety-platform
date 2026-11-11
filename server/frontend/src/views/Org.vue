@@ -124,6 +124,7 @@ async function savePerson() {
   dlg.person = false
   ElMessage.success(personId.value ? '岗位人员已更新，已联动一人一档 / 责任书待签' : '岗位人员已清空（待配置）')
   await load()
+  syncOrgArchive()
 }
 
 function openEdit() {
@@ -154,6 +155,7 @@ async function saveEdit() {
   dlg.edit = false
   ElMessage.success('岗位已保存，制度与责任书已双向联动')
   await load()
+  syncOrgArchive()
 }
 
 function openDocs() {
@@ -183,6 +185,7 @@ async function togglePost() {
   await request.put(`/org/post/${p.id}/toggle`)
   ElMessage.success(`岗位「${p.name}」已禁用，制度内容已剔除`)
   await load()
+  syncOrgArchive()
 }
 
 async function openDocPrev() {
@@ -193,6 +196,39 @@ async function openDocPrev() {
 
 // ---------------------------------------------------------------- 顶部动作
 function goPost() { router.push('/post') }
+
+// ---- 组织架构变化 → 电子档案柜联动（用户 2026-11-11 需求）----
+// 《安全组织架构》《关于成立安全生产领导小组的通知》《人员任命书》三份文件的内容
+// 直接由岗位树 / 岗位人员渲染，架构一变即应重新生成；历史版本可选择是否留存。
+async function syncOrgArchive() {
+  let st = null
+  try { st = (await request.get('/org/chart/archive-status')).data || {} } catch { return }
+  if (!st.hasAny) return // 档案柜还没有这三份文件，首次由企业在档案柜自行生成，不打扰
+  let keepHistory = true
+  try {
+    await ElMessageBox.confirm(
+      '组织架构刚发生变化，档案柜中的《安全组织架构》《关于成立安全生产领导小组的通知》《人员任命书》已不是最新内容。\n\n是否立即按当前架构自动重新生成？\n\n· 「保留历史版本」可在档案柜下载旧版对照；\n· 「不保留」会把本年度旧版本下架。',
+      '联动更新档案柜文件',
+      {
+        confirmButtonText: '更新并保留历史版本',
+        cancelButtonText: '更新（不保留历史）',
+        distinguishCancelAndClose: true,
+        type: 'warning',
+        customStyle: { whiteSpace: 'pre-line' },
+      },
+    )
+  } catch (action) {
+    if (action === 'cancel') keepHistory = false
+    else return // 关闭 = 暂不更新
+  }
+  try {
+    const r = (await request.post('/org/chart/regen-archive', { keepHistory })).data
+    const n = (r.generated || []).length
+    const extra = keepHistory ? '，历史版本已留存可下载对照'
+      : (r.archivedOld ? `，已下架 ${r.archivedOld} 份旧版本` : '')
+    ElMessage.success(`已按当前架构自动更新档案柜 ${n} 份文件${extra}`)
+  } catch { /* 拦截器已统一提示 */ }
+}
 
 async function downloadPdf() {
   try {
@@ -241,6 +277,7 @@ async function resetOrg() {
   await request.post('/org/chart/reset')
   ElMessage.success('架构演示数据已重置')
   await load()
+  syncOrgArchive()
 }
 
 onMounted(() => {

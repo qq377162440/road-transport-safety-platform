@@ -21,6 +21,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.stream.Collectors;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -81,12 +82,23 @@ public class TplLibraryService {
     private List<TplTemplate> baseTemplates() {
         Long g = groupId();
         if (g != null) {
-            return templateMapper.selectList(new LambdaQueryWrapper<TplTemplate>()
+            List<TplTemplate> inSet = templateMapper.selectList(new LambdaQueryWrapper<TplTemplate>()
                     .eq(TplTemplate::getTenantId, tid())
                     .eq(TplTemplate::getGroupId, g)
                     .eq(TplTemplate::getStatus, 1)
                     .orderByAsc(TplTemplate::getBoxNo)
                     .orderByAsc(TplTemplate::getId));
+            // 迁移新增的内置范本（如 V30 的二级维护计划）不在历史企业套副本里：
+            // 把全局组中套内缺失的 code 补进基线，保证新范本对已应用套的企业立即可见、可生成。
+            Set<String> codes = inSet.stream().map(TplTemplate::getCode).collect(Collectors.toSet());
+            List<TplTemplate> globals = templateMapper.selectList(new LambdaQueryWrapper<TplTemplate>()
+                    .eq(TplTemplate::getTenantId, 0L)
+                    .eq(TplTemplate::getGroupId, GLOBAL_SET_ID)
+                    .eq(TplTemplate::getStatus, 1));
+            for (TplTemplate gl : globals) {
+                if (gl.getCode() != null && !codes.contains(gl.getCode())) inSet.add(gl);
+            }
+            return inSet;
         }
         return templateMapper.selectList(new LambdaQueryWrapper<TplTemplate>()
                 .eq(TplTemplate::getTenantId, 0L)
@@ -120,16 +132,18 @@ public class TplLibraryService {
         return templateMapper.selectById(row.getSourceId());
     }
 
-    /** 按 code 取「当前生效」范本（企业套内容 / 旧模式覆盖 / 全局兜底） */
+    /** 按 code 取「当前生效」范本（企业套内容 / 旧模式覆盖 / 全局兜底，含套内缺失的全局新增范本） */
     public TplTemplate effective(String code) {
         Long g = groupId();
         if (g != null) {
-            return templateMapper.selectOne(new LambdaQueryWrapper<TplTemplate>()
+            TplTemplate inSet = templateMapper.selectOne(new LambdaQueryWrapper<TplTemplate>()
                     .eq(TplTemplate::getTenantId, tid())
                     .eq(TplTemplate::getGroupId, g)
                     .eq(TplTemplate::getCode, code)
                     .eq(TplTemplate::getStatus, 1)
                     .last("limit 1"));
+            if (inSet != null) return inSet;
+            // 套内没有（迁移新增的内置范本未同步进历史企业套）→ 兜底全局
         }
         TplTemplate own = templateMapper.selectOne(new LambdaQueryWrapper<TplTemplate>()
                 .eq(TplTemplate::getTenantId, tid() == null ? -1L : tid())
@@ -239,7 +253,34 @@ public class TplLibraryService {
                     .eq(TplTemplate::getGroupId, g)
                     .eq(TplTemplate::getCode, code)
                     .last("limit 1"));
-            if (row == null) throw new BizException("当前应用范本套内不存在范本：" + code);
+            if (row == null) {
+                // 套内缺失的迁移新增范本：首次定制时把全局行复制进套，再按定制内容保存
+                TplTemplate global = templateMapper.selectOne(new LambdaQueryWrapper<TplTemplate>()
+                        .eq(TplTemplate::getTenantId, 0L)
+                        .eq(TplTemplate::getCode, code)
+                        .eq(TplTemplate::getStatus, 1)
+                        .last("limit 1"));
+                if (global == null) throw new BizException("当前应用范本套内不存在范本：" + code);
+                row = new TplTemplate();
+                row.setTenantId(t);
+                row.setGroupId(g);
+                row.setSourceId(global.getId());
+                row.setCode(global.getCode());
+                row.setName(global.getName());
+                row.setCategory(global.getCategory());
+                row.setArchiveCode(global.getArchiveCode());
+                row.setBoxNo(global.getBoxNo());
+                row.setArchiveItem(global.getArchiveItem());
+                row.setCatalogId(global.getCatalogId());
+                row.setVersionLabel(global.getVersionLabel());
+                row.setPostScope(global.getPostScope());
+                row.setContent(global.getContent());
+                row.setNeedSeal(global.getNeedSeal());
+                row.setVersion(1);
+                row.setStatus(1);
+                row.setCreatedBy(0L);
+                templateMapper.insert(row);
+            }
             row.setContent(content);
             row.setVersionLabel(label);
             row.setVersion((row.getVersion() == null ? 1 : row.getVersion()) + 1);
