@@ -49,6 +49,7 @@ const CLOSED_LOOP_PAGES = {
   // 否则动态路由 biz/assess 会落到通用 BizModule.vue，专用页永远不会被加载。
   assess: () => import('@/views/biz/meeting/CreditModule.vue'),
   sign: () => import('@/views/biz/meeting/SignModule.vue'),
+  law: () => import('@/views/biz/law/LawModule.vue'),
 }
 const dynamicChildren = bizModules.map((m) => ({
   path: `biz/${m.code}`,

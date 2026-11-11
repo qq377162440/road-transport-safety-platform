@@ -1,6 +1,19 @@
 // 由 tools/gen_biz_meta.py 自动生成，请勿手工编辑
 export const bizModules = [
   {
+    "code": "law",
+    "title": "法律法规清单",
+    "phase": "B7",
+    "group": "基础档案",
+    "catalog": "",
+    "tables": [
+      {
+        "name": "law_catalog",
+        "title": "法律法规清单（制度引用的法规）"
+      }
+    ]
+  },
+  {
     "code": "common",
     "title": "系统运维",
     "phase": "A2",
