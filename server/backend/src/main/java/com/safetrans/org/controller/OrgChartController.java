@@ -28,9 +28,12 @@ import java.util.Map;
 public class OrgChartController {
 
     private final OrgChartService service;
+    private final com.safetrans.org.service.OrgArchiveLinkService linkService;
 
-    public OrgChartController(OrgChartService service) {
+    public OrgChartController(OrgChartService service,
+                              com.safetrans.org.service.OrgArchiveLinkService linkService) {
         this.service = service;
+        this.linkService = linkService;
     }
 
     /** 架构图聚合数据：公司名、树、统计、人员名册、制度池 */
@@ -97,5 +100,22 @@ public class OrgChartController {
     public Result<String> reset() {
         service.resetDemo();
         return Result.ok("架构演示数据已重置");
+    }
+
+    /** 联动归档状态：三个由组织架构数据渲染的归档项在当前年度是否已有成品 */
+    @GetMapping("/archive-status")
+    public Result<Map<String, Object>> archiveStatus() {
+        return Result.ok(linkService.status());
+    }
+
+    /**
+     * 联动归档：按当前架构重新生成「安全组织架构 / 成立领导小组通知 / 人员任命书」。
+     * keepHistory=false 时本年度旧版本下架；true（默认）时旧版本继续留存可下载对照。
+     */
+    @PostMapping("/regen-archive")
+    public Result<Map<String, Object>> regenArchive(@RequestBody Map<String, Object> body) {
+        boolean keep = body == null || body.get("keepHistory") == null
+                || Boolean.parseBoolean(String.valueOf(body.get("keepHistory")));
+        return Result.ok(linkService.regenerate(keep));
     }
 }
