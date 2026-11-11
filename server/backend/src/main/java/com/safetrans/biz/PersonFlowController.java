@@ -11,6 +11,8 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.web.bind.annotation.*;
 
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
@@ -373,6 +375,19 @@ public class PersonFlowController {
         Map<String, Object> dict = dictOrEmpty(itemCode);
         if (dict.isEmpty()) return Result.ok(Map.of("ok", false, "msg", "未知归档项：" + itemCode));
         boolean blank = Boolean.parseBoolean(String.valueOf(b.getOrDefault("blank", false)));
+        // 已有真实归档件（上传扫描件 / 签订件）时拒绝被模板成品覆盖，保证三处内容一致
+        List<Map<String, Object>> exist = jdbc.queryForList(
+                "SELECT `file_url`, `source_type` FROM `person_archive_item` " +
+                "WHERE `person_id`=? AND `item_code`=? AND `tenant_id`=? AND `deleted`=0 LIMIT 1",
+                id, itemCode, tid());
+        if (!exist.isEmpty()) {
+            String curUrl = s(exist.get(0).get("file_url"));
+            String curSrc = s(exist.get(0).get("source_type"));
+            if (!curUrl.isBlank() && !"auto".equals(curSrc) && !"print".equals(curSrc)) {
+                return Result.ok(Map.of("ok", false,
+                        "msg", "该项已有上传扫描件或签订生成的归档件，系统不覆盖；如需更换请重新上传证件"));
+            }
+        }
         Map<String, Object> person = personOrEmpty(id);
         String itemName = s(dict.get("item_name"));
         String html = buildHtml(person, itemName, itemCode, blank);
@@ -393,10 +408,34 @@ public class PersonFlowController {
         return Result.ok(out);
     }
 
-    /** 在线查看/下载归档 PDF（与 generate 同一模板，保证内容一致） */
-    @GetMapping(value = "/{id}/archive/{code}/pdf", produces = MediaType.APPLICATION_PDF_VALUE)
+    /** 在线查看归档件：优先返回真实归档文件（上传的扫描件/签订生成的 PDF），无文件才回退渲染模板 */
+    @GetMapping("/{id}/archive/{code}/pdf")
     public ResponseEntity<byte[]> pdf(@PathVariable long id, @PathVariable String code,
                                       @RequestParam(defaultValue = "false") boolean blank) {
+        // 1) 读归档项的真实文件（上传扫描件 / 签订件 / 范本成品），保证「查看PDF」与上传、档案柜一致
+        List<Map<String, Object>> rows = jdbc.queryForList(
+                "SELECT `file_url` FROM `person_archive_item` " +
+                "WHERE `person_id`=? AND `item_code`=? AND `tenant_id`=? AND `deleted`=0 LIMIT 1",
+                id, code, tid());
+        String fileUrl = rows.isEmpty() ? "" : s(rows.get(0).get("file_url"));
+        if (!fileUrl.isBlank()) {
+            try {
+                byte[] data = storage.download(fileUrl);
+                if (data != null && data.length > 0) {
+                    String low = fileUrl.toLowerCase();
+                    MediaType mt = low.endsWith(".png") ? MediaType.IMAGE_PNG
+                            : low.endsWith(".jpg") || low.endsWith(".jpeg") ? MediaType.IMAGE_JPEG
+                            : MediaType.APPLICATION_PDF;
+                    String name = fileUrl.substring(fileUrl.lastIndexOf('/') + 1);
+                    return ResponseEntity.ok()
+                            .header(HttpHeaders.CONTENT_DISPOSITION,
+                                    "inline; filename=\"" + URLEncoder.encode(name, StandardCharsets.UTF_8) + "\"")
+                            .contentType(mt)
+                            .body(data);
+                }
+            } catch (Exception ignore) { /* 对象缺失则回退模板渲染 */ }
+        }
+        // 2) 无归档文件：按需渲染（blank=true 给空白表，否则模板成品）
         Map<String, Object> dict = dictOrEmpty(code);
         String itemName = dict.isEmpty() ? "一人一档归档表" : s(dict.get("item_name"));
         byte[] bytes = pdfService.render(buildHtml(personOrEmpty(id), itemName, code, blank));
