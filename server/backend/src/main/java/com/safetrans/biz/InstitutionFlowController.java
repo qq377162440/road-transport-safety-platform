@@ -1,9 +1,11 @@
 package com.safetrans.biz;
 
 import cn.hutool.core.util.IdUtil;
+import com.safetrans.common.auth.RequireRole;
 import com.safetrans.common.pdf.PdfService;
 import com.safetrans.common.storage.StorageService;
 import com.safetrans.common.tenant.TenantContextHolder;
+import com.safetrans.common.web.BizException;
 import com.safetrans.common.web.Result;
 import com.safetrans.tpl.service.SealService;
 import com.safetrans.tpl.service.TplRenderEngine;
@@ -17,6 +19,9 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.*;
+
+import org.apache.pdfbox.io.MemoryUsageSetting;
+import org.apache.pdfbox.multipdf.PDFMergerUtility;
 
 /**
  * B3 制度档案引擎 · 完整流程闭环（详细设计 09 §7.3 / §7.10 / §7.11）。
@@ -55,6 +60,9 @@ public class InstitutionFlowController {
 
     /** 制度编号前缀：与内置范本正文「制度编号：YT-ZD01」保持同源 */
     private static final String ABBR = "YT";
+    // 盒二归档项 catalog_id：档案柜盒视图按 BOX_CATALOG_BASE(50000) + 盒号 过滤，
+    // 故盒二登记必须落 50002，才能被 listUploadItems 正确捞回并展示来源徽标。
+    private static final long BOX2_CATALOG_ID = 50002L;
 
     /** 24 项通用制度层字典（详细设计 09 §7.3.0，与 tpl_template ZD01~ZD24 一一对应） */
     private static final String[][] ITEMS = {
@@ -339,6 +347,24 @@ public class InstitutionFlowController {
         return out;
     }
 
+    private List<Map<String, String>> parseRefs(String refs) {
+        List<Map<String, String>> out = new ArrayList<>();
+        if (refs == null || refs.isBlank()) return out;
+        try {
+            com.fasterxml.jackson.databind.ObjectMapper om = new com.fasterxml.jackson.databind.ObjectMapper();
+            List<Object> arr = om.readValue(refs, List.class);
+            for (Object o : arr) {
+                if (o instanceof Map<?, ?> m) {
+                    Map<String, String> r = new LinkedHashMap<>();
+                    r.put("type", s(m.get("type")));
+                    r.put("name", s(m.get("name")));
+                    out.add(r);
+                }
+            }
+        } catch (Exception ignore) { }
+        return out;
+    }
+
     @GetMapping("/templates")
     public Result<Map<String, Object>> templates(@RequestParam(required = false) String code) {
         Map<String, Object> out = new LinkedHashMap<>();
@@ -538,8 +564,18 @@ public class InstitutionFlowController {
         List<Map<String, Object>> vrows = query("SELECT `id` FROM `institution_version` " +
                 "WHERE `item_code`=? AND `version`=? AND `tenant_id`=? AND `deleted`=0", code, version, tid());
         long versionId = vrows.isEmpty() ? IdUtil.getSnowflakeNextId() : longOf(vrows.get(0).get("id"));
-        registrar.register("institution_" + code, "BOX2", versionId,
-                ABBR + "-" + code + " " + d[1] + "（" + version + "）");
+        // 落 archive_pdf + pdf_id，使盒二柜视图可预览/下载该制度成品
+        long pdfId = IdUtil.getSnowflakeNextId();
+        jdbc.update("INSERT INTO `archive_pdf` " +
+                        "(`id`,`tenant_id`,`item_id`,`archive_year`,`file_name`,`file_path`,`file_size`,`template_code`,`gen_time`,`created_at`,`created_by`,`deleted`) " +
+                        "VALUES (?,?,?,?,?,?,?,?,?,?,?,0)",
+                pdfId, tid(), 0L, LocalDate.now().getYear(),
+                ABBR + "-" + code + ".pdf", key, (long) pdf.length, "institution",
+                LocalDateTime.now(), LocalDateTime.now(), uid());
+        registrar.register("institution_" + code, BOX2_CATALOG_ID, versionId,
+                ABBR + "-" + code + " " + d[1] + "（" + version + "）", 2);
+        jdbc.update("UPDATE `archive_item` SET `pdf_id`=?, `status`=1 WHERE `biz_module`=? AND `biz_id`=? AND `tenant_id`=? AND `deleted`=0",
+                pdfId, "institution_" + code, versionId, tid());
         log(code, version, 3, 4, "publish", "发布盖章成品并归档电子档案柜盒二" +
                 (b == null ? "" : "；" + s(b.get("remark"))));
 
@@ -738,7 +774,16 @@ public class InstitutionFlowController {
         String key = tid() + "/institution/TOC_" + System.currentTimeMillis() + ".pdf";
         storage.upload(key, pdf, "application/pdf");
         long tocId = IdUtil.getSnowflakeNextId();
-        registrar.register("institution_TOC", "BOX2", tocId, "安全生产管理制度目录（按盒二实际制度自动生成）");
+        long pdfId = IdUtil.getSnowflakeNextId();
+        jdbc.update("INSERT INTO `archive_pdf` " +
+                        "(`id`,`tenant_id`,`item_id`,`archive_year`,`file_name`,`file_path`,`file_size`,`template_code`,`gen_time`,`created_at`,`created_by`,`deleted`) " +
+                        "VALUES (?,?,?,?,?,?,?,?,?,?,?,0)",
+                pdfId, tid(), 0L, LocalDate.now().getYear(),
+                "安全生产管理制度目录.pdf", key, (long) pdf.length, "institution",
+                LocalDateTime.now(), LocalDateTime.now(), uid());
+        registrar.register("institution_TOC", BOX2_CATALOG_ID, tocId, "安全生产管理制度目录（按盒二实际制度自动生成）", 2);
+        jdbc.update("UPDATE `archive_item` SET `pdf_id`=?, `status`=1 WHERE `biz_module`=? AND `biz_id`=? AND `tenant_id`=? AND `deleted`=0",
+                pdfId, "institution_TOC", tocId, tid());
         log("TOC", "-", 4, 4, "toc", "自动生成制度目录并归档盒二");
         Map<String, Object> out = new LinkedHashMap<>();
         out.put("ok", true); out.put("itemCount", items.size());
@@ -809,6 +854,278 @@ public class InstitutionFlowController {
                 ? "危货制度最终需结合企业实际承运的危险货物类别及适用法规审核"
                 : "普货可较大程度通用；新增车型只判断是否涉及新风险/新操作要求，无须重编整套制度");
         return Result.ok(out);
+    }
+
+    // ==================================================================
+    // 6.5 通用产物归档辅助：覆盖式登记「生成型」归档项（支持重复生成刷新）
+    // ==================================================================
+    /** 生成型文档（制度目录 / 法律法规标准目录 / 制度汇编）的归档项 bizId 固定，重新生成即刷新 */
+    private long LAW_CATALOG_BIZ = 990001L;
+    private long ASSEMBLE_BIZ = 990002L;
+
+    /**
+     * 生成型文档（制度目录 / 法律法规标准目录 / 制度汇编）的归档：上传 MinIO 后登记 archive_item，
+     * 并同步落 archive_pdf + pdf_id，使档案柜柜视图可预览/下载。覆盖式：软删旧项后重新登记。
+     */
+    private String registerGeneratedDoc(String moduleCode, String title, String boxCode,
+                                       byte[] pdf, int source, long bizId) {
+        String key = tid() + "/institution/" + moduleCode + "_" + System.currentTimeMillis() + ".pdf";
+        storage.upload(key, pdf, "application/pdf");
+        long pdfId = IdUtil.getSnowflakeNextId();
+        jdbc.update("INSERT INTO `archive_pdf` " +
+                        "(`id`,`tenant_id`,`item_id`,`archive_year`,`file_name`,`file_path`,`file_size`,`template_code`,`gen_time`,`created_at`,`created_by`,`deleted`) " +
+                        "VALUES (?,?,?,?,?,?,?,?,?,?,?,0)",
+                pdfId, tid(), 0L, LocalDate.now().getYear(),
+                title + ".pdf", key, (long) pdf.length, "institution",
+                LocalDateTime.now(), LocalDateTime.now(), uid());
+        // 覆盖式：先软删旧的同 biz_module+biz_id，再登记新的一条（保留历史可追溯）
+        jdbc.update("UPDATE `archive_item` SET `deleted`=1 WHERE `biz_module`=? AND `biz_id`=? AND `tenant_id`=? AND `deleted`=0",
+                moduleCode, bizId, tid());
+        registrar.register(moduleCode, BOX2_CATALOG_ID, bizId, title, source);
+        // 回填最新 archive_item 的 pdf_id / status，使柜视图可下载
+        jdbc.update("UPDATE `archive_item` SET `pdf_id`=?, `status`=1 WHERE `biz_module`=? AND `biz_id`=? AND `tenant_id`=? AND `deleted`=0",
+                pdfId, moduleCode, bizId, tid());
+        return key;
+    }
+
+    // ==================================================================
+    // 6.6 适用安全生产法律法规标准目录清单（用户 2026-11-12 需求一）
+    // 盒二制度所引用的法律法规/标准，生成 PDF 版目录并归档盒二。
+    // ==================================================================
+    @PostMapping("/law-catalog")
+    public Result<Map<String, Object>> lawCatalog() {
+        List<Map<String, Object>> laws = query(
+                "SELECT `law_name`,`law_no`,`apply_level`,`region`,`category`,`biz_type`,`effective_date`,`remark`,`refs` " +
+                        "FROM `law_catalog` WHERE `tenant_id`=0 AND `deleted`=0 AND `is_applicable`<>'no' " +
+                        "ORDER BY `category`, `sort_no`");
+        if (laws.isEmpty()) return reject("法规清单库暂无数据，无法生成法律法规标准目录");
+        byte[] pdf = pdfService.render(buildLawCatalogHtml(laws));
+        // 标题须与盒二目录占位项「适用安全生产法律法规标准目录清单」完全一致，才能在档案柜柜视图按标题归并到对应行
+        String title = "适用安全生产法律法规标准目录清单";
+        String key = registerGeneratedDoc("institution_law_catalog", title, "BOX2", pdf, 2, LAW_CATALOG_BIZ);
+        log("LAW_CAT", "-", 4, 4, "law-catalog", "生成法规标准目录并归档盒二，共 " + laws.size() + " 部");
+        Map<String, Object> out = new LinkedHashMap<>();
+        out.put("ok", true); out.put("count", laws.size());
+        out.put("objectKey", key); out.put("size", pdf.length); out.put("archivedTo", "BOX2");
+        return Result.ok(out);
+    }
+
+    private String buildLawCatalogHtml(List<Map<String, Object>> rows) {
+        Map<String, List<Map<String, Object>>> grouped = new LinkedHashMap<>();
+        for (Map<String, Object> r : rows) {
+            String cat = s(r.get("category"));
+            grouped.computeIfAbsent(cat, k -> new ArrayList<>()).add(r);
+        }
+        // 制度→法规反查：law_catalog.refs 存「法规引用制度」，反推被盒二制度引用的法规
+        Map<String, String> citedBy = new LinkedHashMap<>();
+        try {
+            for (Map<String, Object> r : rows) {
+                String refs = s(r.get("refs"));
+                if (refs.isBlank()) continue;
+                List<Map<String, String>> list = parseRefs(refs);
+                if (list.isEmpty()) continue;
+                citedBy.put(s(r.get("law_name")), list.stream().map(m -> m.get("name")).filter(Objects::nonNull).collect(java.util.stream.Collectors.joining("、")));
+            }
+        } catch (Exception ignore) { }
+        StringBuilder h = new StringBuilder();
+        h.append("<!DOCTYPE html><html><head><meta charset=\"UTF-8\"/><style>")
+                .append("body{font-family:'WenQuanYi Zen Hei',sans-serif;padding:40px;color:#222}")
+                .append("h1{text-align:center;font-size:22px;letter-spacing:2px;margin:0 0 4px}")
+                .append(".sub{text-align:center;font-size:12px;color:#666;margin-bottom:20px}")
+                .append("h2{font-size:15px;border-left:4px solid #1a5bb0;padding-left:10px;margin:22px 0 10px}")
+                .append("table{width:100%;border-collapse:collapse;font-size:11px}")
+                .append("th,td{border:1px solid #888;padding:6px 8px;text-align:left;vertical-align:top}")
+                .append("th{background:#eef3fb;font-weight:600}")
+                .append(".no{width:34px;text-align:center}.name{font-weight:600}.lv{width:46px;text-align:center}")
+                .append(".biz{width:52px;text-align:center}.date{width:82px}.cite{color:#1a5bb0}")
+                .append("</style></head><body>");
+        h.append("<h1>适用安全生产法律法规标准目录清单</h1>")
+                .append("<div class=\"sub\">本清单为盒二制度档案所引用的现行有效法律法规与标准 · 共 ").append(rows.size()).append(" 部 · 生成时间 ")
+                .append(LocalDateTime.now().toString().replace("T", " ").substring(0, 16)).append("</div>");
+        for (Map.Entry<String, List<Map<String, Object>>> e : grouped.entrySet()) {
+            h.append("<h2>").append(esc(e.getKey())).append("（").append(e.getValue().size()).append("）</h2>");
+            h.append("<table><thead><tr><th class=\"no\">序号</th><th>法规/标准名称</th><th>文号/版本</th>")
+                    .append("<th class=\"lv\">层级</th><th>适用地区</th><th class=\"biz\">业务</th>")
+                    .append("<th class=\"date\">施行日期</th><th>被盒二制度引用</th></tr></thead><tbody>");
+            int i = 0;
+            for (Map<String, Object> r : e.getValue()) {
+                i++;
+                String biz = switch (s(r.get("biz_type"))) {
+                    case "danger" -> "危货";
+                    case "cargo" -> "普货";
+                    default -> "通用";
+                };
+                String cite = citedBy.getOrDefault(s(r.get("law_name")), "");
+                h.append("<tr><td class=\"no\">").append(i).append("</td>")
+                        .append("<td class=\"name\">").append(esc(s(r.get("law_name")))).append("</td>")
+                        .append("<td>").append(esc(s(r.get("law_no")))).append("</td>")
+                        .append("<td class=\"lv\">").append(esc(s(r.get("apply_level")))).append("</td>")
+                        .append("<td>").append(esc(s(r.get("region")))).append("</td>")
+                        .append("<td class=\"biz\">").append(biz).append("</td>")
+                        .append("<td class=\"date\">").append(esc(s(r.get("effective_date")))).append("</td>")
+                        .append("<td class=\"cite\">").append(cite.isBlank() ? "—" : esc(cite)).append("</td>")
+                        .append("</tr>");
+            }
+            h.append("</tbody></table>");
+        }
+        h.append("<div class=\"doc-sign\" style=\"margin-top:18px\"><div class=\"sign-zone\"><div>")
+                .append(esc(company())).append("（盖章）</div><div>").append(LocalDate.now())
+                .append("</div>").append(sealService.sealHtml()).append("</div></div>");
+        h.append("</body></html>");
+        return h.toString();
+    }
+
+    // ==================================================================
+    // 6.7 制度汇编（含操作规程）（用户 2026-11-12 需求二）
+    // 盒二已发布制度的成品 PDF 合并为一份汇编，归档盒二。
+    // ==================================================================
+    @PostMapping("/assemble-pdf")
+    public Result<Map<String, Object>> assemblePdf(@RequestBody(required = false) Map<String, Object> b) {
+        String biz = s(b == null ? null : b.get("bizType")).toUpperCase();
+        if (biz.isBlank()) biz = "GENERAL";
+        List<Map<String, Object>> published = query(
+                "SELECT `item_code`,`item_name`,`current_version`,`file_url` FROM `institution_item` " +
+                        "WHERE `tenant_id`=? AND `deleted`=0 AND `status`=4 AND `file_url` IS NOT NULL AND `file_url`<>'' ORDER BY `item_code`",
+                tid());
+        if (published.isEmpty()) return reject("尚无已发布制度，无法生成制度汇编");
+
+        List<byte[]> parts = new ArrayList<>();
+        for (Map<String, Object> it : published) {
+            try {
+                byte[] d = storage.download(s(it.get("file_url")));
+                if (d != null && d.length > 0) parts.add(d);
+            } catch (Exception ignore) { }
+        }
+        if (parts.isEmpty()) return reject("已发布制度暂无可用的成品 PDF");
+        try {
+            byte[] cover = buildAssembleCover(published, biz);
+            PDFMergerUtility merger = new PDFMergerUtility();
+            merger.addSource(new java.io.ByteArrayInputStream(cover));
+            for (byte[] p : parts) merger.addSource(new java.io.ByteArrayInputStream(p));
+            java.io.ByteArrayOutputStream bos = new java.io.ByteArrayOutputStream();
+            merger.setDestinationStream(bos);
+            merger.mergeDocuments(MemoryUsageSetting.setupMainMemoryOnly());
+            byte[] pdf = bos.toByteArray();
+            // 标题须与盒二目录占位项「制度汇编（含操作规程）」完全一致，才能在档案柜柜视图按标题归并到对应行
+            String title = "制度汇编（含操作规程）";
+            String key = registerGeneratedDoc("institution_assemble", title, "BOX2", pdf, 2, ASSEMBLE_BIZ);
+            log("ASSEMBLE", "-", 4, 4, "assemble-pdf", "生成制度汇编并归档盒二，共 " + published.size() + " 项");
+            Map<String, Object> out = new LinkedHashMap<>();
+            out.put("ok", true); out.put("count", published.size());
+            out.put("objectKey", key); out.put("size", pdf.length); out.put("archivedTo", "BOX2");
+            return Result.ok(out);
+        } catch (Exception e) {
+            throw new BizException("制度汇编合并失败：" + e.getMessage());
+        }
+    }
+
+    private byte[] buildAssembleCover(List<Map<String, Object>> items, String biz) {
+        StringBuilder body = new StringBuilder();
+        body.append("<div style=\"text-align:center;margin-top:140px\">")
+                .append("<div style=\"font-size:30px;letter-spacing:4px;font-weight:700\">").append(esc(company())).append("</div>")
+                .append("<div style=\"font-size:17px;margin-top:14px;font-weight:600\">安全生产管理制度汇编（含操作规程）</div>")
+                .append("<div style=\"font-size:14px;color:#444;margin-top:8px\">")
+                .append(biz.equals("DANGER") ? "危险货物运输专项" : "普货通用").append(" · 共 ").append(items.size()).append(" 项 · ").append(LocalDate.now().getYear()).append(" 版</div>")
+                .append("<div class=\"doc-sign\" style=\"margin-top:40px\"><div class=\"sign-zone\"><div>")
+                .append(esc(company())).append("（盖章）</div><div>").append(LocalDate.now())
+                .append("</div>").append(sealService.sealHtml()).append("</div></div>")
+                .append("</div>");
+        body.append("<h2 style=\"font-size:16px;border-left:4px solid #1a5bb0;padding-left:10px;margin:30px 0 12px\">制度清单（共 ").append(items.size()).append(" 项）</h2>");
+        body.append("<table class=\"doc-tbl\"><thead><tr><th class=\"no\">序号</th><th>制度编号</th><th>制度名称</th><th>版本</th></tr></thead><tbody>");
+        int i = 0;
+        for (Map<String, Object> it : items) {
+            i++;
+            body.append("<tr><td class=\"no\">").append(i).append("</td>")
+                    .append("<td>").append(esc(ABBR + "-" + s(it.get("item_code")))).append("</td>")
+                    .append("<td>").append(esc(s(it.get("item_name")))).append("</td>")
+                    .append("<td>").append(esc(s(it.get("current_version")))).append("</td></tr>");
+        }
+        body.append("</tbody></table>");
+        Map<String, String> vars = render.defaultVars(company(), LocalDate.now().getYear(), "主要负责人", "制度汇编");
+        return pdfService.render(render.renderDocument(body.toString(), vars));
+    }
+
+    // ==================================================================
+    // 6.8 服务商强制生成并归档（用户 2026-11-12 需求三·来源3）
+    // 服务商视角：调用指定企业的印章 + 主要负责人签字信息，代企业生成成品并归档到该企业。
+    // ==================================================================
+    @RequireRole({ "provider", "admin" })
+    @PostMapping("/{code}/force-publish")
+    public Result<Map<String, Object>> forcePublish(@PathVariable String code,
+                                                   @RequestBody(required = false) Map<String, Object> b) {
+        String[] d = dictOf(code);
+        if (d == null) return reject("未知制度编码：" + code);
+        long targetTenant = longOf(b == null ? null : b.get("tenantId"));
+        if (targetTenant <= 0) return reject("缺少目标企业 tenantId");
+        // 校验目标企业存在
+        Integer exists = jdbc.queryForObject(
+                "SELECT COUNT(*) FROM `sys_tenant` WHERE `id`=? AND `deleted`=0", Integer.class, targetTenant);
+        if (exists == null || exists == 0) return reject("目标企业不存在（tenantId=" + targetTenant + "）");
+
+        // 临时切换租户上下文：后续 buildDocPdf 套用目标企业的印章与签发人信息
+        TenantContextHolder.Context ctx = new TenantContextHolder.Context();
+        ctx.setTenantId(targetTenant);
+        ctx.setUserType("provider");
+        TenantContextHolder.Context prev = TenantContextHolder.get();
+        TenantContextHolder.set(ctx);
+        try {
+            // 取目标企业「主要负责人」姓名作签发人
+            String issuer = "";
+            try {
+                issuer = s(jdbc.queryForObject(
+                        "SELECT `name` FROM `person` WHERE `tenant_id`=? AND `person_type` IN ('legal','principal','leader') AND `deleted`=0 LIMIT 1",
+                        String.class, targetTenant));
+            } catch (Exception ignore) { }
+            if (issuer.isBlank()) issuer = companyOf(targetTenant);
+            String version = s(b == null ? null : b.get("version"));
+            if (version.isBlank()) {
+                try {
+                    Map<String, Object> it = jdbc.queryForMap(
+                            "SELECT `current_version`,`tpl_label`,`tpl_id`,`effective_date` FROM `institution_item` WHERE `item_code`=? AND `tenant_id`=? AND `deleted`=0",
+                            code, targetTenant);
+                    version = s(it.get("current_version"));
+                } catch (Exception ignore) { }
+            }
+            if (version.isBlank()) version = "v1";
+            Map<String, Object> tpl = new LinkedHashMap<>();
+            for (Map<String, Object> t : templatesOf(code)) tpl = t; // 复用当前租户范本（服务商共享范本）
+            byte[] pdf = buildDocPdf(code, d[1], ABBR + "-" + code, version, s(tpl.get("label")), issuer,
+                    LocalDate.now().toString(), tpl, true);
+            String key = targetTenant + "/institution/" + code + "_" + version + "_force_" + System.currentTimeMillis() + ".pdf";
+            storage.upload(key, pdf, "application/pdf");
+            // 更新目标企业制度状态为已发布 + 成品文件
+            jdbc.update("UPDATE `institution_item` SET `status`=4, `file_url`=?, `issuer_name`=?, `updated_at`=? " +
+                            "WHERE `item_code`=? AND `tenant_id`=? AND `deleted`=0",
+                    key, issuer, LocalDateTime.now(), code, targetTenant);
+            long versionId = IdUtil.getSnowflakeNextId();
+            // 落 archive_pdf + pdf_id，使目标企业盒二柜视图可预览/下载该制度成品
+            long pdfId = IdUtil.getSnowflakeNextId();
+            jdbc.update("INSERT INTO `archive_pdf` " +
+                            "(`id`,`tenant_id`,`item_id`,`archive_year`,`file_name`,`file_path`,`file_size`,`template_code`,`gen_time`,`created_at`,`created_by`,`deleted`) " +
+                            "VALUES (?,?,?,?,?,?,?,?,?,?,?,0)",
+                    pdfId, targetTenant, 0L, LocalDate.now().getYear(),
+                    ABBR + "-" + code + ".pdf", key, (long) pdf.length, "institution",
+                    LocalDateTime.now(), LocalDateTime.now(), uid());
+            registrar.register("institution_" + code, BOX2_CATALOG_ID, versionId,
+                    ABBR + "-" + code + " " + d[1] + "（" + version + "）", targetTenant, 3);
+            jdbc.update("UPDATE `archive_item` SET `pdf_id`=?, `status`=1 WHERE `biz_module`=? AND `biz_id`=? AND `tenant_id`=? AND `deleted`=0",
+                    pdfId, "institution_" + code, versionId, targetTenant);
+            log(code, version, 0, 4, "force-publish", "服务商强制生成并归档到企业 tenantId=" + targetTenant);
+            Map<String, Object> out = new LinkedHashMap<>();
+            out.put("ok", true); out.put("tenantId", targetTenant);
+            out.put("version", version); out.put("objectKey", key);
+            out.put("size", pdf.length); out.put("sealed", true); out.put("archivedTo", "BOX2");
+            out.put("source", 3);
+            return Result.ok(out);
+        } finally {
+            if (prev != null) TenantContextHolder.set(prev); else TenantContextHolder.clear();
+        }
+    }
+
+    private String companyOf(long tenantId) {
+        try {
+            return s(jdbc.queryForObject("SELECT `name` FROM `sys_tenant` WHERE `id`=?", String.class, tenantId));
+        } catch (Exception e) { return "企业"; }
     }
 
     // ==================================================================
