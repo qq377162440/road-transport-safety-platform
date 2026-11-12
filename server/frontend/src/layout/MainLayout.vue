@@ -143,13 +143,13 @@ async function onRole(role) {
   router.push('/dashboard')
 }
 
-// 客户类型切换（演示态，持久化到 localStorage）
+// 客户类型切换（演示态，全局唯一来源：顶栏 / 电子档案柜 / 台账范本管理共用）
+import { useCargoStore } from '@/store/cargo'
+const cargoStore = useCargoStore()
 const cargoOptions = ['普货', '危货', '客运']
-const cargoType = ref(localStorage.getItem('cargoType') || '普货')
 function onCargo(c) {
   if (c === '客运') { ElMessageInfo('客运已暂缓，以后再说'); return }
-  cargoType.value = c
-  localStorage.setItem('cargoType', c)
+  cargoStore.setCargo(c)
 }
 function ElMessageInfo(msg) {
   // 轻量提示，避免额外 import ElMessage 命名冲突
@@ -205,7 +205,7 @@ async function handleLogout() {
           v-for="c in cargoOptions"
           :key="c"
           class="cs-btn"
-          :class="{ on: cargoType === c }"
+          :class="{ on: cargoStore.cargoType === c }"
           @click="onCargo(c)"
         >{{ c }}</button>
       </div>

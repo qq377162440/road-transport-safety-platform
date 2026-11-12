@@ -1,13 +1,17 @@
 <script setup>
-import { ref, computed, onMounted, nextTick } from 'vue'
+import { ref, computed, onMounted, watch, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
 import request from '@/api/request'
 import { ElMessage } from 'element-plus'
 import Icon from '@/components/Icon.vue'
 import { useAuthStore } from '@/store/auth'
+import { useCargoStore } from '@/store/cargo'
 
 const router = useRouter()
 const auth = useAuthStore()
+const cargoStore = useCargoStore()
+// 顶部普货/危货切换的「只读查看」视角：模板列表与档案柜目录随之切换
+const viewCargo = ref(cargoStore.cargoType)
 // 范本定制与生成为服务商 / 超管增值服务；企业账号只读
 const canEdit = computed(() => auth.canGenerateTpl)
 const loading = ref(false)
@@ -44,8 +48,13 @@ const boxGroups = computed(() => {
 })
 
 const customizedCount = computed(() => templates.value.filter((t) => t.customized).length)
-const currentName = computed(() => currentMeta.value?.name || currentSet.value?.name || '普货通用范本（内置）')
-const currentCount = computed(() => currentMeta.value?.templateCount ?? templates.value.length)
+const currentName = computed(() => {
+  if (viewCargo.value === '危货') return '危货通用范本（只读预览）'
+  return currentMeta.value?.name || currentSet.value?.name || '普货通用范本（内置）'
+})
+const currentCount = computed(() => viewCargo.value === '危货'
+  ? templates.value.length
+  : (currentMeta.value?.templateCount ?? templates.value.length))
 const defaultProvider = computed(() => sets.value.find((s) => s.isDefault === 1) || sets.value[0] || null)
 const mappingGroups = computed(() => {
   const m = {}
@@ -71,12 +80,14 @@ const posts = computed(() => templates.value
 
 async function loadAll() {
   loading.value = true
+  viewCargo.value = cargoStore.cargoType
   try {
+    const cargo = cargoStore.bizType
     const [full, cssRes, ovRes, mapRes] = await Promise.all([
-      request.get('/tpl/library/full'),
+      request.get('/tpl/library/full', { params: { cargo } }),
       request.get('/tpl/library/css'),
       request.get('/tpl/ent/overview').catch(() => ({ data: null })),
-      request.get('/tpl/library/mapping').catch(() => ({ data: null })),
+      request.get('/tpl/library/mapping', { params: { cargo } }).catch(() => ({ data: null })),
     ])
     templates.value = full.data || []
     pageCss.value = cssRes.data || ''
@@ -91,6 +102,8 @@ async function loadAll() {
   }
 }
 onMounted(loadAll)
+// 顶部普货/危货切换 → 重新拉取对应业务类型的范本（只读查看，不改企业应用套）
+watch(() => cargoStore.cargoType, () => loadAll())
 
 // ---------- A4 预览（iframe srcdoc：与 PDF 共用同一份版式 CSS，完全隔离不污染页面） ----------
 const showPreview = ref(false)
