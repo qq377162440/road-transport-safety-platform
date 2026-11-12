@@ -29,10 +29,11 @@ public class TplLibraryController {
         this.library = library;
     }
 
-    /** 当前企业生效的范本清单（轻量，不含正文） */
+    /** 当前企业生效的范本清单（轻量，不含正文）。cargo=普货/危货 时按业务类型只读查看，
+     *  与 /mapping、/full 保持一致，保证顶部切换普货/危货时档案柜模板清单同步切换。 */
     @GetMapping
-    public Result<List<TplLibraryService.TplVO>> list() {
-        return Result.ok(library.list());
+    public Result<List<TplLibraryService.TplVO>> list(@RequestParam(value = "cargo", required = false) String cargo) {
+        return Result.ok(library.listWithContent(cargo));
     }
 
     /** 清单 + 正文（前端一次拉取，用于编辑/预览）。cargo=普货/危货 时按业务类型只读查看 */
