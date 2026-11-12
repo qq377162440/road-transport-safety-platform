@@ -70,8 +70,41 @@ public class TplLibraryService {
         return setScope.tid();
     }
 
+    /**
+     * 只读「按业务类型查看」覆盖：非空时所有读取（清单/正文/匹配/映射）改为取服务商默认套
+     * 中对应业务类型的范本（tenant_id=0、group_id=服务商套 id），不改动企业已应用套。
+     * 用于「顶部切换普货/危货 → 台账范本管理与电子档案柜随之切换」的演示态联动。
+     */
+    private final ThreadLocal<String> viewCargo = new ThreadLocal<>();
+
+    private String normalizeCargo(String cargo) {
+        if (cargo == null) return null;
+        String c = cargo.trim();
+        if (c.isEmpty()) return null;
+        if ("GENERAL".equalsIgnoreCase(c) || "普货".equals(c)) return "GENERAL";
+        if ("DANGER".equalsIgnoreCase(c) || "危货".equals(c)) return "DANGER";
+        return null;
+    }
+
+    /** 当前查看业务类型对应的服务商默认套 id（即其范本 group_id）；无覆盖或找不到返回 null */
+    private Long viewGroupId() {
+        String vc = viewCargo.get();
+        if (vc == null) return null;
+        List<Long> ids = jdbc.queryForList(
+                "SELECT `id` FROM `tpl_set` WHERE `tenant_id`=0 AND `status`=1 AND `biz_type`=? " +
+                        "ORDER BY `is_default` DESC, `sort_no` ASC, `id` ASC LIMIT 1",
+                Long.class, vc);
+        return ids.isEmpty() ? null : ids.get(0);
+    }
+
+    private boolean isViewMode() {
+        return viewCargo.get() != null;
+    }
+
     /** 当前应用范本套的内容作用域；null 表示走全局默认套旧行为 */
     private Long groupId() {
+        Long vg = viewGroupId();
+        if (vg != null) return vg;
         return setScope.currentGroupId();
     }
 
@@ -82,6 +115,15 @@ public class TplLibraryService {
     private List<TplTemplate> baseTemplates() {
         Long g = groupId();
         if (g != null) {
+            if (isViewMode()) {
+                // 只读查看某业务类型服务商默认套：企业无副本，直接取服务商套范本
+                return templateMapper.selectList(new LambdaQueryWrapper<TplTemplate>()
+                        .eq(TplTemplate::getTenantId, 0L)
+                        .eq(TplTemplate::getGroupId, g)
+                        .eq(TplTemplate::getStatus, 1)
+                        .orderByAsc(TplTemplate::getBoxNo)
+                        .orderByAsc(TplTemplate::getId));
+            }
             List<TplTemplate> inSet = templateMapper.selectList(new LambdaQueryWrapper<TplTemplate>()
                     .eq(TplTemplate::getTenantId, tid())
                     .eq(TplTemplate::getGroupId, g)
@@ -113,6 +155,7 @@ public class TplLibraryService {
      * 有应用套时范本内容本身即企业私有行，不再需要覆盖层，返回空。
      */
     private Map<String, TplTemplate> overrides() {
+        if (isViewMode()) return new LinkedHashMap<>();
         Long t = tid();
         // 必须返回可变 Map：list()/effectiveList() 会对它做 remove 消费。
         // 有当前应用套时无覆盖层，但仍需可变的空 Map，不能返回 Map.of()。
@@ -135,6 +178,16 @@ public class TplLibraryService {
     /** 按 code 取「当前生效」范本（企业套内容 / 旧模式覆盖 / 全局兜底，含套内缺失的全局新增范本） */
     public TplTemplate effective(String code) {
         Long g = groupId();
+        if (g != null && isViewMode()) {
+            // 只读查看模式：取服务商默认套对应业务类型的范本
+            TplTemplate p = templateMapper.selectOne(new LambdaQueryWrapper<TplTemplate>()
+                    .eq(TplTemplate::getTenantId, 0L)
+                    .eq(TplTemplate::getGroupId, g)
+                    .eq(TplTemplate::getCode, code)
+                    .eq(TplTemplate::getStatus, 1)
+                    .last("limit 1"));
+            if (p != null) return p;
+        }
         if (g != null) {
             TplTemplate inSet = templateMapper.selectOne(new LambdaQueryWrapper<TplTemplate>()
                     .eq(TplTemplate::getTenantId, tid())
@@ -207,9 +260,22 @@ public class TplLibraryService {
 
     /** 清单 + 每个范本的正文（供前端一次性缓存，避免逐条请求） */
     public List<TplVO> listWithContent() {
-        List<TplVO> list = list();
-        for (TplVO v : list) v.setContent(effective(v.getCode()).getContent());
-        return list;
+        return listWithContent(null);
+    }
+
+    /** 按业务类型只读查看（cargo=普货/危货/GENERAL/DANGER）：不改企业已应用套 */
+    public List<TplVO> listWithContent(String cargo) {
+        try {
+            if (normalizeCargo(cargo) != null) viewCargo.set(normalizeCargo(cargo));
+            List<TplVO> list = list();
+            for (TplVO v : list) {
+                TplTemplate t = effective(v.getCode());
+                if (t != null) v.setContent(t.getContent());
+            }
+            return list;
+        } finally {
+            viewCargo.remove();
+        }
     }
 
     private List<TplTemplate> effectiveList() {
@@ -369,17 +435,26 @@ public class TplLibraryService {
      * 档案柜侧：每个归档项是否有范本（无范本 = 营业执照等需手动上传的证件）。
      */
     public Map<String, Object> mapping() {
-        List<Map<String, Object>> catalog = jdbc.queryForList(
-                "SELECT c.`id`, c.`name`, c.`parent_id`, p.`sort_no` AS box_no, p.`name` AS box_name " +
-                        "FROM `archive_catalog` c JOIN `archive_catalog` p ON p.`id`=c.`parent_id` " +
-                        "WHERE c.`biz_type`='GENERAL' AND c.`level`=2 AND c.`deleted`=0 AND p.`deleted`=0 " +
-                        "ORDER BY p.`sort_no`, c.`sort_no`, c.`id`");
-        Map<Long, String> nameById = new LinkedHashMap<>();
-        for (Map<String, Object> c : catalog) nameById.put(((Number) c.get("id")).longValue(), String.valueOf(c.get("name")));
+        return mapping(null);
+    }
 
-        List<TplVO> tpls = list();
-        Map<Long, List<String>> tplByCatalog = new LinkedHashMap<>();
-        List<Map<String, Object>> tplRows = new ArrayList<>();
+    /** 按业务类型只读查看（cargo=普货/危货）：档案柜目录与范本均切到对应业务类型 */
+    public Map<String, Object> mapping(String cargo) {
+        String vc = normalizeCargo(cargo);
+        try {
+            if (vc != null) viewCargo.set(vc);
+            String biz = (vc != null) ? vc : "GENERAL";
+            List<Map<String, Object>> catalog = jdbc.queryForList(
+                    "SELECT c.`id`, c.`name`, c.`parent_id`, p.`sort_no` AS box_no, p.`name` AS box_name " +
+                            "FROM `archive_catalog` c JOIN `archive_catalog` p ON p.`id`=c.`parent_id` " +
+                            "WHERE c.`biz_type`='" + biz + "' AND c.`level`=2 AND c.`deleted`=0 AND p.`deleted`=0 " +
+                            "ORDER BY p.`sort_no`, c.`sort_no`, c.`id`");
+            Map<Long, String> nameById = new LinkedHashMap<>();
+            for (Map<String, Object> c : catalog) nameById.put(((Number) c.get("id")).longValue(), String.valueOf(c.get("name")));
+
+            List<TplVO> tpls = list();
+            Map<Long, List<String>> tplByCatalog = new LinkedHashMap<>();
+            List<Map<String, Object>> tplRows = new ArrayList<>();
         int mapped = 0;
         for (TplVO v : tpls) {
             Long cid = v.getCatalogId() == null ? 0L : v.getCatalogId();
@@ -430,6 +505,9 @@ public class TplLibraryService {
         summary.put("uploadOnlyCount", uploadOnly.size());
         out.put("summary", summary);
         return out;
+        } finally {
+            viewCargo.remove();
+        }
     }
 
     /**

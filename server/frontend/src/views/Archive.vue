@@ -7,6 +7,7 @@ import { ARCHIVE_CATALOG, FREQ_LABEL, STATUS } from '@/config/archiveCatalog'
 import { classifyItem, CATEGORY_LIST } from '@/config/archiveCategory'
 import { useRouter, useRoute } from 'vue-router'
 import { useAuthStore } from '@/store/auth'
+import { useCargoStore } from '@/store/cargo'
 
 const auth = useAuthStore()
 // 范本定制与生成为服务商 / 超管增值服务；企业账号只读（可查看/下载成品、手动上传证件）
@@ -94,7 +95,12 @@ const boxTwoTplItems = computed(() => {
   return out
 })
 
-const cargoType = ref('普货')
+const cargoStore = useCargoStore()
+// 与顶栏切换共用同一来源：读取展示、改动即持久化并切换档案盒目录
+const cargoType = computed({
+  get: () => cargoStore.cargoType,
+  set: (v) => cargoStore.setCargo(v),
+})
 const boxes = computed(() => {
   const base = ARCHIVE_CATALOG[cargoType.value] || []
   return base.map((b, idx) => idx === 1
@@ -210,11 +216,12 @@ async function loadArchiveItems() {
 }
 async function loadTplLibrary() {
   try {
+    const cargo = cargoStore.bizType
     const [list, cssRes, ovRes, mapRes] = await Promise.all([
-      request.get('/tpl/library'),
+      request.get('/tpl/library', { params: { cargo } }),
       request.get('/tpl/library/css'),
       request.get('/tpl/ent/overview').catch(() => ({ data: null })),
-      request.get('/tpl/library/mapping').catch(() => ({ data: null })),
+      request.get('/tpl/library/mapping', { params: { cargo } }).catch(() => ({ data: null })),
     ])
     tplList.value = list.data || []
     pageCss.value = cssRes.data || ''
@@ -228,7 +235,7 @@ async function loadTplLibrary() {
 }
 
 watch([selectedNo, cargoType, selYear], () => {
-  checked.value = new Set(); boxChecked.value = new Set(); tplChoice.value = {}; loadArchiveItems()
+  checked.value = new Set(); boxChecked.value = new Set(); tplChoice.value = {}; loadArchiveItems(); loadTplLibrary()
   if (isCrewBox.value) loadCrew()
 })
 onMounted(() => {
