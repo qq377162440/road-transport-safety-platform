@@ -1,40 +1,37 @@
-// 电子档案柜「文件分类」唯一字典。
+// 电子档案柜「文件分类」唯一字典（A/B/C 三码，2026-11-12 定稿）。
 //
-// 依据：
-//  * 《08-台账归档与PDF生成引擎》第二章「三大类资料（核心分类逻辑，统领全系统）」
-//    ① 静态资料（范本生成，data_type=1）/ ② 动态资料（工作记录，data_type=2）
-//    / ②′ 上传留存资料（外部平台产出，只上传留存）/ ③ 证件资料（手动上传，data_type=3）
-//  * 《09-静态资料范本引擎》§2.1「按岗位拆分？」表：仅责任书/承诺书/告知书/任命书
-//    4 类按岗位拆分；《18-风险辨识》风险告知卡「每岗位一份」同样按岗位。
+// 权威定义见《详细设计/档案资料A-B-C分类规范.md》与《产品需求确认文档》§2.2：
+//   A 静态资料（data_type=1）：范本生成 → 签字确认；模板因地区/企业规模选用不同范本套；年度更新。
+//   B 动态资料（data_type=2）：企业执行动作产生记录（真实流程 / 服务商代录·先台账后执行），
+//      或外部平台台账上传留存（动态监控台账等）；月度/季度/每日等周期更新。
+//   C 证件资料（data_type=3）：手动上传 + OCR + 到期预警；证照/回执/凭证类按有效期更新。
 //
 // 两个维度互相独立：类别决定「怎么生产」（生成/记录/上传），是否按岗位决定
-// 「能不能切换岗位」。证件类、动态记录、上传留存一律与岗位无关，不显示岗位切换。
+// 「能不能切换岗位」。证件类、动态记录一律与岗位无关，不显示岗位切换。
+// 原「②′ 上传留存」不再单列一类：台账类归 B、回执/证照类归 C，见 ITEM_CATEGORY 显式表。
 
 export const CATEGORY = {
-  STATIC: {
-    key: 'static', dataType: 1, label: '① 静态范本', short: '静态', color: 'blue',
-    desc: '制度、预案、责任书等范本类资料，系统从范本生成后签字确认',
+  A: {
+    code: 'A', key: 'static', dataType: 1, label: 'A 静态资料', short: '静态', color: 'blue',
+    desc: '制度、预案、责任书、计划等范本类，系统从范本生成后签字确认；模板因地区/企业规模选用不同范本套',
   },
-  DYNAMIC: {
-    key: 'dynamic', dataType: 2, label: '② 动态记录', short: '动态', color: 'green',
-    desc: '会议、培训、检查、隐患、事故等执行工作产生的记录',
+  B: {
+    code: 'B', key: 'dynamic', dataType: 2, label: 'B 动态资料', short: '动态', color: 'green',
+    desc: '会议、培训、检查、隐患、事故等执行产生的记录，或外部平台台账上传留存（服务商可代录）',
   },
-  UPLOAD: {
-    key: 'upload', dataType: 2, label: '②′ 上传留存', short: '上传', color: 'amber',
-    desc: '动态监控台账、官方回执等外部产出，本系统只上传留存',
-  },
-  CERT: {
-    key: 'cert', dataType: 3, label: '③ 证件证照', short: '证件', color: 'red',
-    desc: '营业执照、经营许可证、保单、资格证等，手动上传并做到期预警',
+  C: {
+    code: 'C', key: 'cert', dataType: 3, label: 'C 证件资料', short: '证件', color: 'red',
+    desc: '营业执照、许可证、备案回执、产权证明等证照/凭证，手动上传并做到期预警',
   },
 }
 
 export const CATEGORY_LIST = Object.values(CATEGORY)
-// ITEM_CATEGORY 里存的是小写 key（cert/static/...），按 key 精确取类别对象，
+// ITEM_CATEGORY 里存的是小写 key（cert/static/dynamic），按 key 精确取类别对象，
 // 不要写成 CATEGORY[ITEM_CATEGORY[n]]（那是大写常量名，会取到 undefined 并静默退化到关键词兜底）。
 const CATEGORY_BY_KEY = Object.fromEntries(CATEGORY_LIST.map((c) => [c.key, c]))
 
 // 显式分类表：政府检查目录逐项标注，避免关键词误伤（如「管理人员档案」不是单本证件）。
+// 原「upload（上传留存）」已按定稿拆分：外部台账归 B(dynamic)、回执/证照归 C(cert)。
 export const ITEM_CATEGORY = {
   // 盒一 公司档案及管理层档案
   '营业执照': 'cert',
@@ -59,18 +56,18 @@ export const ITEM_CATEGORY = {
   '安全生产领导小组会议（会议记录、会议PPT、签到、照片）': 'dynamic',
   '安全生产月度会议（会议记录、会议PPT、签到、照片）': 'dynamic',
   '安全生产会议记录': 'dynamic',
-  // 盒四 培训
-  '安全生产教育和培训计划': 'dynamic',
+  // 盒四 培训（计划=范本生成→A；月度培训=执行记录→B）
+  '安全生产教育和培训计划': 'static',
   '安全生产月度培训（培训内容、照片、签字）': 'dynamic',
   // 盒五 费用
   '年度营收入证明': 'cert',
   '安全费用提取标准及计划': 'static',
   '安全生产费用使用台账（发票或收据）': 'dynamic',
-  // 盒六 动态监控（②′ 外部平台产出，只上传留存）
-  '动态监控工作情况记录台账（每日）': 'upload',
-  '设备故障异常台账': 'upload',
-  '在线率台账': 'upload',
-  '月报台账': 'upload',
+  // 盒六 动态监控（外部平台台账→B 上传留存）
+  '动态监控工作情况记录台账（每日）': 'dynamic',
+  '设备故障异常台账': 'dynamic',
+  '在线率台账': 'dynamic',
+  '月报台账': 'dynamic',
   '针对性违规教育（培训内容、照片、签字）': 'dynamic',
   '交通事故违法针对性教育（培训内容、照片、签字）': 'dynamic',
   // 盒七 应急管理（普货）
@@ -80,10 +77,10 @@ export const ITEM_CATEGORY = {
   '应急队伍架构': 'static',
   '应急培训（培训内容、考核、照片）': 'dynamic',
   '应急救援器材配备': 'static',
-  '应急演练计划': 'dynamic',
+  '应急演练计划': 'static',
   '应急值班表': 'dynamic',
   '应急演练（方案、照片、签到）': 'dynamic',
-  '应急预案备案回执': 'upload',
+  '应急预案备案回执': 'cert',
   '应急值班制度': 'static',
   // 盒八 风险与隐患
   '风险辨识手册': 'static',
@@ -104,27 +101,25 @@ export const ITEM_CATEGORY = {
   '事故资料（按事故归档）': 'dynamic',
   '事故快报表': 'dynamic',
   '事故四不放过资料': 'dynamic',
-  // 危货盒七 停车场
+  // 危货盒七 停车场（企业证件 → C）
   '产权证明': 'cert',
   '租赁合同（到期预警）': 'cert',
-  '平面图及照片': 'upload',
+  '平面图及照片': 'cert',
 }
 
 // 关键词兜底：仅用于后端动态追加的目录项（如范本驱动的盒二条目）。
 const CERT_KW = /营业执照|许可证|行驶证|驾驶证|从业资格|资格证|保险|保单|责任险|通行证|运输证|登记证|合格证|检测报告|备案回执|复[印件]|产权|营收入证明|考核合格证明|证明$/
-const UPLOAD_KW = /台账|月报|在线率|抄报|外部平台/
-const DYNAMIC_KW = /记录|会议|培训|检查|演练|照片|签到|汇总|统计表|三检|隐患|事故|考核|费用使用|值班表|快报|评估表|整改|验收|发票|收据|教育/
+const DYNAMIC_KW = /记录|会议|培训|检查|演练|照片|签到|汇总|统计表|三检|隐患|事故|考核|费用使用|值班表|快报|评估表|整改|验收|发票|收据|教育|台账|月报|在线率|抄报|外部平台/
 const STATIC_KW = /制度|预案|方案|通知|架构|手册|清单|说明|声明|计划|标准|配备|责任书|承诺书|告知书|任命书|目录/
 
-/** 按归档项名称推断类别 */
+/** 按归档项名称推断类别（A/B/C） */
 export function categoryOf(name) {
   const n = String(name || '').trim()
-  if (ITEM_CATEGORY[n]) return CATEGORY_BY_KEY[ITEM_CATEGORY[n]] || CATEGORY.STATIC
-  if (CERT_KW.test(n)) return CATEGORY.CERT
-  if (UPLOAD_KW.test(n)) return CATEGORY.UPLOAD
-  if (DYNAMIC_KW.test(n)) return CATEGORY.DYNAMIC
-  if (STATIC_KW.test(n)) return CATEGORY.STATIC
-  return CATEGORY.STATIC // 未标注的目录项保守按范本类处理
+  if (ITEM_CATEGORY[n]) return CATEGORY_BY_KEY[ITEM_CATEGORY[n]] || CATEGORY.A
+  if (CERT_KW.test(n)) return CATEGORY.C
+  if (DYNAMIC_KW.test(n)) return CATEGORY.B
+  if (STATIC_KW.test(n)) return CATEGORY.A
+  return CATEGORY.A // 未标注的目录项保守按范本类处理
 }
 
 // 按岗位拆分的文件（09 §2.1 的 4 类 + 18 风险告知卡）。
@@ -144,10 +139,11 @@ export function isPostRelated(name) {
   return POST_SET.has(n) || POST_KW.test(n)
 }
 
-/** 供渲染行使用：类别 + 岗位相关性 + 生产方式提示 */
+/** 供渲染行使用：类别（A/B/C）+ 岗位相关性 + 生产方式提示 */
 export function classifyItem(name) {
   const c = categoryOf(name)
   return {
+    code: c.code,
     dataType: c.dataType,
     categoryKey: c.key,
     categoryLabel: c.label,
