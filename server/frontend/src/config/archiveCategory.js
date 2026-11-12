@@ -2,13 +2,17 @@
 //
 // 权威定义见《详细设计/档案资料A-B-C分类规范.md》与《产品需求确认文档》§2.2：
 //   A 静态资料（data_type=1）：范本生成 → 签字确认；模板因地区/企业规模选用不同范本套；年度更新。
-//   B 动态资料（data_type=2）：企业执行动作产生记录（真实流程 / 服务商代录·先台账后执行），
-//      或外部平台台账上传留存（动态监控台账等）；月度/季度/每日等周期更新。
-//   C 证件资料（data_type=3）：手动上传 + OCR + 到期预警；证照/回执/凭证类按有效期更新。
+//   B 动态资料（data_type=2）：企业执行动作产生记录（真实流程 / 服务商代录·先台账后执行）；
+//      月度/季度/每日等周期更新。
+//   C 证件资料（data_type=3）：手动上传/外部提供 + 系统只做上传留存，需到期预警的按有效期提醒
+//      （动态监控台账等外部平台产出也归 C，可不设有效期——2026-11-12 口径扩展）。
 //
 // 两个维度互相独立：类别决定「怎么生产」（生成/记录/上传），是否按岗位决定
 // 「能不能切换岗位」。证件类、动态记录一律与岗位无关，不显示岗位切换。
-// 原「②′ 上传留存」不再单列一类：台账类归 B、回执/证照类归 C，见 ITEM_CATEGORY 显式表。
+//
+// 分类支持按营运类型分叉（cargo 分叉）：同一项在普货/危货可归不同类——
+// 如「应急预案/风险评估和应急资源调查/应急预案评审或论证」普货由系统范本生成（A/B），
+// 危货须第三方机构出具、企业只上传（C），见 ITEM_CATEGORY_DANGER 覆盖表。
 
 export const CATEGORY = {
   A: {
@@ -17,11 +21,11 @@ export const CATEGORY = {
   },
   B: {
     code: 'B', key: 'dynamic', dataType: 2, label: 'B 动态资料', short: '动态', color: 'green',
-    desc: '会议、培训、检查、隐患、事故等执行产生的记录，或外部平台台账上传留存（服务商可代录）',
+    desc: '会议、培训、检查、隐患等执行产生的记录（服务商可代录·提取签字照片直接生成）',
   },
   C: {
     code: 'C', key: 'cert', dataType: 3, label: 'C 证件资料', short: '证件', color: 'red',
-    desc: '营业执照、许可证、备案回执、产权证明等证照/凭证，手动上传并做到期预警',
+    desc: '营业执照、许可证、备案回执、产权证明、外部平台台账等手动上传/外部提供资料，系统只做上传留存并按有效期提醒',
   },
 }
 
@@ -31,7 +35,8 @@ export const CATEGORY_LIST = Object.values(CATEGORY)
 const CATEGORY_BY_KEY = Object.fromEntries(CATEGORY_LIST.map((c) => [c.key, c]))
 
 // 显式分类表：政府检查目录逐项标注，避免关键词误伤（如「管理人员档案」不是单本证件）。
-// 原「upload（上传留存）」已按定稿拆分：外部台账归 B(dynamic)、回执/证照归 C(cert)。
+// 2026-11-12 修订：营收入证明/岗前三级培训 → A（范本生成）；动态监控台账（外部平台
+// 产出上传留存）→ C；事故档案盒三项 → C（事故卷宗多为外部认定件，手动上传留存）。
 export const ITEM_CATEGORY = {
   // 盒一 公司档案及管理层档案
   '营业执照': 'cert',
@@ -44,11 +49,12 @@ export const ITEM_CATEGORY = {
   '安全生产责任书': 'static',
   '安全生产承诺书': 'static',
   '岗位危害告知书': 'static',
-  '岗前三级培训': 'dynamic',
+  '岗前三级培训': 'static',
   '两类人员考核合格证明': 'cert',
   '年度责任制考核记录': 'dynamic',
   '人员任命书': 'static',
-  '复工复产方案': 'static',
+  '各类方案': 'static',
+  '复工复产方案': 'static', // 历史归档项兼容
   // 盒二 制度
   '适用安全生产法律法规标准目录清单': 'static',
   '制度汇编（含操作规程）': 'static',
@@ -60,17 +66,15 @@ export const ITEM_CATEGORY = {
   '安全生产教育和培训计划': 'static',
   '安全生产月度培训（培训内容、照片、签字）': 'dynamic',
   // 盒五 费用
-  '年度营收入证明': 'cert',
+  '年度营收入证明': 'static',
   '安全费用提取标准及计划': 'static',
   '安全生产费用使用台账（发票或收据）': 'dynamic',
-  // 盒六 动态监控（外部平台台账→B 上传留存）
-  '动态监控工作情况记录台账（每日）': 'dynamic',
-  '设备故障异常台账': 'dynamic',
-  '在线率台账': 'dynamic',
-  '月报台账': 'dynamic',
+  // 盒六 动态监控（外部平台产出→系统上传留存，归 C；不设有效期）
+  '动态监控工作情况记录台账（每日）': 'cert',
+  '动态监控工作情况记录台账': 'cert',
   '针对性违规教育（培训内容、照片、签字）': 'dynamic',
   '交通事故违法针对性教育（培训内容、照片、签字）': 'dynamic',
-  // 盒七 应急管理（普货）
+  // 盒七 应急管理（普货：预案/风险评估系统范本生成→A，评审论证→B；危货覆盖为 C）
   '应急预案': 'static',
   '风险评估和应急资源调查': 'static',
   '应急预案评审或论证': 'dynamic',
@@ -91,20 +95,33 @@ export const ITEM_CATEGORY = {
   '无重大风险的说明': 'static',
   '隐患排查记录（排查内容、照片、签字）': 'dynamic',
   '隐患排查治理（整改通知书、验收单）': 'dynamic',
-  '安全评估': 'static',
+  '安全评估': 'cert',
+  '安全评估（危货）': 'cert',
   '无重大事故隐患的声明': 'static',
+  '无重大事故隐患的声明（危货）': 'static',
   // 盒九 一日三检
   '（日常车辆三检记录）': 'dynamic',
+  '日常车辆三检记录': 'dynamic',
+  '三检月报汇总表': 'dynamic',
   '一日三检记录': 'dynamic',
-  // 盒十/十一 事故
+  // 盒十/十一 事故（卷宗多为外部认定件，手动上传留存 → C；年度汇总表为执行记录 → B）
   '年度事故汇总统计表': 'dynamic',
-  '事故资料（按事故归档）': 'dynamic',
-  '事故快报表': 'dynamic',
-  '事故四不放过资料': 'dynamic',
-  // 危货盒七 停车场（企业证件 → C）
+  '事故资料（按事故归档）': 'cert',
+  '事故资料': 'cert',
+  '事故快报表': 'cert',
+  '事故四不放过资料': 'cert',
+  // 危货盒七 停车场（手动上传凭证 → C）
   '产权证明': 'cert',
   '租赁合同（到期预警）': 'cert',
   '平面图及照片': 'cert',
+}
+
+// 危货覆盖表（cargo 分叉）：危货的应急预案/风险评估/评审论证须第三方机构出具、
+// 企业只上传留存 → C（普货由系统范本生成：预案/风险评估=A、评审论证=B）。
+export const ITEM_CATEGORY_DANGER = {
+  '应急预案': 'cert',
+  '风险评估和应急资源调查': 'cert',
+  '应急预案评审或论证': 'cert',
 }
 
 // 关键词兜底：仅用于后端动态追加的目录项（如范本驱动的盒二条目）。
@@ -112,9 +129,10 @@ const CERT_KW = /营业执照|许可证|行驶证|驾驶证|从业资格|资格�
 const DYNAMIC_KW = /记录|会议|培训|检查|演练|照片|签到|汇总|统计表|三检|隐患|事故|考核|费用使用|值班表|快报|评估表|整改|验收|发票|收据|教育|台账|月报|在线率|抄报|外部平台/
 const STATIC_KW = /制度|预案|方案|通知|架构|手册|清单|说明|声明|计划|标准|配备|责任书|承诺书|告知书|任命书|目录/
 
-/** 按归档项名称推断类别（A/B/C） */
-export function categoryOf(name) {
+/** 按归档项名称推断类别（A/B/C）；cargo='危货' 时先查危货覆盖表 */
+export function categoryOf(name, cargo) {
   const n = String(name || '').trim()
+  if (cargo === '危货' && ITEM_CATEGORY_DANGER[n]) return CATEGORY_BY_KEY[ITEM_CATEGORY_DANGER[n]] || CATEGORY.A
   if (ITEM_CATEGORY[n]) return CATEGORY_BY_KEY[ITEM_CATEGORY[n]] || CATEGORY.A
   if (CERT_KW.test(n)) return CATEGORY.C
   if (DYNAMIC_KW.test(n)) return CATEGORY.B
@@ -140,8 +158,8 @@ export function isPostRelated(name) {
 }
 
 /** 供渲染行使用：类别（A/B/C）+ 岗位相关性 + 生产方式提示 */
-export function classifyItem(name) {
-  const c = categoryOf(name)
+export function classifyItem(name, cargo) {
+  const c = categoryOf(name, cargo)
   return {
     code: c.code,
     dataType: c.dataType,

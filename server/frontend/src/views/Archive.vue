@@ -151,7 +151,7 @@ const rows = computed(() => {
     return {
       key, seq: idx + 1, name: it.name, freq: it.freq || '', tplDriven: !!it.tplDriven,
       isUploaded, source, tplOptions, tplCode, status, pdfId, located,
-      ...classifyItem(it.name),
+      ...classifyItem(it.name, cargoStore.cargoType),
     }
   })
   // 补充行：后端已归档、但标题未命中目录占位项（如 B3 流程/服务商强制生成的单个制度，
@@ -170,7 +170,7 @@ const rows = computed(() => {
       isUploaded: it.genMode === 3, source: it.source || 0,
       tplOptions: [], tplCode: '', status: pdfId ? STATUS.DONE : STATUS.MISS,
       pdfId, located: false, engineArchived: true,
-      ...classifyItem(it.title),
+      ...classifyItem(it.title, cargoStore.cargoType),
     })
   })
   return out
