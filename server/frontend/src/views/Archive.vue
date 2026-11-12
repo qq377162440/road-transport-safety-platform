@@ -156,9 +156,13 @@ const rows = computed(() => {
   })
   // 补充行：后端已归档、但标题未命中目录占位项（如 B3 流程/服务商强制生成的单个制度，
   // 标题带版本号等后缀），仍以独立行展示并带来源徽标，确保盒二与 B3 制度引擎一一对应。
+  // 按人子集合业务模块（管理人员档案 / 责任书双签 / 三书）由各自专属面板按 biz_module 读取，
+  // 即使在盒内文件列表里被返回，也不作为零散行渲染（否则会炸成「管理人员档案-张三」之类的条目）。
+  const subCollection = new Set(['manager_archive', 'responsibility_sign', 'triple_book_sign'])
   const covered = new Set(selectedBox.value.items.map((i) => i.name))
   archiveItems.value.forEach((it) => {
     if (covered.has(it.title)) return
+    if (subCollection.has(it.bizModule)) return
     const pdfId = it.pdfId || null
     out.push({
       key: `${bno}-x-${it.bizModule || it.id || out.length}`,

@@ -364,11 +364,26 @@ public class ArchiveService {
         return pdf;
     }
 
+    /**
+     * 按人子集合业务模块：这些归档项有专属面板（管理人员档案按人查看 / 责任书双签 / 三书签订），
+     * 数据由各自面板按 biz_module 直接读取，不应以「零散文件」形式出现在盒内文件列表里。
+     * 否则前端「标题未命中目录则补一行」的逻辑会把它们渲染成盒内的逐个按人文件，
+     * 导致本该合并为一项的「管理人员档案」炸成 N 条「管理人员档案-张三」之类的条目。
+     */
+    private static final List<String> PER_PERSON_SUBCOLLECTION =
+            List.of("manager_archive", "responsibility_sign", "triple_book_sign");
+
     /** 查询某盒某年度的上传留存归档项（供前端合并状态展示） */
     public List<ArchiveItem> listUploadItems(int boxNo, int year) {
+        // 按人子集合（manager_archive / responsibility_sign / triple_book_sign）由各自专属面板按
+        // biz_module 读取，不应以零散文件出现在盒内列表。注意 biz_module 为 NULL 的手动上传件
+        // （如营业执照、道路运输经营许可证）必须保留：SQL 中 `biz_module NOT IN (...)` 对 NULL
+        // 会得到 UNKNOWN 而把这类行误删，因此用 `biz_module IS NULL OR biz_module NOT IN (...)`。
         return itemMapper.selectList(new LambdaQueryWrapper<ArchiveItem>()
                 .eq(ArchiveItem::getTenantId, tid())
                 .eq(ArchiveItem::getCatalogId, BOX_CATALOG_BASE + boxNo)
-                .eq(ArchiveItem::getArchiveYear, year));
+                .eq(ArchiveItem::getArchiveYear, year)
+                .and(w -> w.isNull(ArchiveItem::getBizModule)
+                        .or().notIn(ArchiveItem::getBizModule, PER_PERSON_SUBCOLLECTION)));
     }
 }
