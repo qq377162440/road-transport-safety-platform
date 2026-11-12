@@ -354,6 +354,7 @@ public class ArchiveService {
         item.setCatalogId(BOX_CATALOG_BASE + boxNo);
         item.setDataType(3);       // 证件
         item.setGenMode(3);        // 上传留存
+        item.setSource(1);         // 档案柜手动上传
         item.setTitle(itemTitle);
         item.setArchiveYear(year);
         item.setStatus(1);         // 已生成

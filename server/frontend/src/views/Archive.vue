@@ -121,14 +121,19 @@ const boxChecked = ref(new Set())
 
 // 把目录子项与后端真实归档状态、当前应用范本合并成渲染行
 const rows = computed(() => {
+  // 标题归并：优先取带来源（B3 流程 / 服务商代生成）的归档项，覆盖无来源的占位项
   const recMap = {}
-  archiveItems.value.forEach((it) => { recMap[it.title] = it })
+  archiveItems.value.forEach((it) => {
+    const prev = recMap[it.title]
+    if (!prev || (prev.source || 0) === 0) recMap[it.title] = it
+  })
   const bno = selBoxNo.value
-  return selectedBox.value.items.map((it, idx) => {
+  const out = selectedBox.value.items.map((it, idx) => {
     const key = `${bno}-${idx}`
     const rec = recMap[it.name]
     const pdfId = rec?.pdfId || null
     const isUploaded = rec?.genMode === 3
+    const source = rec?.source || 0
     const tplOptions = matchTpl(it.name)
     const tplCode = tplOptions.length ? tplOptions[0].code : ''
     let status = STATUS.MISS
@@ -139,10 +144,26 @@ const rows = computed(() => {
     const located = !!q && (it.name === q || it.name.includes(q) || q.includes(it.name))
     return {
       key, seq: idx + 1, name: it.name, freq: it.freq || '', tplDriven: !!it.tplDriven,
-      isUploaded, tplOptions, tplCode, status, pdfId, located,
+      isUploaded, source, tplOptions, tplCode, status, pdfId, located,
       ...classifyItem(it.name),
     }
   })
+  // 补充行：后端已归档、但标题未命中目录占位项（如 B3 流程/服务商强制生成的单个制度，
+  // 标题带版本号等后缀），仍以独立行展示并带来源徽标，确保盒二与 B3 制度引擎一一对应。
+  const covered = new Set(selectedBox.value.items.map((i) => i.name))
+  archiveItems.value.forEach((it) => {
+    if (covered.has(it.title)) return
+    const pdfId = it.pdfId || null
+    out.push({
+      key: `${bno}-x-${it.bizModule || it.id || out.length}`,
+      seq: out.length + 1, name: it.title, freq: '', tplDriven: false,
+      isUploaded: it.genMode === 3, source: it.source || 0,
+      tplOptions: [], tplCode: '', status: pdfId ? STATUS.DONE : STATUS.MISS,
+      pdfId, located: false, engineArchived: true,
+      ...classifyItem(it.title),
+    })
+  })
+  return out
 })
 
 // ---- 文件分类（08 三大类 + ②′ 上传留存）----
@@ -1175,6 +1196,9 @@ function locateItem(boxNo, name) {
               'st-done': r.status === STATUS.DONE,
               'st-print': r.status === STATUS.PRINT,
             }">{{ ['待上传/缺失', '待生成', '已生成/已上传', '已归档'][r.status] }}</span>
+            <span v-if="r.source" class="src-tag" :class="'src-' + r.source"
+              :title="['', '档案柜手动上传', 'B3 流程产出', '服务商强制生成'][r.source]">
+              {{ ['', '手动上传', 'B3流程', '服务商代生成'][r.source] }}</span>
             <div class="ops">
               <el-button v-if="r.name === '管理人员档案'" size="small" type="warning" plain @click="openManagerPanel">
                 <Icon name="fileText" :size="13" /> 按人查看
@@ -1732,6 +1756,10 @@ function locateItem(boxNo, name) {
 .st-wait { background: #fff4e0; color: #b26a00; }
 .st-done { background: #F0FDF4; color: #1a8a4a; }
 .st-print { background: var(--brand-100); color: var(--brand-600); }
+.src-tag { font-size: 11px; padding: 1px 8px; border-radius: 9px; font-weight: 600; white-space: nowrap; margin-left: 6px; }
+.src-1 { background: #fef3f2; color: #b42318; }
+.src-2 { background: #eff6ff; color: #1d4ed8; }
+.src-3 { background: #fdf4ff; color: #a21caf; }
 .ops { flex-shrink: 0; }
 .empty-state { text-align: center; padding: 50px; color: var(--text-3); }
 .empty-state .big { font-size: 40px; margin-bottom: 12px; }
